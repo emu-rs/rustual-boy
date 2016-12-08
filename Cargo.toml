@@ -1,0 +1,6 @@
+[package]
+name = "vb-rs"
+version = "0.1.0"
+authors = ["ferris <yupferris@gmail.com>"]
+
+[dependencies]
