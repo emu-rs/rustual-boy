@@ -12,7 +12,7 @@ pub const MIN_ROM_SIZE: usize = 512 * 1024;
 pub const MAX_ROM_SIZE: usize = 16 * 1024 * 1024;
 
 pub struct Rom {
-    pub bytes: Box<[u8]>,
+    bytes: Box<[u8]>,
 }
 
 impl Rom {
@@ -29,8 +29,8 @@ impl Rom {
         Ok(Rom { bytes: vec.into_boxed_slice() })
     }
 
-    fn header_offset(&self) -> usize {
-        self.size() - 544
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
     }
 
     pub fn size(&self) -> usize {
@@ -73,5 +73,9 @@ impl Rom {
     pub fn game_version_byte(&self) -> u8 {
         let header_offset = self.header_offset();
         self.bytes[header_offset + 0x1f]
+    }
+
+    fn header_offset(&self) -> usize {
+        self.size() - 544
     }
 }
