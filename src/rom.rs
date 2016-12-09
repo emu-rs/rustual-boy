@@ -17,16 +17,16 @@ pub struct Rom {
 
 impl Rom {
     pub fn load<P: AsRef<Path>>(rom_file_name: P) -> io::Result<Rom> {
-        let mut rom_buf = Vec::new();
-        let mut rom_file = File::open(&rom_file_name)?;
-        rom_file.read_to_end(&mut rom_buf)?;
-        let rom_size = rom_buf.len();
+        let mut vec = Vec::new();
+        let mut file = File::open(&rom_file_name)?;
+        file.read_to_end(&mut vec)?;
 
-        if rom_size < MIN_ROM_SIZE || rom_size > MAX_ROM_SIZE || rom_size.count_ones() != 1 {
+        let size = vec.len();
+        if size < MIN_ROM_SIZE || size > MAX_ROM_SIZE || size.count_ones() != 1 {
             return Err(Error::new(ErrorKind::InvalidData, "Invalid ROM size"));
         }
 
-        Ok(Rom { bytes: rom_buf.into_boxed_slice() })
+        Ok(Rom { bytes: vec.into_boxed_slice() })
     }
 
     fn header_offset(&self) -> usize {
