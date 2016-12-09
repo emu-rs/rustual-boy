@@ -5,3 +5,4 @@ authors = ["ferris <yupferris@gmail.com>"]
 
 [dependencies]
 encoding = "0.2"
+nom = "^2.0"
