@@ -12,7 +12,7 @@ pub const MIN_ROM_SIZE: usize = 512 * 1024;
 pub const MAX_ROM_SIZE: usize = 16 * 1024 * 1024;
 
 pub struct Rom {
-    pub bytes: Box<[u8]>
+    pub bytes: Box<[u8]>,
 }
 
 impl Rom {
@@ -26,9 +26,7 @@ impl Rom {
             return Err(Error::new(ErrorKind::InvalidData, "Invalid ROM size"));
         }
 
-        Ok(Rom {
-            bytes: rom_buf.into_boxed_slice()
-        })
+        Ok(Rom { bytes: rom_buf.into_boxed_slice() })
     }
 
     fn header_offset(&self) -> usize {
