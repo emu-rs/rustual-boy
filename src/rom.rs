@@ -41,6 +41,9 @@ impl Rom {
         let header_offset = self.header_offset();
         let name_offset = header_offset;
         let name_bytes = &self.bytes[name_offset..name_offset + 0x14];
+        // Windows-31J is a superset of Shift JIS, which technically makes this
+        //  code a bit too permissive, but saves us from writing our own decoder
+        //  just to read ROM names.
         let shift_jis_encoding = WINDOWS_31J as EncodingRef;
         shift_jis_encoding.decode(name_bytes, DecoderTrap::Strict)
     }
