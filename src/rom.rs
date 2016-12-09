@@ -16,9 +16,9 @@ pub struct Rom {
 }
 
 impl Rom {
-    pub fn load<P: AsRef<Path>>(rom_file_name: P) -> io::Result<Rom> {
+    pub fn load<P: AsRef<Path>>(file_name: P) -> io::Result<Rom> {
         let mut vec = Vec::new();
-        let mut file = File::open(&rom_file_name)?;
+        let mut file = File::open(file_name)?;
         file.read_to_end(&mut vec)?;
 
         let size = vec.len();
@@ -43,7 +43,11 @@ impl Rom {
         let name_bytes = &self.bytes[name_offset..name_offset + 0x14];
         // Windows-31J is a superset of Shift JIS, which technically makes this
         //  code a bit too permissive, but saves us from writing our own decoder
-        //  just to read ROM names.
+        //  just to read ROM names. Even if we did try to write our own,
+        //  I haven't seen any documentation that mentions which specific Shift JIS
+        //  version we should use in the first place, especially since the more
+        //  widely-used ones were standardized in 1997, after the Virtual Boy was
+        //  in production.
         let shift_jis_encoding = WINDOWS_31J as EncodingRef;
         shift_jis_encoding.decode(name_bytes, DecoderTrap::Strict)
     }
