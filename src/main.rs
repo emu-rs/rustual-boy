@@ -71,7 +71,12 @@ fn main() {
         };
 
         match command {
-            Ok(Command::Disassemble(count)) => println!("TODO: Disassemble {} instr's", count),
+            Ok(Command::Disassemble(count)) => {
+                println!("TODO: Disassemble {} instr's", count);
+                let first_halfword = interconnect.read_halfword(cursor);
+                println!("Instr halfword 1: {:#016b} ({:#02x})", first_halfword, first_halfword);
+                cursor = cursor.wrapping_add(2);
+            }
             Ok(Command::Exit) => break,
             Ok(Command::Repeat) => unreachable!(),
             Err(ref e) => println!("{}", e),
