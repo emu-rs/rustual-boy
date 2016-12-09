@@ -9,7 +9,7 @@ fn main() {
 
     println!("Loading ROM file {}", rom_file_name);
 
-    let rom = rom::Rom::load(rom_file_name);
+    let rom = rom::Rom::load(rom_file_name).unwrap();
 
     print!("ROM size: ");
     if rom.size() >= 1024 * 1024 {
@@ -20,8 +20,8 @@ fn main() {
 
     println!("Header info:");
 
-    println!(" name: \"{}\"", rom.name());
-    println!(" maker code: \"{}\"", rom.maker_code());
-    println!(" game code: \"{}\"", rom.game_code());
+    println!(" name: \"{}\"", rom.name().unwrap());
+    println!(" maker code: \"{}\"", rom.maker_code().unwrap());
+    println!(" game code: \"{}\"", rom.game_code().unwrap());
     println!(" game version: 1.{:#02}", rom.game_version_byte());
 }
