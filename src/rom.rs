@@ -17,8 +17,8 @@ pub struct Rom {
 
 impl Rom {
     pub fn load<P: AsRef<Path>>(file_name: P) -> io::Result<Rom> {
-        let mut vec = Vec::new();
         let mut file = File::open(file_name)?;
+        let mut vec = Vec::new();
         file.read_to_end(&mut vec)?;
 
         let size = vec.len();
