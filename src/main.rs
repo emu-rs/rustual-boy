@@ -6,7 +6,7 @@ extern crate nom;
 mod rom;
 mod interconnect;
 
-use nom::IResult;
+use nom::{IResult, eof, space, digit};
 
 use rom::*;
 use interconnect::*;
@@ -18,6 +18,7 @@ use std::str::{self, FromStr};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Command {
+    Disassemble(usize),
     Exit,
     Repeat,
 }
@@ -59,7 +60,7 @@ fn main() {
     let mut last_command = None;
 
     loop {
-        print!("(vb {:#08x}) ", cursor);
+        print!("(vb-rs {:#08x}) > ", cursor);
         stdout().flush().unwrap();
 
         let command = match (read_stdin().parse(), last_command) {
@@ -70,12 +71,15 @@ fn main() {
         };
 
         match command {
+            Ok(Command::Disassemble(count)) => println!("TODO: Disassemble {} instr's", count),
             Ok(Command::Exit) => break,
             Ok(Command::Repeat) => unreachable!(),
             Err(ref e) => println!("{}", e),
         }
 
-        last_command = command.ok();
+        if let Ok(c) = command {
+            last_command = Some(c);
+        }
     }
 }
 
@@ -87,11 +91,20 @@ fn read_stdin() -> String {
 
 named!(
     command<Command>,
-    terminated!(
+    complete!(
+        terminated!(
         alt_complete!(
+            disassemble |
             exit |
             repeat),
-        eof!()));
+        eof)));
+
+named!(
+    disassemble<Command>,
+    chain!(
+        alt_complete!(tag!("disassemble") | tag!("d")) ~
+            count: opt!(preceded!(space, usize_parser)),
+    || Command::Disassemble(count.unwrap_or(1))));
 
 named!(
     exit<Command>,
@@ -102,3 +115,11 @@ named!(
 named!(
     repeat<Command>,
     value!(Command::Repeat));
+
+named!(
+    usize_parser<usize>,
+    map_res!(
+        map_res!(
+            digit,
+            str::from_utf8),
+    FromStr::from_str));
