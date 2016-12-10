@@ -5,6 +5,7 @@ pub enum Opcode {
     Jmp,
     Movea,
     Movhi,
+    Stb,
     Outw,
 }
 
@@ -15,6 +16,7 @@ impl Opcode {
             0b000110 => Opcode::Jmp,
             0b101000 => Opcode::Movea,
             0b101111 => Opcode::Movhi,
+            0b110100 => Opcode::Stb,
             0b111111 => Opcode::Outw,
             _ => panic!("Unrecognized opcode bits: {:06b}", opcode_bits),
         }
@@ -25,11 +27,21 @@ impl Opcode {
             &Opcode::Jmp => InstructionFormat::I,
             &Opcode::Movea => InstructionFormat::V,
             &Opcode::Movhi => InstructionFormat::V,
+            &Opcode::Stb => InstructionFormat::VI,
             &Opcode::Outw => InstructionFormat::VI,
         }
     }
-}
 
+    pub fn num_cycles(&self) -> usize {
+        match self {
+            &Opcode::Jmp => 3,
+            &Opcode::Movea => 1,
+            &Opcode::Movhi => 1,
+            &Opcode::Stb => 1,
+            &Opcode::Outw => 1,
+        }
+    }
+}
 
 impl fmt::Display for Opcode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -37,6 +49,7 @@ impl fmt::Display for Opcode {
             &Opcode::Jmp => "jmp",
             &Opcode::Movea => "movea",
             &Opcode::Movhi => "movhi",
+            &Opcode::Stb => "st.b",
             &Opcode::Outw => "out.w",
         };
         write!(f, "{}", mnemonic)
