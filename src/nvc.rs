@@ -51,6 +51,10 @@ impl Nvc {
             Opcode::Jmp => format_i(|reg1, _| {
                 self.reg_pc = self.reg_gpr(reg1);
             }, first_halfword),
+            Opcode::MovImm => format_ii(|imm5, reg2| {
+                let value = sign_extend_imm5(imm5);
+                self.set_reg_gpr(reg2, value);
+            }, first_halfword),
             Opcode::Movea => format_v(|reg1, reg2, imm16| {
                 let res = self.reg_gpr(reg1).wrapping_add((imm16 as i16) as u32);
                 self.set_reg_gpr(reg2, res);
@@ -81,6 +85,12 @@ fn format_i<F: FnOnce(usize, usize)>(f: F, first_halfword: u16) {
     f(reg1, reg2);
 }
 
+fn format_ii<F: FnOnce(usize, usize)>(f: F, first_halfword: u16) {
+    let imm5 = (first_halfword & 0x1f) as usize;
+    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+    f(imm5, reg2);
+}
+
 fn format_v<F: FnOnce(usize, usize, u16)>(f: F, first_halfword: u16, second_halfword: u16) {
     let reg1 = (first_halfword & 0x1f) as usize;
     let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
@@ -93,4 +103,9 @@ fn format_vi<F: FnOnce(usize, usize, i16)>(f: F, first_halfword: u16, second_hal
     let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
     let disp16 = second_halfword as i16;
     f(reg1, reg2, disp16);
+}
+
+fn sign_extend_imm5(imm5: usize) -> u32 {
+    let imm5 = imm5 | (if imm5 & 0x10 == 0 { 0x00 } else { 0xe0 });
+    (imm5 as i8) as u32
 }

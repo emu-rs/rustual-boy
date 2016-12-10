@@ -206,8 +206,13 @@ fn disassemble_instruction(virtual_boy: &mut VirtualBoy, labels: &mut HashMap<St
             if opcode == Opcode::Jmp {
                 println!("jmp [r{}]", reg1);
             } else {
-                println!("{}, r{}, r{}", opcode, reg1, reg2);
+                println!("{} r{}, r{}", opcode, reg1, reg2);
             }
+        }
+        InstructionFormat::II => {
+            let imm5 = (first_halfword & 0x1f) as usize;
+            let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+            println!("{} {}, r{}", opcode, imm5, reg2);
         }
         InstructionFormat::V => {
             let reg1 = (first_halfword & 0x1f) as usize;
