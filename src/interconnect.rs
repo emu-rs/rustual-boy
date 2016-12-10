@@ -48,7 +48,7 @@ impl Interconnect {
         self.write_byte(addr + 3, (value >> 24) as u8);
     }
 
-    pub fn cycles(&mut self, cycles: usize) {
+    pub fn cycles(&mut self, _cycles: usize) {
         // TODO
     }
 }

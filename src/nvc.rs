@@ -4,6 +4,22 @@ use interconnect::*;
 pub struct Nvc {
     reg_pc: u32,
     reg_gpr: [u32; 31],
+
+    psw_zero: bool,
+    psw_sign: bool,
+    psw_overflow: bool,
+    psw_carry: bool,
+    psw_fp_precision_degredation: bool,
+    psw_fp_underflow: bool,
+    psw_fp_overflow: bool,
+    psw_fp_zero_division: bool,
+    psw_fp_invalid_operation: bool,
+    psw_fp_reserved_operand: bool,
+    psw_interrupt_disable: bool,
+    psw_address_trap_enable: bool,
+    psw_exception_pending: bool,
+    psw_nmi_pending: bool,
+    psw_interrupt_mask_level: usize,
 }
 
 impl Nvc {
@@ -11,6 +27,22 @@ impl Nvc {
         Nvc {
             reg_pc: 0xfffffff0,
             reg_gpr: [0; 31],
+
+            psw_zero: false,
+            psw_sign: false,
+            psw_overflow: false,
+            psw_carry: false,
+            psw_fp_precision_degredation: false,
+            psw_fp_underflow: false,
+            psw_fp_overflow: false,
+            psw_fp_zero_division: false,
+            psw_fp_invalid_operation: false,
+            psw_fp_reserved_operand: false,
+            psw_interrupt_disable: false,
+            psw_address_trap_enable: false,
+            psw_exception_pending: false,
+            psw_nmi_pending: true,
+            psw_interrupt_mask_level: 0,
         }
     }
 
@@ -30,6 +62,24 @@ impl Nvc {
         if index != 0 {
             self.reg_gpr[index - 1] = value;
         }
+    }
+
+    pub fn reg_psw(&self) -> u32 {
+        (if self.psw_zero { 1 << 0 } else { 0 }) |
+        (if self.psw_sign { 1 << 1 } else { 0 }) |
+        (if self.psw_overflow { 1 << 2 } else { 0 }) |
+        (if self.psw_carry { 1 << 3 } else { 0 }) |
+        (if self.psw_fp_precision_degredation { 1 << 4 } else { 0 }) |
+        (if self.psw_fp_underflow { 1 << 5 } else { 0 }) |
+        (if self.psw_fp_overflow { 1 << 6 } else { 0 }) |
+        (if self.psw_fp_zero_division { 1 << 7 } else { 0 }) |
+        (if self.psw_fp_invalid_operation { 1 << 8 } else { 0 }) |
+        (if self.psw_fp_reserved_operand { 1 << 9 } else { 0 }) |
+        (if self.psw_interrupt_disable { 1 << 12 } else { 0 }) |
+        (if self.psw_address_trap_enable { 1 << 13 } else { 0 }) |
+        (if self.psw_exception_pending { 1 << 14 } else { 0 }) |
+        (if self.psw_nmi_pending { 1 << 15 } else { 0 }) |
+        (self.psw_interrupt_mask_level as u32) << 16
     }
 
     pub fn step(&mut self, interconnect: &mut Interconnect) {

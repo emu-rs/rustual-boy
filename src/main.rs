@@ -107,6 +107,7 @@ fn main() {
                 for i in 0..32 {
                     println!(" r{}: 0x{:08x}", i, virtual_boy.cpu.reg_gpr(i));
                 }
+                println!("psw: 0x{:08x}", virtual_boy.cpu.reg_psw());
             }
             Ok(Command::Step) => {
                 virtual_boy.step();
