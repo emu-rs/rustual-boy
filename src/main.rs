@@ -79,6 +79,7 @@ impl InstructionFormat {
 #[derive(Debug, Clone, Copy)]
 pub enum Command {
     Goto(u32),
+    ShowMem(Option<u32>),
     Disassemble(usize),
     Exit,
     Repeat,
@@ -134,6 +135,25 @@ fn main() {
         match command {
             Ok(Command::Goto(addr)) => {
                 cursor = addr;
+            }
+            Ok(Command::ShowMem(addr)) => {
+                if let Some(addr) = addr {
+                    cursor = addr;
+                }
+                const NUM_ROWS: usize = 16;
+                const NUM_COLS: usize = 16;
+                for _ in 0..NUM_ROWS {
+                    print!("0x{:08x}  ", cursor);
+                    for x in 0..NUM_COLS {
+                        let byte = interconnect.read_byte(cursor);
+                        cursor = cursor.wrapping_add(1);
+                        print!("{:02x}", byte);
+                        if x < NUM_COLS - 1 {
+                            print!(" ");
+                        }
+                    }
+                    println!("");
+                }
             }
             Ok(Command::Disassemble(count)) => {
                 for _ in 0..count {
@@ -210,6 +230,7 @@ named!(
         terminated!(
         alt_complete!(
             goto |
+            show_mem |
             disassemble |
             exit |
             repeat),
@@ -221,6 +242,13 @@ named!(
         alt_complete!(tag!("goto") | tag!("g")) ~
         addr: preceded!(space, hex_u32_parser),
     || Command::Goto(addr)));
+
+named!(
+    show_mem<Command>,
+    chain!(
+        alt_complete!(tag!("showmem") | tag!("mem") | tag!("m")) ~
+        addr: opt!(preceded!(space, hex_u32_parser)),
+    || Command::ShowMem(addr)));
 
 named!(
     hex_u32_parser<u32>,
