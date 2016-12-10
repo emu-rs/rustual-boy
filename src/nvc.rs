@@ -98,6 +98,17 @@ impl Nvc {
         };
 
         match opcode {
+            Opcode::Sub => format_i(|reg1, reg2| {
+                let lhs = self.reg_gpr(reg2);
+                let rhs = self.reg_gpr(reg1);
+
+                let (res, carry) = lhs.overflowing_sub(rhs);
+                self.set_reg_gpr(reg2, res);
+
+                self.set_zero_sign_flags(res);
+                self.psw_overflow = (((lhs ^ rhs) & !(rhs ^ res)) & 0x80000000) != 0;
+                self.psw_carry = carry;
+            }, first_halfword),
             Opcode::Jmp => format_i(|reg1, _| {
                 self.reg_pc = self.reg_gpr(reg1);
             }, first_halfword),
@@ -126,6 +137,11 @@ impl Nvc {
         }
 
         interconnect.cycles(opcode.num_cycles());
+    }
+
+    fn set_zero_sign_flags(&mut self, value: u32) {
+        self.psw_zero = value == 0;
+        self.psw_sign = value & 0x80000000 != 0;
     }
 }
 
