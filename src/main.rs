@@ -6,7 +6,7 @@ extern crate nom;
 mod rom;
 mod interconnect;
 
-use nom::{IResult, eof, space, digit};
+use nom::{IResult, eof, space, digit, hex_digit};
 
 use rom::*;
 use interconnect::*;
@@ -78,6 +78,7 @@ impl InstructionFormat {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Command {
+    Goto(u32),
     Disassemble(usize),
     Exit,
     Repeat,
@@ -120,7 +121,7 @@ fn main() {
     let mut last_command = None;
 
     loop {
-        print!("(vb-rs {:#08x}) > ", cursor);
+        print!("(vb-rs 0x{:08x}) > ", cursor);
         stdout().flush().unwrap();
 
         let command = match (read_stdin().parse(), last_command) {
@@ -131,6 +132,9 @@ fn main() {
         };
 
         match command {
+            Ok(Command::Goto(addr)) => {
+                cursor = addr;
+            }
             Ok(Command::Disassemble(count)) => {
                 for _ in 0..count {
                     print!("0x{:08x}  ", cursor);
@@ -205,17 +209,41 @@ named!(
     complete!(
         terminated!(
         alt_complete!(
+            goto |
             disassemble |
             exit |
             repeat),
         eof)));
 
 named!(
+    goto<Command>,
+    chain!(
+        alt_complete!(tag!("goto") | tag!("g")) ~
+        addr: preceded!(space, hex_u32_parser),
+    || Command::Goto(addr)));
+
+named!(
+    hex_u32_parser<u32>,
+    map_res!(
+        map_res!(
+            preceded!(opt!(alt_complete!(tag!("0x") | tag!("$"))), hex_digit),
+            str::from_utf8),
+    |s| u32::from_str_radix(s, 16)));
+
+named!(
     disassemble<Command>,
     chain!(
         alt_complete!(tag!("disassemble") | tag!("d")) ~
-            count: opt!(preceded!(space, usize_parser)),
+        count: opt!(preceded!(space, usize_parser)),
     || Command::Disassemble(count.unwrap_or(4))));
+
+named!(
+    usize_parser<usize>,
+    map_res!(
+        map_res!(
+            digit,
+            str::from_utf8),
+    FromStr::from_str));
 
 named!(
     exit<Command>,
@@ -226,11 +254,3 @@ named!(
 named!(
     repeat<Command>,
     value!(Command::Repeat));
-
-named!(
-    usize_parser<usize>,
-    map_res!(
-        map_res!(
-            digit,
-            str::from_utf8),
-    FromStr::from_str));
