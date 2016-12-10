@@ -1,0 +1,80 @@
+use instruction::*;
+use interconnect::*;
+
+pub struct Nvc {
+    reg_pc: u32,
+    reg_gpr: [u32; 31],
+}
+
+impl Nvc {
+    pub fn new() -> Nvc {
+        Nvc {
+            reg_pc: 0xfffffff0,
+            reg_gpr: [0; 31],
+        }
+    }
+
+    pub fn reg_pc(&self) -> u32 {
+        self.reg_pc
+    }
+
+    pub fn reg_gpr(&self, index: usize) -> u32 {
+        if index == 0 {
+            0
+        } else {
+            self.reg_gpr[index - 1]
+        }
+    }
+
+    fn set_reg_gpr(&mut self, index: usize, value: u32) {
+        if index != 0 {
+            self.reg_gpr[index - 1] = value;
+        }
+    }
+
+    pub fn step(&mut self, interconnect: &mut Interconnect) {
+        let first_halfword = interconnect.read_halfword(self.reg_pc);
+        self.reg_pc = self.reg_pc.wrapping_add(2);
+
+        let opcode = Opcode::from_halfword(first_halfword);
+        let instruction_format = opcode.instruction_format();
+
+        let second_halfword = if instruction_format.has_second_halfword() {
+            let second_halfword = interconnect.read_halfword(self.reg_pc);
+            self.reg_pc = self.reg_pc.wrapping_add(2);
+            second_halfword
+        } else {
+            0
+        };
+
+        match opcode {
+            Opcode::Jmp => format_i(|reg1, _| {
+                self.reg_pc = self.reg_gpr(reg1);
+            }, first_halfword),
+            Opcode::Movea => format_v(|reg1, reg2, imm16| {
+                let res = self.reg_gpr(reg1).wrapping_add((imm16 as i16) as u32);
+                self.set_reg_gpr(reg2, res);
+            }, first_halfword, second_halfword),
+            Opcode::Movhi => format_v(|reg1, reg2, imm16| {
+                let res = self.reg_gpr(reg1).wrapping_add((imm16 as u32) << 16);
+                self.set_reg_gpr(reg2, res);
+            }, first_halfword, second_halfword),
+            Opcode::Outw => {
+                // TODO
+            }
+        }
+    }
+}
+
+fn format_i<F: FnOnce(usize, usize)>(f: F, first_halfword: u16) {
+    let reg1 = (first_halfword & 0x1f) as usize;
+    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+    f(reg1, reg2);
+}
+
+fn format_v<F: FnOnce(usize, usize, u16)>(f: F, first_halfword: u16, second_halfword: u16) {
+    let reg1 = (first_halfword & 0x1f) as usize;
+    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+    let imm16 = second_halfword;
+    f(reg1, reg2, imm16);
+}
