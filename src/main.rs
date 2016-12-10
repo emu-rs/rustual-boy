@@ -182,16 +182,16 @@ fn disassemble_instruction(virtual_boy: &mut VirtualBoy, labels: &mut HashMap<St
     print!("0x{:08x}  ", cursor);
 
     let first_halfword = virtual_boy.interconnect.read_halfword(*cursor);
-    *cursor = cursor.wrapping_add(2);
+    let mut next_cursor = cursor.wrapping_add(2);
     print!("{:02x}{:02x}", first_halfword & 0xff, first_halfword >> 8);
 
     let opcode = Opcode::from_halfword(first_halfword);
     let instruction_format = opcode.instruction_format();
 
     let second_halfword = if instruction_format.has_second_halfword() {
-        let second_halfword = virtual_boy.interconnect.read_halfword(*cursor);
+        let second_halfword = virtual_boy.interconnect.read_halfword(next_cursor);
         print!("{:02x}{:02x}", second_halfword & 0xff, second_halfword >> 8);
-        *cursor = cursor.wrapping_add(2);
+        next_cursor = next_cursor.wrapping_add(2);
         second_halfword
     } else {
         print!("    ");
@@ -215,6 +215,12 @@ fn disassemble_instruction(virtual_boy: &mut VirtualBoy, labels: &mut HashMap<St
             let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
             println!("{} {}, r{}", opcode, imm5, reg2);
         }
+        InstructionFormat::III => {
+            let disp9 = first_halfword & 0x01ff;
+            let disp = (disp9 as u32) | if disp9 & 0x0100 == 0 { 0x00000000 } else { 0xfffffe00 };
+            let target = cursor.wrapping_add(disp);
+            println!("{} {:#x} (0x{:08x})", opcode, disp9, target);
+        }
         InstructionFormat::V => {
             let reg1 = (first_halfword & 0x1f) as usize;
             let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
@@ -232,6 +238,8 @@ fn disassemble_instruction(virtual_boy: &mut VirtualBoy, labels: &mut HashMap<St
             println!("{} {}[r{}], r{}", opcode, disp16, reg1, reg2);
         }
     }
+
+    *cursor = next_cursor;
 }
 
 named!(

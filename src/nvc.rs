@@ -84,18 +84,22 @@ impl Nvc {
 
     pub fn step(&mut self, interconnect: &mut Interconnect) {
         let first_halfword = interconnect.read_halfword(self.reg_pc);
-        self.reg_pc = self.reg_pc.wrapping_add(2);
+        let mut next_pc = self.reg_pc.wrapping_add(2);
 
         let opcode = Opcode::from_halfword(first_halfword);
         let instruction_format = opcode.instruction_format();
 
         let second_halfword = if instruction_format.has_second_halfword() {
-            let second_halfword = interconnect.read_halfword(self.reg_pc);
-            self.reg_pc = self.reg_pc.wrapping_add(2);
+            let second_halfword = interconnect.read_halfword(next_pc);
+            next_pc = next_pc.wrapping_add(2);
             second_halfword
         } else {
             0
         };
+
+        // TODO: Not too convinced of this pattern, but we'll see what else we
+        //  may have to special case moving forward
+        let mut branch_taken = false;
 
         match opcode {
             Opcode::Sub => format_i(|reg1, reg2| {
@@ -110,12 +114,16 @@ impl Nvc {
                 self.psw_carry = carry;
             }, first_halfword),
             Opcode::Jmp => format_i(|reg1, _| {
-                self.reg_pc = self.reg_gpr(reg1);
+                next_pc = self.reg_gpr(reg1);
             }, first_halfword),
             Opcode::MovImm => format_ii(|imm5, reg2| {
                 let value = sign_extend_imm5(imm5);
                 self.set_reg_gpr(reg2, value);
             }, first_halfword),
+            Opcode::Bne => {
+                branch_taken = !self.psw_zero;
+                next_pc = format_iii(branch_taken, self.reg_pc, first_halfword);
+            },
             Opcode::Movea => format_v(|reg1, reg2, imm16| {
                 let res = self.reg_gpr(reg1).wrapping_add((imm16 as i16) as u32);
                 self.set_reg_gpr(reg2, res);
@@ -136,7 +144,9 @@ impl Nvc {
             }, first_halfword, second_halfword),
         }
 
-        interconnect.cycles(opcode.num_cycles());
+        self.reg_pc = next_pc;
+
+        interconnect.cycles(opcode.num_cycles(branch_taken));
     }
 
     fn set_zero_sign_flags(&mut self, value: u32) {
@@ -157,6 +167,16 @@ fn format_ii<F: FnOnce(usize, usize)>(f: F, first_halfword: u16) {
     f(imm5, reg2);
 }
 
+fn format_iii(cond: bool, pc: u32, first_halfword: u16) -> u32 {
+    if !cond {
+        return pc;
+    }
+
+    let disp9 = first_halfword & 0x01ff;
+    let disp = (disp9 as u32) | if disp9 & 0x0100 == 0 { 0x00000000 } else { 0xfffffe00 };
+    pc.wrapping_add(disp)
+}
+
 fn format_v<F: FnOnce(usize, usize, u16)>(f: F, first_halfword: u16, second_halfword: u16) {
     let reg1 = (first_halfword & 0x1f) as usize;
     let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
@@ -172,6 +192,5 @@ fn format_vi<F: FnOnce(usize, usize, i16)>(f: F, first_halfword: u16, second_hal
 }
 
 fn sign_extend_imm5(imm5: usize) -> u32 {
-    let imm5 = imm5 | (if imm5 & 0x10 == 0 { 0x00 } else { 0xe0 });
-    (imm5 as i8) as u32
+    (imm5 as u32) | (if imm5 & 0x10 == 0 { 0x00000000 } else { 0xffffffe0 })
 }
