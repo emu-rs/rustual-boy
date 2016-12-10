@@ -16,6 +16,40 @@ use std::io::{stdin, stdout, Write};
 use std::borrow::Cow;
 use std::str::{self, FromStr};
 
+#[derive(Debug)]
+enum Opcode {
+    MovHi,
+}
+
+impl Opcode {
+    fn from_halfword(halfword: u16) -> Opcode {
+        let opcode_bits = halfword >> 10;
+        match opcode_bits {
+            0b101111 => Opcode::MovHi,
+            _ => panic!("Unrecognized opcode bits: {:06b}", opcode_bits),
+        }
+    }
+
+    fn instruction_format(&self) -> InstructionFormat {
+        match self {
+            &Opcode::MovHi => InstructionFormat::V,
+        }
+    }
+}
+
+#[derive(Debug)]
+enum InstructionFormat {
+    V,
+}
+
+impl InstructionFormat {
+    fn has_second_halfword(&self) -> bool {
+        match self {
+            &InstructionFormat::V => true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Command {
     Disassemble(usize),
@@ -72,10 +106,43 @@ fn main() {
 
         match command {
             Ok(Command::Disassemble(count)) => {
-                println!("TODO: Disassemble {} instr's", count);
-                let first_halfword = interconnect.read_halfword(cursor);
-                println!("Instr halfword 1: {:#016b} ({:#02x})", first_halfword, first_halfword);
-                cursor = cursor.wrapping_add(2);
+                for _ in 0..count {
+                    print!("0x{:08x}  ", cursor);
+
+                    let first_halfword = interconnect.read_halfword(cursor);
+                    cursor = cursor.wrapping_add(2);
+                    print!("{:02x}{:02x}", first_halfword & 0xff, first_halfword >> 8);
+
+                    let opcode = Opcode::from_halfword(first_halfword);
+                    let instruction_format = opcode.instruction_format();
+
+                    let second_halfword = if instruction_format.has_second_halfword() {
+                        let second_halfword = interconnect.read_halfword(cursor);
+                        print!("{:02x}{:02x}", second_halfword & 0xff, second_halfword >> 8);
+                        cursor = cursor.wrapping_add(2);
+                        second_halfword
+                    } else {
+                        print!("    ");
+                        0
+                    };
+
+                    print!("    ");
+
+                    match instruction_format {
+                        InstructionFormat::V => {
+                            let reg1 = (first_halfword & 0x1f) as usize;
+                            let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+
+                            let imm16 = second_halfword;
+
+                            match opcode {
+                                Opcode::MovHi => {
+                                    println!("movhi {:#x}, r{}, r{}", imm16, reg1, reg2)
+                                }
+                            }
+                        }
+                    }
+                }
             }
             Ok(Command::Exit) => break,
             Ok(Command::Repeat) => unreachable!(),
