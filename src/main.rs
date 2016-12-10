@@ -15,37 +15,63 @@ use std::env;
 use std::io::{stdin, stdout, Write};
 use std::borrow::Cow;
 use std::str::{self, FromStr};
+use std::fmt;
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq)]
 enum Opcode {
-    MovHi,
+    Jmp,
+    Movea,
+    Movhi,
+    Outw,
 }
 
 impl Opcode {
     fn from_halfword(halfword: u16) -> Opcode {
         let opcode_bits = halfword >> 10;
         match opcode_bits {
-            0b101111 => Opcode::MovHi,
+            0b000110 => Opcode::Jmp,
+            0b101000 => Opcode::Movea,
+            0b101111 => Opcode::Movhi,
+            0b111111 => Opcode::Outw,
             _ => panic!("Unrecognized opcode bits: {:06b}", opcode_bits),
         }
     }
 
     fn instruction_format(&self) -> InstructionFormat {
         match self {
-            &Opcode::MovHi => InstructionFormat::V,
+            &Opcode::Jmp => InstructionFormat::I,
+            &Opcode::Movea => InstructionFormat::V,
+            &Opcode::Movhi => InstructionFormat::V,
+            &Opcode::Outw => InstructionFormat::VI,
         }
     }
 }
 
-#[derive(Debug)]
+
+impl fmt::Display for Opcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mnemonic = match self {
+            &Opcode::Jmp => "jmp",
+            &Opcode::Movea => "movea",
+            &Opcode::Movhi => "movhi",
+            &Opcode::Outw => "out.w",
+        };
+        write!(f, "{}", mnemonic)
+    }
+}
+
 enum InstructionFormat {
+    I,
     V,
+    VI,
 }
 
 impl InstructionFormat {
     fn has_second_halfword(&self) -> bool {
         match self {
+            &InstructionFormat::I => false,
             &InstructionFormat::V => true,
+            &InstructionFormat::VI => true,
         }
     }
 }
@@ -129,17 +155,30 @@ fn main() {
                     print!("    ");
 
                     match instruction_format {
+                        InstructionFormat::I => {
+                            let reg1 = (first_halfword & 0x1f) as usize;
+                            let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+                            if opcode == Opcode::Jmp {
+                                println!("jmp [r{}]", reg1);
+                            } else {
+                                println!("{}, r{}, r{}", opcode, reg1, reg2);
+                            }
+                        }
                         InstructionFormat::V => {
                             let reg1 = (first_halfword & 0x1f) as usize;
                             let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
 
                             let imm16 = second_halfword;
 
-                            match opcode {
-                                Opcode::MovHi => {
-                                    println!("movhi {:#x}, r{}, r{}", imm16, reg1, reg2)
-                                }
-                            }
+                            println!("{} {:#x}, r{}, r{}", opcode, imm16, reg1, reg2);
+                        }
+                        InstructionFormat::VI => {
+                            let reg1 = (first_halfword & 0x1f) as usize;
+                            let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+
+                            let disp16 = second_halfword as i16;
+
+                            println!("{} {}[r{}], r{}", opcode, disp16, reg1, reg2);
                         }
                     }
                 }
@@ -176,7 +215,7 @@ named!(
     chain!(
         alt_complete!(tag!("disassemble") | tag!("d")) ~
             count: opt!(preceded!(space, usize_parser)),
-    || Command::Disassemble(count.unwrap_or(1))));
+    || Command::Disassemble(count.unwrap_or(4))));
 
 named!(
     exit<Command>,
