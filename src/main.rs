@@ -270,6 +270,12 @@ fn disassemble_instruction(virtual_boy: &mut VirtualBoy, labels: &HashMap<String
             let target = cursor.wrapping_add(disp);
             println!("{} {:#x} (0x{:08x})", opcode, disp9, target);
         }
+        InstructionFormat::IV => {
+            let disp26 = (((first_halfword as u32) & 0x03ff) << 16) | (second_halfword as u32);
+            let disp = disp26 | if disp26 & 0x02000000 == 0 { 0x00000000 } else { 0xfc000000 };
+            let target = cursor.wrapping_add(disp);
+            println!("{} {} (0x{:08x})", opcode, disp26 as i32, target);
+        }
         InstructionFormat::V => {
             let reg1 = (first_halfword & 0x1f) as usize;
             let reg2 = ((first_halfword >> 5) & 0x1f) as usize;

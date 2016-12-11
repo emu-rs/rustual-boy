@@ -101,8 +101,10 @@ impl Nvc {
     }
 
     pub fn step(&mut self, interconnect: &mut Interconnect) {
-        let first_halfword = interconnect.read_halfword(self.reg_pc);
-        let mut next_pc = self.reg_pc.wrapping_add(2);
+        let original_pc = self.reg_pc;
+
+        let first_halfword = interconnect.read_halfword(original_pc);
+        let mut next_pc = original_pc.wrapping_add(2);
 
         let opcode = Opcode::from_halfword(first_halfword);
         let instruction_format = opcode.instruction_format();
@@ -214,6 +216,13 @@ impl Nvc {
                 let rhs = (imm16 as i16) as u32;
                 self.add(lhs, rhs, reg2);
             }, first_halfword, second_halfword),
+            Opcode::Jr => format_iv(|target| {
+                next_pc = target;
+            }, first_halfword, second_halfword, original_pc),
+            Opcode::Jal => format_iv(|target| {
+                self.set_reg_gpr(31, original_pc.wrapping_add(4));
+                next_pc = target;
+            }, first_halfword, second_halfword, original_pc),
             Opcode::Movhi => format_v(|reg1, reg2, imm16| {
                 let res = self.reg_gpr(reg1).wrapping_add((imm16 as u32) << 16);
                 self.set_reg_gpr(reg2, res);
@@ -303,6 +312,13 @@ fn format_ii<F: FnOnce(usize, usize)>(f: F, first_halfword: u16) {
     let imm5 = (first_halfword & 0x1f) as usize;
     let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
     f(imm5, reg2);
+}
+
+fn format_iv<F: FnOnce(u32)>(f: F, first_halfword: u16, second_halfword: u16, reg_pc: u32) {
+    let disp26 = (((first_halfword as u32) & 0x03ff) << 16) | (second_halfword as u32);
+    let disp = disp26 | if disp26 & 0x02000000 == 0 { 0x00000000 } else { 0xfc000000 };
+    let target = reg_pc.wrapping_add(disp);
+    f(target);
 }
 
 fn format_v<F: FnOnce(usize, usize, u16)>(f: F, first_halfword: u16, second_halfword: u16) {
