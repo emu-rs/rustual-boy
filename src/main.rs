@@ -5,6 +5,7 @@ extern crate nom;
 
 mod rom;
 mod wram;
+mod vip;
 mod mem_map;
 mod interconnect;
 mod instruction;

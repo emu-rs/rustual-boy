@@ -1,10 +1,12 @@
 use rom::*;
 use wram::*;
+use vip::*;
 use mem_map::*;
 
 pub struct Interconnect {
     rom: Rom,
     wram: Wram,
+    vip: Vip,
 }
 
 impl Interconnect {
@@ -12,11 +14,13 @@ impl Interconnect {
         Interconnect {
             rom: rom,
             wram: Wram::new(),
+            vip: Vip::new(),
         }
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {
         match map_address(addr) {
+            MappedAddress::Vip(addr) => self.vip.read_byte(addr),
             MappedAddress::LinkControlReg => {
                 panic!("Read byte from Link Control Register not yet implemented");
             }
@@ -37,6 +41,7 @@ impl Interconnect {
     pub fn read_halfword(&self, addr: u32) -> u16 {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
+            MappedAddress::Vip(addr) => self.vip.read_halfword(addr),
             MappedAddress::LinkControlReg => {
                 panic!("Read halfword from Link Control Register not yet implemented");
             }
@@ -57,6 +62,7 @@ impl Interconnect {
     pub fn read_word(&self, addr: u32) -> u32 {
         let addr = addr & 0xfffffffc;
         match map_address(addr) {
+            MappedAddress::Vip(addr) => self.vip.read_word(addr),
             MappedAddress::LinkControlReg => {
                 panic!("Read word from Link Control Register not yet implemented");
             }
@@ -76,6 +82,7 @@ impl Interconnect {
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         match map_address(addr) {
+            MappedAddress::Vip(addr) => self.vip.write_byte(addr, value),
             MappedAddress::LinkControlReg => {
                 println!("WARNING: Write byte to Link Control Register not yet implemented (value: 0x{:02x})", value);
             }
@@ -100,6 +107,7 @@ impl Interconnect {
     pub fn write_halfword(&mut self, addr: u32, value: u16) {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
+            MappedAddress::Vip(addr) => self.vip.write_halfword(addr, value),
             MappedAddress::LinkControlReg => {
                 println!("WARNING: Write halfword to Link Control Register not yet implemented (value: 0x{:04x})", value);
             }
@@ -122,6 +130,7 @@ impl Interconnect {
     pub fn write_word(&mut self, addr: u32, value: u32) {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
+            MappedAddress::Vip(addr) => self.vip.write_word(addr, value),
             MappedAddress::LinkControlReg => {
                 println!("WARNING: Write word to Link Control Register not yet implemented (value: 0x{:08x})", value);
             }
