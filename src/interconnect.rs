@@ -48,6 +48,12 @@ impl Interconnect {
         }
     }
 
+    pub fn write_halfword(&mut self, addr: u32, value: u16) {
+        let addr = addr & 0xfffffffe;
+        self.write_byte(addr, value as u8);
+        self.write_byte(addr + 1, (value >> 8) as u8);
+    }
+
     pub fn write_word(&mut self, addr: u32, value: u32) {
         let addr = addr & 0xfffffffc;
         self.write_byte(addr, value as u8);

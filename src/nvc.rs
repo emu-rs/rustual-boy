@@ -219,15 +219,25 @@ impl Nvc {
                 let value = (interconnect.read_halfword(addr) as i16) as u32;
                 self.set_reg_gpr(reg2, value);
             }, first_halfword, second_halfword),
-            Opcode::Ldw => format_vi(|reg1, reg2, disp16| {
+            Opcode::Ldw | Opcode::Inw => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                 let value = interconnect.read_word(addr);
                 self.set_reg_gpr(reg2, value);
             }, first_halfword, second_halfword),
-            Opcode::Stb => format_vi(|reg1, reg2, disp16| {
+            Opcode::Stb | Opcode::Outb => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                 let value = self.reg_gpr(reg2) as u8;
                 interconnect.write_byte(addr, value);
+            }, first_halfword, second_halfword),
+            Opcode::Sth | Opcode::Outh => format_vi(|reg1, reg2, disp16| {
+                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                let value = self.reg_gpr(reg2) as u16;
+                interconnect.write_halfword(addr, value);
+            }, first_halfword, second_halfword),
+            Opcode::Stw | Opcode::Outw => format_vi(|reg1, reg2, disp16| {
+                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                let value = self.reg_gpr(reg2);
+                interconnect.write_word(addr, value);
             }, first_halfword, second_halfword),
             Opcode::Inb => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
@@ -238,16 +248,6 @@ impl Nvc {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                 let value = interconnect.read_halfword(addr) as u32;
                 self.set_reg_gpr(reg2, value);
-            }, first_halfword, second_halfword),
-            Opcode::Inw => format_vi(|reg1, reg2, disp16| {
-                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
-                let value = interconnect.read_word(addr);
-                self.set_reg_gpr(reg2, value);
-            }, first_halfword, second_halfword),
-            Opcode::Outw => format_vi(|reg1, reg2, disp16| {
-                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
-                let value = self.reg_gpr(reg2);
-                interconnect.write_word(addr, value);
             }, first_halfword, second_halfword),
         }
 
