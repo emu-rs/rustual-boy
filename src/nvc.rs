@@ -124,16 +124,15 @@ impl Nvc {
                 let value = self.reg_gpr(reg1);
                 self.set_reg_gpr(reg2, value);
             }, first_halfword),
+            Opcode::AddReg => format_i(|reg1, reg2| {
+                let lhs = self.reg_gpr(reg2);
+                let rhs = self.reg_gpr(reg1);
+                self.add(lhs, rhs, reg2);
+            }, first_halfword),
             Opcode::Sub => format_i(|reg1, reg2| {
                 let lhs = self.reg_gpr(reg2);
                 let rhs = self.reg_gpr(reg1);
-
-                let (res, carry) = lhs.overflowing_sub(rhs);
-                self.set_reg_gpr(reg2, res);
-
-                self.set_zero_sign_flags(res);
-                self.set_overflow_flag_sub(lhs, rhs, res);
-                self.psw_carry = carry;
+                self.sub(lhs, rhs, reg2);
             }, first_halfword),
             Opcode::Jmp => format_i(|reg1, _| {
                 next_pc = self.reg_gpr(reg1);
@@ -142,16 +141,10 @@ impl Nvc {
                 let value = sign_extend_imm5(imm5);
                 self.set_reg_gpr(reg2, value);
             }, first_halfword),
-            Opcode::AddImm => format_ii(|imm5, reg2| {
+            Opcode::AddImm5 => format_ii(|imm5, reg2| {
                 let lhs = self.reg_gpr(reg2);
                 let rhs = sign_extend_imm5(imm5);
-
-                let (res, carry) = lhs.overflowing_add(rhs);
-                self.set_reg_gpr(reg2, res);
-
-                self.set_zero_sign_flags(res);
-                self.set_overflow_flag_add(lhs, rhs, res);
-                self.psw_carry = carry;
+                self.add(lhs, rhs, reg2);
             }, first_halfword),
             Opcode::Cli => format_ii(|_, _| {
                 self.psw_interrupt_disable = false;
@@ -216,6 +209,11 @@ impl Nvc {
                 let res = self.reg_gpr(reg1).wrapping_add((imm16 as i16) as u32);
                 self.set_reg_gpr(reg2, res);
             }, first_halfword, second_halfword),
+            Opcode::AddImm16 => format_v(|reg1, reg2, imm16| {
+                let lhs = self.reg_gpr(reg1);
+                let rhs = (imm16 as i16) as u32;
+                self.add(lhs, rhs, reg2);
+            }, first_halfword, second_halfword),
             Opcode::Movhi => format_v(|reg1, reg2, imm16| {
                 let res = self.reg_gpr(reg1).wrapping_add((imm16 as u32) << 16);
                 self.set_reg_gpr(reg2, res);
@@ -273,17 +271,25 @@ impl Nvc {
         interconnect.cycles(opcode.num_cycles(take_branch));
     }
 
+    fn add(&mut self, lhs: u32, rhs: u32, reg2: usize) {
+        let (res, carry) = lhs.overflowing_add(rhs);
+        self.set_reg_gpr(reg2, res);
+        self.set_zero_sign_flags(res);
+        self.psw_overflow = ((!(lhs ^ rhs) & (rhs ^ res)) & 0x80000000) != 0;
+        self.psw_carry = carry;
+    }
+
+    fn sub(&mut self, lhs: u32, rhs: u32, reg2: usize) {
+        let (res, carry) = lhs.overflowing_sub(rhs);
+        self.set_reg_gpr(reg2, res);
+        self.set_zero_sign_flags(res);
+        self.psw_overflow = (((lhs ^ rhs) & !(rhs ^ res)) & 0x80000000) != 0;
+        self.psw_carry = carry;
+    }
+
     fn set_zero_sign_flags(&mut self, value: u32) {
         self.psw_zero = value == 0;
         self.psw_sign = value & 0x80000000 != 0;
-    }
-
-    fn set_overflow_flag_add(&mut self, lhs: u32, rhs: u32, res: u32) {
-        self.psw_overflow = ((!(lhs ^ rhs) & (rhs ^ res)) & 0x80000000) != 0;
-    }
-
-    fn set_overflow_flag_sub(&mut self, lhs: u32, rhs: u32, res: u32) {
-        self.psw_overflow = (((lhs ^ rhs) & !(rhs ^ res)) & 0x80000000) != 0;
     }
 }
 
