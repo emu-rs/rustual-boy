@@ -9,7 +9,22 @@ pub enum Opcode {
     Cli,
     Ldsr,
     Sei,
-    Bne,
+    Bv,
+    Bc,
+    Bz,
+    Bnh,
+    Bn,
+    Br,
+    Blt,
+    Ble,
+    Bnv,
+    Bnc,
+    Bnz,
+    Bh,
+    Bp,
+    Nop,
+    Bge,
+    Bgt,
     Movea,
     Movhi,
     Stb,
@@ -21,7 +36,22 @@ impl Opcode {
         if halfword >> 13 == 0b100 {
             let cond_bits = (halfword >> 9) & 0x0f;
             match cond_bits {
-                0b1010 => Opcode::Bne,
+                0b0000 => Opcode::Bv,
+                0b0001 => Opcode::Bc,
+                0b0010 => Opcode::Bz,
+                0b0011 => Opcode::Bnh,
+                0b0100 => Opcode::Bn,
+                0b0101 => Opcode::Br,
+                0b0110 => Opcode::Blt,
+                0b0111 => Opcode::Ble,
+                0b1000 => Opcode::Bnv,
+                0b1001 => Opcode::Bnc,
+                0b1010 => Opcode::Bnz,
+                0b1011 => Opcode::Bh,
+                0b1100 => Opcode::Bp,
+                0b1101 => Opcode::Nop,
+                0b1110 => Opcode::Bge,
+                0b1111 => Opcode::Bgt,
                 _ => panic!("Unrecognized cond bits: {:04b} (halfword: 0b{:016b})", cond_bits, halfword)
             }
         } else {
@@ -52,7 +82,22 @@ impl Opcode {
             &Opcode::Cli => InstructionFormat::II,
             &Opcode::Ldsr => InstructionFormat::II,
             &Opcode::Sei => InstructionFormat::II,
-            &Opcode::Bne => InstructionFormat::III,
+            &Opcode::Bv => InstructionFormat::III,
+            &Opcode::Bc => InstructionFormat::III,
+            &Opcode::Bz => InstructionFormat::III,
+            &Opcode::Bnh => InstructionFormat::III,
+            &Opcode::Bn => InstructionFormat::III,
+            &Opcode::Br => InstructionFormat::III,
+            &Opcode::Blt => InstructionFormat::III,
+            &Opcode::Ble => InstructionFormat::III,
+            &Opcode::Bnv => InstructionFormat::III,
+            &Opcode::Bnc => InstructionFormat::III,
+            &Opcode::Bnz => InstructionFormat::III,
+            &Opcode::Bh => InstructionFormat::III,
+            &Opcode::Bp => InstructionFormat::III,
+            &Opcode::Nop => InstructionFormat::III,
+            &Opcode::Bge => InstructionFormat::III,
+            &Opcode::Bgt => InstructionFormat::III,
             &Opcode::Movea => InstructionFormat::V,
             &Opcode::Movhi => InstructionFormat::V,
             &Opcode::Stb => InstructionFormat::VI,
@@ -76,7 +121,22 @@ impl Opcode {
             &Opcode::Cli => 1,
             &Opcode::Ldsr => 1,
             &Opcode::Sei => 1,
-            &Opcode::Bne => if branch_taken { 3 } else { 1 },
+            &Opcode::Bv |
+            &Opcode::Bc |
+            &Opcode::Bz |
+            &Opcode::Bnh |
+            &Opcode::Bn |
+            &Opcode::Blt |
+            &Opcode::Ble |
+            &Opcode::Bnv |
+            &Opcode::Bnc |
+            &Opcode::Bnz |
+            &Opcode::Bh |
+            &Opcode::Bp |
+            &Opcode::Bge |
+            &Opcode::Bgt => if branch_taken { 3 } else { 1 },
+            &Opcode::Br => 3,
+            &Opcode::Nop => 1,
             &Opcode::Movea => 1,
             &Opcode::Movhi => 1,
             &Opcode::Stb => 1,
@@ -91,7 +151,22 @@ impl fmt::Display for Opcode {
             &Opcode::MovReg | &Opcode::MovImm => "mov",
             &Opcode::Sub => "sub",
             &Opcode::Jmp => "jmp",
-            &Opcode::Bne => "bne",
+            &Opcode::Bv => "bv",
+            &Opcode::Bc => "bc",
+            &Opcode::Bz => "bz",
+            &Opcode::Bnh => "bnh",
+            &Opcode::Bn => "bn",
+            &Opcode::Br => "br",
+            &Opcode::Blt => "blt",
+            &Opcode::Ble => "ble",
+            &Opcode::Bnv => "bnv",
+            &Opcode::Bnc => "bnc",
+            &Opcode::Bnz => "bnz",
+            &Opcode::Bh => "bh",
+            &Opcode::Bp => "bp",
+            &Opcode::Nop => "nop",
+            &Opcode::Bge => "bge",
+            &Opcode::Bgt => "bgt",
             &Opcode::Cli => "cli",
             &Opcode::Ldsr => "ldsr",
             &Opcode::Sei => "sei",

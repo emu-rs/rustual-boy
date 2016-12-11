@@ -117,7 +117,7 @@ impl Nvc {
 
         // TODO: Not too convinced of this pattern, but we'll see what else we
         //  may have to special case moving forward
-        let mut branch_taken = false;
+        let mut take_branch = false;
 
         match opcode {
             Opcode::MovReg => format_i(|reg1, reg2| {
@@ -155,9 +155,51 @@ impl Nvc {
             Opcode::Sei => format_ii(|_, _| {
                 self.psw_interrupt_disable = true;
             }, first_halfword),
-            Opcode::Bne => {
-                branch_taken = !self.psw_zero;
-                next_pc = format_iii(branch_taken, self.reg_pc, first_halfword);
+            Opcode::Bv => {
+                take_branch = self.psw_overflow;
+            },
+            Opcode::Bc => {
+                take_branch = self.psw_carry;
+            },
+            Opcode::Bz => {
+                take_branch = self.psw_zero;
+            },
+            Opcode::Bnh => {
+                take_branch = self.psw_carry | self.psw_zero;
+            },
+            Opcode::Bn => {
+                take_branch = self.psw_sign;
+            },
+            Opcode::Br => {
+                take_branch = true;
+            },
+            Opcode::Blt => {
+                take_branch = self.psw_sign ^ self.psw_overflow;
+            },
+            Opcode::Ble => {
+                take_branch = (self.psw_sign ^ self.psw_overflow) != self.psw_zero;
+            },
+            Opcode::Bnv => {
+                take_branch = !self.psw_overflow;
+            },
+            Opcode::Bnc => {
+                take_branch = !self.psw_carry;
+            },
+            Opcode::Bnz => {
+                take_branch = !self.psw_zero;
+            },
+            Opcode::Bh => {
+                take_branch = !(self.psw_carry || self.psw_zero);
+            },
+            Opcode::Bp => {
+                take_branch = !self.psw_sign;
+            },
+            Opcode::Nop => (),
+            Opcode::Bge => {
+                take_branch = !(self.psw_sign != self.psw_overflow);
+            },
+            Opcode::Bgt => {
+                take_branch = !((self.psw_sign != self.psw_overflow) || self.psw_zero);
             },
             Opcode::Movea => format_v(|reg1, reg2, imm16| {
                 let res = self.reg_gpr(reg1).wrapping_add((imm16 as i16) as u32);
@@ -179,9 +221,15 @@ impl Nvc {
             }, first_halfword, second_halfword),
         }
 
+        if take_branch {
+            let disp9 = first_halfword & 0x01ff;
+            let disp = (disp9 as u32) | if disp9 & 0x0100 == 0 { 0x00000000 } else { 0xfffffe00 };
+            next_pc = self.reg_pc.wrapping_add(disp);
+        }
+
         self.reg_pc = next_pc;
 
-        interconnect.cycles(opcode.num_cycles(branch_taken));
+        interconnect.cycles(opcode.num_cycles(take_branch));
     }
 
     fn set_zero_sign_flags(&mut self, value: u32) {
@@ -200,16 +248,6 @@ fn format_ii<F: FnOnce(usize, usize)>(f: F, first_halfword: u16) {
     let imm5 = (first_halfword & 0x1f) as usize;
     let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
     f(imm5, reg2);
-}
-
-fn format_iii(cond: bool, pc: u32, first_halfword: u16) -> u32 {
-    if !cond {
-        return pc;
-    }
-
-    let disp9 = first_halfword & 0x01ff;
-    let disp = (disp9 as u32) | if disp9 & 0x0100 == 0 { 0x00000000 } else { 0xfffffe00 };
-    pc.wrapping_add(disp)
 }
 
 fn format_v<F: FnOnce(usize, usize, u16)>(f: F, first_halfword: u16, second_halfword: u16) {
