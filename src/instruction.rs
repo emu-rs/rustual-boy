@@ -2,6 +2,7 @@ use std::fmt;
 
 #[derive(PartialEq, Eq)]
 pub enum Opcode {
+    MovReg,
     Sub,
     Jmp,
     MovImm,
@@ -26,6 +27,7 @@ impl Opcode {
         } else {
             let opcode_bits = halfword >> 10;
             match opcode_bits {
+                0b000000 => Opcode::MovReg,
                 0b000010 => Opcode::Sub,
                 0b000110 => Opcode::Jmp,
                 0b010000 => Opcode::MovImm,
@@ -43,6 +45,7 @@ impl Opcode {
 
     pub fn instruction_format(&self) -> InstructionFormat {
         match self {
+            &Opcode::MovReg => InstructionFormat::I,
             &Opcode::Sub => InstructionFormat::I,
             &Opcode::Jmp => InstructionFormat::I,
             &Opcode::MovImm => InstructionFormat::II,
@@ -66,6 +69,7 @@ impl Opcode {
 
     pub fn num_cycles(&self, branch_taken: bool) -> usize {
         match self {
+            &Opcode::MovReg => 1,
             &Opcode::Sub => 1,
             &Opcode::Jmp => 3,
             &Opcode::MovImm => 1,
@@ -84,9 +88,9 @@ impl Opcode {
 impl fmt::Display for Opcode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mnemonic = match self {
+            &Opcode::MovReg | &Opcode::MovImm => "mov",
             &Opcode::Sub => "sub",
             &Opcode::Jmp => "jmp",
-            &Opcode::MovImm => "mov",
             &Opcode::Bne => "bne",
             &Opcode::Cli => "cli",
             &Opcode::Ldsr => "ldsr",

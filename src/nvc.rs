@@ -120,6 +120,10 @@ impl Nvc {
         let mut branch_taken = false;
 
         match opcode {
+            Opcode::MovReg => format_i(|reg1, reg2| {
+                let value = self.reg_gpr(reg1);
+                self.set_reg_gpr(reg2, value);
+            }, first_halfword),
             Opcode::Sub => format_i(|reg1, reg2| {
                 let lhs = self.reg_gpr(reg2);
                 let rhs = self.reg_gpr(reg1);
