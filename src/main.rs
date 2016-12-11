@@ -19,17 +19,22 @@ use std::env;
 use std::io::{stdin, stdout, Write};
 use std::borrow::Cow;
 use std::str::{self, FromStr};
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 
 #[derive(Debug, Clone)]
 pub enum Command {
     ShowRegs,
     Step,
+    Continue,
     Goto(u32),
     ShowMem(Option<u32>),
     Disassemble(usize),
     Label,
     AddLabel(String, u32),
+    RemoveLabel(String),
+    Breakpoint,
+    AddBreakpoint(u32),
+    RemoveBreakpoint(u32),
     Exit,
     Repeat,
 }
@@ -86,6 +91,7 @@ fn main() {
     let mut virtual_boy = VirtualBoy::new(rom);
 
     let mut labels = HashMap::new();
+    let mut breakpoints = HashSet::new();
     let mut cursor = 0xfffffff0;
     let mut last_command = None;
 
@@ -112,7 +118,20 @@ fn main() {
             Ok(Command::Step) => {
                 virtual_boy.step();
                 cursor = virtual_boy.cpu.reg_pc();
-                disassemble_instruction(&mut virtual_boy, &mut labels, &mut cursor);
+                disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
+                cursor = virtual_boy.cpu.reg_pc();
+            }
+            Ok(Command::Continue) => {
+                // TODO: Main loop shouldn't be here probably; should
+                //  break out to something else
+                loop {
+                    virtual_boy.step();
+                    cursor = virtual_boy.cpu.reg_pc();
+                    if breakpoints.contains(&cursor) {
+                        break;
+                    }
+                }
+                disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
                 cursor = virtual_boy.cpu.reg_pc();
             }
             Ok(Command::Goto(addr)) => {
@@ -142,7 +161,7 @@ fn main() {
             }
             Ok(Command::Disassemble(count)) => {
                 for _ in 0..count {
-                    disassemble_instruction(&mut virtual_boy, &mut labels, &mut cursor);
+                    disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
                 }
             }
             Ok(Command::Label) => {
@@ -152,6 +171,24 @@ fn main() {
             }
             Ok(Command::AddLabel(ref name, addr)) => {
                 labels.insert(name.clone(), addr);
+            }
+            Ok(Command::RemoveLabel(ref name)) => {
+                if let None = labels.remove(name) {
+                    println!("Label .{} does not exist", name);
+                }
+            }
+            Ok(Command::Breakpoint) => {
+                for addr in breakpoints.iter() {
+                    println!("* 0x{:08x}", addr);
+                }
+            }
+            Ok(Command::AddBreakpoint(addr)) => {
+                breakpoints.insert(addr);
+            }
+            Ok(Command::RemoveBreakpoint(addr)) => {
+                if !breakpoints.remove(&addr) {
+                    println!("Breakpoint at 0x{:08x} does not exist", addr);
+                }
             }
             Ok(Command::Exit) => break,
             Ok(Command::Repeat) => unreachable!(),
@@ -176,8 +213,14 @@ fn print_labels(labels: &HashMap<String, u32>, addr: u32) {
     }
 }
 
-fn disassemble_instruction(virtual_boy: &mut VirtualBoy, labels: &mut HashMap<String, u32>, cursor: &mut u32) {
+fn disassemble_instruction(virtual_boy: &mut VirtualBoy, labels: &HashMap<String, u32>, breakpoints: &HashSet<u32>, cursor: &mut u32) {
     print_labels(labels, *cursor);
+
+    if breakpoints.contains(cursor) {
+        print!("* ");
+    } else {
+        print!("  ");
+    }
 
     print!("0x{:08x}  ", cursor);
 
@@ -251,28 +294,33 @@ named!(
     complete!(
         terminated!(
         alt_complete!(
-            show_regs |
             step |
+            continue_ |
             goto |
             show_mem |
             disassemble |
             label |
             add_label |
+            remove_label |
+            breakpoint |
+            add_breakpoint |
+            remove_breakpoint |
             exit |
+            show_regs |
             repeat),
         eof)));
-
-named!(
-    show_regs<Command>,
-    map!(
-        alt_complete!(tag!("showregs") | tag!("r")),
-    |_| Command::ShowRegs));
 
 named!(
     step<Command>,
     map!(
         alt_complete!(tag!("step") | tag!("s")),
     |_| Command::Step));
+
+named!(
+    continue_<Command>,
+    map!(
+        alt_complete!(tag!("continue") | tag!("c")),
+    |_| Command::Continue));
 
 named!(
     goto<Command>,
@@ -338,10 +386,46 @@ named!(
         FromStr::from_str)));
 
 named!(
+    remove_label<Command>,
+    chain!(
+        alt_complete!(tag!("removelabel") | tag!("rl")) ~
+        space ~
+        name: label_name,
+    || Command::RemoveLabel(name)));
+
+named!(
+    breakpoint<Command>,
+    map!(
+        alt_complete!(tag!("breakpoint") | tag!("b")),
+    |_| Command::Breakpoint));
+
+named!(
+    add_breakpoint<Command>,
+    chain!(
+        alt_complete!(tag!("addbreakpoint") | tag!("ab")) ~
+        space ~
+        addr: hex_u32_parser,
+    || Command::AddBreakpoint(addr)));
+
+named!(
+    remove_breakpoint<Command>,
+    chain!(
+        alt_complete!(tag!("removebreakpoint") | tag!("rb")) ~
+        space ~
+        addr: hex_u32_parser,
+    || Command::RemoveBreakpoint(addr)));
+
+named!(
     exit<Command>,
     map!(
         alt_complete!(tag!("exit") | tag!("quit") | tag!("e") | tag!("x") | tag!("q")),
         |_| Command::Exit));
+
+named!(
+    show_regs<Command>,
+    map!(
+        alt_complete!(tag!("showregs") | tag!("r")),
+    |_| Command::ShowRegs));
 
 named!(
     repeat<Command>,
