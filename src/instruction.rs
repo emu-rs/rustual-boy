@@ -5,6 +5,9 @@ pub enum Opcode {
     Sub,
     Jmp,
     MovImm,
+    Cli,
+    Ldsr,
+    Sei,
     Bne,
     Movea,
     Movhi,
@@ -26,6 +29,9 @@ impl Opcode {
                 0b000010 => Opcode::Sub,
                 0b000110 => Opcode::Jmp,
                 0b010000 => Opcode::MovImm,
+                0b010110 => Opcode::Cli,
+                0b011100 => Opcode::Ldsr,
+                0b011110 => Opcode::Sei,
                 0b101000 => Opcode::Movea,
                 0b101111 => Opcode::Movhi,
                 0b110100 => Opcode::Stb,
@@ -40,6 +46,9 @@ impl Opcode {
             &Opcode::Sub => InstructionFormat::I,
             &Opcode::Jmp => InstructionFormat::I,
             &Opcode::MovImm => InstructionFormat::II,
+            &Opcode::Cli => InstructionFormat::II,
+            &Opcode::Ldsr => InstructionFormat::II,
+            &Opcode::Sei => InstructionFormat::II,
             &Opcode::Bne => InstructionFormat::III,
             &Opcode::Movea => InstructionFormat::V,
             &Opcode::Movhi => InstructionFormat::V,
@@ -48,11 +57,21 @@ impl Opcode {
         }
     }
 
+    pub fn system_register(&self, imm5: usize) -> SystemRegister {
+        match imm5 {
+            5 => SystemRegister::Psw,
+            _ => panic!("Unrecognized system register: {}", imm5),
+        }
+    }
+
     pub fn num_cycles(&self, branch_taken: bool) -> usize {
         match self {
             &Opcode::Sub => 1,
             &Opcode::Jmp => 3,
             &Opcode::MovImm => 1,
+            &Opcode::Cli => 1,
+            &Opcode::Ldsr => 1,
+            &Opcode::Sei => 1,
             &Opcode::Bne => if branch_taken { 3 } else { 1 },
             &Opcode::Movea => 1,
             &Opcode::Movhi => 1,
@@ -69,6 +88,9 @@ impl fmt::Display for Opcode {
             &Opcode::Jmp => "jmp",
             &Opcode::MovImm => "mov",
             &Opcode::Bne => "bne",
+            &Opcode::Cli => "cli",
+            &Opcode::Ldsr => "ldsr",
+            &Opcode::Sei => "sei",
             &Opcode::Movea => "movea",
             &Opcode::Movhi => "movhi",
             &Opcode::Stb => "st.b",
@@ -95,5 +117,18 @@ impl InstructionFormat {
             &InstructionFormat::V => true,
             &InstructionFormat::VI => true,
         }
+    }
+}
+
+pub enum SystemRegister {
+    Psw
+}
+
+impl fmt::Display for SystemRegister {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mnemonic = match self {
+            &SystemRegister::Psw => "psw",
+        };
+        write!(f, "{}", mnemonic)
     }
 }

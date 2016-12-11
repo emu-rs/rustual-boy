@@ -213,7 +213,11 @@ fn disassemble_instruction(virtual_boy: &mut VirtualBoy, labels: &mut HashMap<St
         InstructionFormat::II => {
             let imm5 = (first_halfword & 0x1f) as usize;
             let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
-            println!("{} {}, r{}", opcode, imm5, reg2);
+            match opcode {
+                Opcode::Cli | Opcode::Sei => println!("{}", opcode),
+                Opcode::Ldsr => println!("{} r{}, {}", opcode, reg2, opcode.system_register(imm5)),
+                _ => println!("{} {}, r{}", opcode, imm5, reg2)
+            }
         }
         InstructionFormat::III => {
             let disp9 = first_halfword & 0x01ff;

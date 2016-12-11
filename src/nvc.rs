@@ -82,6 +82,24 @@ impl Nvc {
         (self.psw_interrupt_mask_level as u32) << 16
     }
 
+    pub fn set_reg_psw(&mut self, value: u32) {
+        self.psw_zero = ((value >> 0) & 0x01) != 0;
+        self.psw_sign = ((value >> 1) & 0x01) != 0;
+        self.psw_overflow = ((value >> 2) & 0x01) != 0;
+        self.psw_carry = ((value >> 3) & 0x01) != 0;
+        self.psw_fp_precision_degredation = ((value >> 4) & 0x01) != 0;
+        self.psw_fp_underflow = ((value >> 5) & 0x01) != 0;
+        self.psw_fp_overflow = ((value >> 6) & 0x01) != 0;
+        self.psw_fp_zero_division = ((value >> 7) & 0x01) != 0;
+        self.psw_fp_invalid_operation = ((value >> 8) & 0x01) != 0;
+        self.psw_fp_reserved_operand = ((value >> 9) & 0x01) != 0;
+        self.psw_interrupt_disable = ((value >> 12) & 0x01) != 0;
+        self.psw_address_trap_enable = ((value >> 13) & 0x01) != 0;
+        self.psw_exception_pending = ((value >> 14) & 0x01) != 0;
+        self.psw_nmi_pending = ((value >> 15) & 0x01) != 0;
+        self.psw_interrupt_mask_level = ((value as usize) >> 16) & 0x0f;
+    }
+
     pub fn step(&mut self, interconnect: &mut Interconnect) {
         let first_halfword = interconnect.read_halfword(self.reg_pc);
         let mut next_pc = self.reg_pc.wrapping_add(2);
@@ -119,6 +137,19 @@ impl Nvc {
             Opcode::MovImm => format_ii(|imm5, reg2| {
                 let value = sign_extend_imm5(imm5);
                 self.set_reg_gpr(reg2, value);
+            }, first_halfword),
+            Opcode::Cli => format_ii(|_, _| {
+                self.psw_interrupt_disable = false;
+            }, first_halfword),
+            Opcode::Ldsr => format_ii(|imm5, reg2| {
+                let value = self.reg_gpr(reg2);
+                let system_register = opcode.system_register(imm5);
+                match system_register {
+                    SystemRegister::Psw => self.set_reg_psw(value),
+                }
+            }, first_halfword),
+            Opcode::Sei => format_ii(|_, _| {
+                self.psw_interrupt_disable = true;
             }, first_halfword),
             Opcode::Bne => {
                 branch_taken = !self.psw_zero;
