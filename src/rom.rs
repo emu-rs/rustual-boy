@@ -29,12 +29,34 @@ impl Rom {
         Ok(Rom { bytes: vec.into_boxed_slice() })
     }
 
-    pub fn bytes(&self) -> &[u8] {
-        &self.bytes
-    }
-
     pub fn size(&self) -> usize {
         self.bytes.len()
+    }
+
+    pub fn read_byte(&self, addr: u32) -> u8 {
+        let addr = self.mask_addr(addr);
+        self.bytes[addr as usize]
+    }
+
+    pub fn read_halfword(&self, addr: u32) -> u16 {
+        let addr = addr & 0xfffffffe;
+        let addr = self.mask_addr(addr);
+        (self.bytes[addr as usize] as u16) |
+        ((self.bytes[addr as usize + 1] as u16) << 8)
+    }
+
+    pub fn read_word(&self, addr: u32) -> u32 {
+        let addr = addr & 0xfffffffc;
+        let addr = self.mask_addr(addr);
+        (self.bytes[addr as usize] as u32) |
+        ((self.bytes[addr as usize + 1] as u32) << 8) |
+        ((self.bytes[addr as usize + 2] as u32) << 16) |
+        ((self.bytes[addr as usize + 3] as u32) << 24)
+    }
+
+    fn mask_addr(&self, addr: u32) -> u32 {
+        let mask = (self.bytes.len() - 1) as u32;
+        addr & mask
     }
 
     pub fn name(&self) -> Result<String, Cow<'static, str>> {

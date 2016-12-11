@@ -4,15 +4,17 @@ extern crate encoding;
 extern crate nom;
 
 mod rom;
-mod instruction;
+mod wram;
+mod mem_map;
 mod interconnect;
+mod instruction;
 mod nvc;
 
 use nom::{IResult, eof, space, digit, hex_digit, alphanumeric};
 
 use rom::*;
-use instruction::*;
 use interconnect::*;
+use instruction::*;
 use nvc::*;
 
 use std::env;
