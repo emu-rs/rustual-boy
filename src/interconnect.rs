@@ -17,6 +17,12 @@ impl Interconnect {
 
     pub fn read_byte(&self, addr: u32) -> u8 {
         match map_address(addr) {
+            MappedAddress::LinkControlReg => {
+                panic!("Read byte from Link Control Register not yet implemented");
+            }
+            MappedAddress::AuxLinkReg => {
+                panic!("Read byte from Auxiliary Link Register not yet implemented");
+            }
             MappedAddress::WaitControlReg => {
                 panic!("Read byte from Wait Control Register not yet implemented");
             }
@@ -28,6 +34,12 @@ impl Interconnect {
     pub fn read_halfword(&self, addr: u32) -> u16 {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
+            MappedAddress::LinkControlReg => {
+                panic!("Read halfword from Link Control Register not yet implemented");
+            }
+            MappedAddress::AuxLinkReg => {
+                panic!("Read halfword from Auxiliary Link Register not yet implemented");
+            }
             MappedAddress::WaitControlReg => {
                 panic!("Read halfword from Wait Control Register not yet implemented");
             }
@@ -39,6 +51,12 @@ impl Interconnect {
     pub fn read_word(&self, addr: u32) -> u32 {
         let addr = addr & 0xfffffffc;
         match map_address(addr) {
+            MappedAddress::LinkControlReg => {
+                panic!("Read word from Link Control Register not yet implemented");
+            }
+            MappedAddress::AuxLinkReg => {
+                panic!("Read word from Auxiliary Link Register not yet implemented");
+            }
             MappedAddress::WaitControlReg => {
                 panic!("Read word from Wait Control Register not yet implemented");
             }
@@ -49,6 +67,12 @@ impl Interconnect {
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         match map_address(addr) {
+            MappedAddress::LinkControlReg => {
+                println!("WARNING: Write byte to Link Control Register not yet implemented (value: 0x{:02x})", value);
+            }
+            MappedAddress::AuxLinkReg => {
+                println!("WARNING: Write byte to Auxiliary Link Register not yet implemented (value: 0x{:02x})", value);
+            }
             MappedAddress::WaitControlReg => {
                 println!("Wait Control Register (0x{:08x}) written: 0x{:02x}", addr, value);
                 println!(" Cartridge ROM Waits: {}", if value & 0x01 == 0 { 2 } else { 1 });
@@ -64,6 +88,12 @@ impl Interconnect {
     pub fn write_halfword(&mut self, addr: u32, value: u16) {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
+            MappedAddress::LinkControlReg => {
+                println!("WARNING: Write halfword to Link Control Register not yet implemented (value: 0x{:04x})", value);
+            }
+            MappedAddress::AuxLinkReg => {
+                println!("WARNING: Write halfword to Auxiliary Link Register not yet implemented (value: 0x{:02x})", value);
+            }
             MappedAddress::WaitControlReg => {
                 panic!("Write halfword to Wait Control Register not yet implemented");
             }
@@ -77,6 +107,12 @@ impl Interconnect {
     pub fn write_word(&mut self, addr: u32, value: u32) {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
+            MappedAddress::LinkControlReg => {
+                println!("WARNING: Write word to Link Control Register not yet implemented (value: 0x{:08x})", value);
+            }
+            MappedAddress::AuxLinkReg => {
+                println!("WARNING: Write word to Auxiliary Link Register not yet implemented (value: 0x{:02x})", value);
+            }
             MappedAddress::WaitControlReg => {
                 panic!("Write word to Wait Control Register not yet implemented");
             }
