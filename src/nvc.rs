@@ -26,7 +26,7 @@ impl Nvc {
     pub fn new() -> Nvc {
         Nvc {
             reg_pc: 0xfffffff0,
-            reg_gpr: [0; 31],
+            reg_gpr: [0xdeadbeef; 31],
 
             psw_zero: false,
             psw_sign: false,

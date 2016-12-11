@@ -7,7 +7,7 @@ pub struct Wram {
 impl Wram {
     pub fn new() -> Wram {
         Wram {
-            bytes: vec![0; WRAM_SIZE].into_boxed_slice(),
+            bytes: vec![0xff; WRAM_SIZE].into_boxed_slice(),
         }
     }
 
