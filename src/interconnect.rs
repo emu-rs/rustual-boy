@@ -26,6 +26,9 @@ impl Interconnect {
             MappedAddress::WaitControlReg => {
                 panic!("Read byte from Wait Control Register not yet implemented");
             }
+            MappedAddress::GamePadInputControlReg => {
+                panic!("Read byte from Game Pad Input Control Register not yet implemented");
+            }
             MappedAddress::Wram(addr) => self.wram.read_byte(addr),
             MappedAddress::CartridgeRom(addr) => self.rom.read_byte(addr),
         }
@@ -43,6 +46,9 @@ impl Interconnect {
             MappedAddress::WaitControlReg => {
                 panic!("Read halfword from Wait Control Register not yet implemented");
             }
+            MappedAddress::GamePadInputControlReg => {
+                panic!("Read halfword from Game Pad Input Control Register not yet implemented");
+            }
             MappedAddress::Wram(addr) => self.wram.read_halfword(addr),
             MappedAddress::CartridgeRom(addr) => self.rom.read_halfword(addr),
         }
@@ -59,6 +65,9 @@ impl Interconnect {
             }
             MappedAddress::WaitControlReg => {
                 panic!("Read word from Wait Control Register not yet implemented");
+            }
+            MappedAddress::GamePadInputControlReg => {
+                panic!("Read word from Game Pad Input Control Register not yet implemented");
             }
             MappedAddress::Wram(addr) => self.wram.read_word(addr),
             MappedAddress::CartridgeRom(addr) => self.rom.read_word(addr),
@@ -78,6 +87,9 @@ impl Interconnect {
                 println!(" Cartridge ROM Waits: {}", if value & 0x01 == 0 { 2 } else { 1 });
                 println!(" Cartridge Expansion Waits: {}", if value & 0x02 == 0 { 2 } else { 1 });
             }
+            MappedAddress::GamePadInputControlReg => {
+                println!("WARNING: Write byte to Game Pad Input Control Register not yet implemented (value: 0x{:02x})", value);
+            }
             MappedAddress::Wram(addr) => self.wram.write_byte(addr, value),
             MappedAddress::CartridgeRom(_) => {
                 println!("WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr);
@@ -92,10 +104,13 @@ impl Interconnect {
                 println!("WARNING: Write halfword to Link Control Register not yet implemented (value: 0x{:04x})", value);
             }
             MappedAddress::AuxLinkReg => {
-                println!("WARNING: Write halfword to Auxiliary Link Register not yet implemented (value: 0x{:02x})", value);
+                println!("WARNING: Write halfword to Auxiliary Link Register not yet implemented (value: 0x{:04x})", value);
             }
             MappedAddress::WaitControlReg => {
                 panic!("Write halfword to Wait Control Register not yet implemented");
+            }
+            MappedAddress::GamePadInputControlReg => {
+                println!("WARNING: Write halfword to Game Pad Input Control Register not yet implemented (value: 0x{:04x})", value);
             }
             MappedAddress::Wram(addr) => self.wram.write_halfword(addr, value),
             MappedAddress::CartridgeRom(_) => {
@@ -111,10 +126,13 @@ impl Interconnect {
                 println!("WARNING: Write word to Link Control Register not yet implemented (value: 0x{:08x})", value);
             }
             MappedAddress::AuxLinkReg => {
-                println!("WARNING: Write word to Auxiliary Link Register not yet implemented (value: 0x{:02x})", value);
+                println!("WARNING: Write word to Auxiliary Link Register not yet implemented (value: 0x{:08x})", value);
             }
             MappedAddress::WaitControlReg => {
                 panic!("Write word to Wait Control Register not yet implemented");
+            }
+            MappedAddress::GamePadInputControlReg => {
+                println!("WARNING: Write word to Game Pad Input Control Register not yet implemented (value: 0x{:08x})", value);
             }
             MappedAddress::Wram(addr) => self.wram.write_word(addr, value),
             MappedAddress::CartridgeRom(_) => {

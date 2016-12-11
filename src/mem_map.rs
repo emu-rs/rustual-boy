@@ -1,6 +1,7 @@
 pub const LINK_CONTROL_REG: u32 = 0x02000000;
 pub const AUX_LINK_REG: u32 = 0x02000004;
 pub const WAIT_CONTROL_REG: u32 = 0x02000024;
+pub const GAME_PAD_INPUT_CONTROL_REG: u32 = 0x02000028;
 
 pub const WRAM_START: u32 = 0x05000000;
 pub const WRAM_LENGTH: u32 = 0x01000000;
@@ -14,7 +15,10 @@ pub enum MappedAddress {
     LinkControlReg,
     AuxLinkReg,
     WaitControlReg,
+    GamePadInputControlReg,
+
     Wram(u32),
+
     CartridgeRom(u32)
 }
 
@@ -24,8 +28,12 @@ pub fn map_address(addr: u32) -> MappedAddress {
         LINK_CONTROL_REG => MappedAddress::LinkControlReg,
         AUX_LINK_REG => MappedAddress::AuxLinkReg,
         WAIT_CONTROL_REG => MappedAddress::WaitControlReg,
+        GAME_PAD_INPUT_CONTROL_REG => MappedAddress::GamePadInputControlReg,
+
         WRAM_START ... WRAM_END => MappedAddress::Wram(addr - WRAM_START),
+
         CARTRIDGE_ROM_START ... CARTRIDGE_ROM_END => MappedAddress::CartridgeRom(addr - CARTRIDGE_ROM_START),
+
         _ => panic!("Unrecognized addr: 0x{:08x}", addr)
     }
 }
