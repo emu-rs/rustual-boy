@@ -27,7 +27,13 @@ pub enum Opcode {
     Bgt,
     Movea,
     Movhi,
+    Ldb,
+    Ldh,
+    Ldw,
     Stb,
+    Inb,
+    Inh,
+    Inw,
     Outw,
 }
 
@@ -66,7 +72,13 @@ impl Opcode {
                 0b011110 => Opcode::Sei,
                 0b101000 => Opcode::Movea,
                 0b101111 => Opcode::Movhi,
+                0b110000 => Opcode::Ldb,
+                0b110001 => Opcode::Ldh,
+                0b110011 => Opcode::Ldw,
                 0b110100 => Opcode::Stb,
+                0b111000 => Opcode::Inb,
+                0b111001 => Opcode::Inh,
+                0b111011 => Opcode::Inw,
                 0b111111 => Opcode::Outw,
                 _ => panic!("Unrecognized opcode bits: {:06b} (halfword: 0b{:016b})", opcode_bits, halfword),
             }
@@ -100,7 +112,13 @@ impl Opcode {
             &Opcode::Bgt => InstructionFormat::III,
             &Opcode::Movea => InstructionFormat::V,
             &Opcode::Movhi => InstructionFormat::V,
+            &Opcode::Ldb => InstructionFormat::VI,
+            &Opcode::Ldh => InstructionFormat::VI,
+            &Opcode::Ldw => InstructionFormat::VI,
             &Opcode::Stb => InstructionFormat::VI,
+            &Opcode::Inb => InstructionFormat::VI,
+            &Opcode::Inh => InstructionFormat::VI,
+            &Opcode::Inw => InstructionFormat::VI,
             &Opcode::Outw => InstructionFormat::VI,
         }
     }
@@ -139,7 +157,13 @@ impl Opcode {
             &Opcode::Nop => 1,
             &Opcode::Movea => 1,
             &Opcode::Movhi => 1,
+            &Opcode::Ldb => 4,
+            &Opcode::Ldh => 4,
+            &Opcode::Ldw => 4,
             &Opcode::Stb => 1,
+            &Opcode::Inb => 4,
+            &Opcode::Inh => 4,
+            &Opcode::Inw => 4,
             &Opcode::Outw => 1,
         }
     }
@@ -172,7 +196,13 @@ impl fmt::Display for Opcode {
             &Opcode::Sei => "sei",
             &Opcode::Movea => "movea",
             &Opcode::Movhi => "movhi",
+            &Opcode::Ldb => "ld.b",
+            &Opcode::Ldh => "ld.h",
+            &Opcode::Ldw => "ld.w",
             &Opcode::Stb => "st.b",
+            &Opcode::Inb => "in.b",
+            &Opcode::Inh => "in.h",
+            &Opcode::Inw => "in.w",
             &Opcode::Outw => "out.w",
         };
         write!(f, "{}", mnemonic)

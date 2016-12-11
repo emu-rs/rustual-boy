@@ -29,6 +29,14 @@ impl Interconnect {
         ((high_byte as u16) << 8) | (low_byte as u16)
     }
 
+    pub fn read_word(&self, addr: u32) -> u32 {
+        let addr = addr & 0xfffffffc;
+        ((self.read_byte(addr + 3) as u32) << 24) |
+        ((self.read_byte(addr + 2) as u32) << 16) |
+        ((self.read_byte(addr + 1) as u32) << 8) |
+        (self.read_byte(addr) as u32)
+    }
+
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         let addr = addr & 0x07ffffff;
         if addr == 0x02000024 {
