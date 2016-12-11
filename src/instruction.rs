@@ -153,6 +153,7 @@ impl Opcode {
     pub fn system_register(&self, imm5: usize) -> SystemRegister {
         match imm5 {
             5 => SystemRegister::Psw,
+            24 => SystemRegister::Chcw,
             _ => panic!("Unrecognized system register: {}", imm5),
         }
     }
@@ -276,13 +277,15 @@ impl InstructionFormat {
 }
 
 pub enum SystemRegister {
-    Psw
+    Psw,
+    Chcw
 }
 
 impl fmt::Display for SystemRegister {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mnemonic = match self {
             &SystemRegister::Psw => "psw",
+            &SystemRegister::Chcw => "chcw",
         };
         write!(f, "{}", mnemonic)
     }

@@ -156,6 +156,9 @@ impl Nvc {
                 let system_register = opcode.system_register(imm5);
                 match system_register {
                     SystemRegister::Psw => self.set_reg_psw(value),
+                    SystemRegister::Chcw => {
+                        println!("WARNING: ldsr chcw not yet implemented (value: 0x{:08x})", value);
+                    }
                 }
             }, first_halfword),
             Opcode::Sei => format_ii(|_, _| {
