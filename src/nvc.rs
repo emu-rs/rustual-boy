@@ -145,6 +145,33 @@ impl Nvc {
             Opcode::Jmp => format_i(|reg1, _| {
                 next_pc = self.reg_gpr(reg1);
             }, first_halfword),
+            Opcode::Div => format_i(|reg1, reg2| {
+                let lhs = self.reg_gpr(reg2);
+                let rhs = self.reg_gpr(reg1);
+                let (res, r30, overflow) = if lhs == 0x80000000 && rhs == 0xffffffff {
+                    (lhs, 0, true)
+                } else {
+                    let lhs = lhs as i32;
+                    let rhs = rhs as i32;
+                    let res = (lhs / rhs) as u32;
+                    let r30 = (lhs % rhs) as u32;
+                    (res, r30, false)
+                };
+                self.set_reg_gpr(30, r30);
+                self.set_reg_gpr(reg2, res);
+                self.set_zero_sign_flags(res);
+                self.psw_overflow = overflow;
+            }, first_halfword),
+            Opcode::DivU => format_i(|reg1, reg2| {
+                let lhs = self.reg_gpr(reg2);
+                let rhs = self.reg_gpr(reg1);
+                let res = lhs / rhs;
+                let r30 = lhs % rhs;
+                self.set_reg_gpr(30, r30);
+                self.set_reg_gpr(reg2, res);
+                self.set_zero_sign_flags(res);
+                self.psw_overflow = false;
+            }, first_halfword),
             Opcode::MovImm => format_ii(|imm5, reg2| {
                 let value = sign_extend_imm5(imm5);
                 self.set_reg_gpr(reg2, value);
