@@ -196,6 +196,14 @@ impl Nvc {
                 self.set_zero_sign_flags(res);
                 self.psw_overflow = false;
             }, first_halfword),
+            Opcode::And => format_i(|reg1, reg2| {
+                let lhs = self.reg_gpr(reg2);
+                let rhs = self.reg_gpr(reg1);
+                let res = lhs & rhs;
+                self.set_reg_gpr(reg2, res);
+                self.set_zero_sign_flags(res);
+                self.psw_overflow = false;
+            }, first_halfword),
             Opcode::MovImm => format_ii(|imm5, reg2| {
                 let value = sign_extend_imm5(imm5);
                 self.set_reg_gpr(reg2, value);
@@ -288,6 +296,14 @@ impl Nvc {
                 self.set_reg_gpr(31, original_pc.wrapping_add(4));
                 next_pc = target;
             }, first_halfword, second_halfword, original_pc),
+            Opcode::AndI => format_v(|reg1, reg2, imm16| {
+                let lhs = self.reg_gpr(reg1);
+                let rhs = imm16 as u32;
+                let res = lhs & rhs;
+                self.set_reg_gpr(reg2, res);
+                self.set_zero_sign_flags(res);
+                self.psw_overflow = false;
+            }, first_halfword, second_halfword),
             Opcode::Movhi => format_v(|reg1, reg2, imm16| {
                 let res = self.reg_gpr(reg1).wrapping_add((imm16 as u32) << 16);
                 self.set_reg_gpr(reg2, res);
