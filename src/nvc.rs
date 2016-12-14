@@ -204,6 +204,12 @@ impl Nvc {
                 self.set_zero_sign_flags(res);
                 self.psw_overflow = false;
             }, first_halfword),
+            Opcode::Not => format_i(|reg1, reg2| {
+                let res = !self.reg_gpr(reg1);
+                self.set_reg_gpr(reg2, res);
+                self.set_zero_sign_flags(res);
+                self.psw_overflow = false;
+            }, first_halfword),
             Opcode::MovImm => format_ii(|imm5, reg2| {
                 let value = sign_extend_imm5(imm5);
                 self.set_reg_gpr(reg2, value);
