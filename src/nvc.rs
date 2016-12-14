@@ -212,6 +212,14 @@ impl Nvc {
                 self.set_zero_sign_flags(res);
                 self.psw_overflow = false;
             }, first_halfword),
+            Opcode::Xor => format_i(|reg1, reg2| {
+                let lhs = self.reg_gpr(reg2);
+                let rhs = self.reg_gpr(reg1);
+                let res = lhs ^ rhs;
+                self.set_reg_gpr(reg2, res);
+                self.set_zero_sign_flags(res);
+                self.psw_overflow = false;
+            }, first_halfword),
             Opcode::Not => format_i(|reg1, reg2| {
                 let res = !self.reg_gpr(reg1);
                 self.set_reg_gpr(reg2, res);
@@ -322,6 +330,14 @@ impl Nvc {
                 let lhs = self.reg_gpr(reg1);
                 let rhs = imm16 as u32;
                 let res = lhs & rhs;
+                self.set_reg_gpr(reg2, res);
+                self.set_zero_sign_flags(res);
+                self.psw_overflow = false;
+            }, first_halfword, second_halfword),
+            Opcode::XorI => format_v(|reg1, reg2, imm16| {
+                let lhs = self.reg_gpr(reg1);
+                let rhs = imm16 as u32;
+                let res = lhs ^ rhs;
                 self.set_reg_gpr(reg2, res);
                 self.set_zero_sign_flags(res);
                 self.psw_overflow = false;
