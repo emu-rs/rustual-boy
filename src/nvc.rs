@@ -145,6 +145,18 @@ impl Nvc {
             Opcode::Jmp => format_i(|reg1, _| {
                 next_pc = self.reg_gpr(reg1);
             }, first_halfword),
+            Opcode::Mul => format_i(|reg1, reg2| {
+                let lhs = self.reg_gpr(reg2) as i64;
+                let rhs = self.reg_gpr(reg1) as i64;
+                let res = (lhs * rhs) as u64;
+                let res_low = res as u32;
+                let res_high = (res >> 32) as u32;
+                let overflow = res != (res_low as i32) as u64;
+                self.set_reg_gpr(30, res_high);
+                self.set_reg_gpr(reg2, res_low);
+                self.set_zero_sign_flags(res_low);
+                self.psw_overflow = overflow;
+            }, first_halfword),
             Opcode::Div => format_i(|reg1, reg2| {
                 let lhs = self.reg_gpr(reg2);
                 let rhs = self.reg_gpr(reg1);
@@ -160,6 +172,18 @@ impl Nvc {
                 self.set_reg_gpr(30, r30);
                 self.set_reg_gpr(reg2, res);
                 self.set_zero_sign_flags(res);
+                self.psw_overflow = overflow;
+            }, first_halfword),
+            Opcode::MulU => format_i(|reg1, reg2| {
+                let lhs = self.reg_gpr(reg2) as u64;
+                let rhs = self.reg_gpr(reg1) as u64;
+                let res = lhs * rhs;
+                let res_low = res as u32;
+                let res_high = (res >> 32) as u32;
+                let overflow = res != res_low as u64;
+                self.set_reg_gpr(30, res_high);
+                self.set_reg_gpr(reg2, res_low);
+                self.set_zero_sign_flags(res_low);
                 self.psw_overflow = overflow;
             }, first_halfword),
             Opcode::DivU => format_i(|reg1, reg2| {
