@@ -6,6 +6,7 @@ extern crate nom;
 mod rom;
 mod wram;
 mod vip;
+mod vsu;
 mod mem_map;
 mod interconnect;
 mod instruction;

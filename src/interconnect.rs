@@ -1,12 +1,14 @@
 use rom::*;
 use wram::*;
 use vip::*;
+use vsu::*;
 use mem_map::*;
 
 pub struct Interconnect {
     rom: Rom,
     wram: Wram,
     vip: Vip,
+    vsu: Vsu,
 }
 
 impl Interconnect {
@@ -15,12 +17,14 @@ impl Interconnect {
             rom: rom,
             wram: Wram::new(),
             vip: Vip::new(),
+            vsu: Vsu::new(),
         }
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {
         match map_address(addr) {
             MappedAddress::Vip(addr) => self.vip.read_byte(addr),
+            MappedAddress::Vsu(addr) => self.vsu.read_byte(addr),
             MappedAddress::LinkControlReg => {
                 panic!("Read byte from Link Control Register not yet implemented");
             }
@@ -42,6 +46,7 @@ impl Interconnect {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
             MappedAddress::Vip(addr) => self.vip.read_halfword(addr),
+            MappedAddress::Vsu(addr) => self.vsu.read_halfword(addr),
             MappedAddress::LinkControlReg => {
                 panic!("Read halfword from Link Control Register not yet implemented");
             }
@@ -63,6 +68,7 @@ impl Interconnect {
         let addr = addr & 0xfffffffc;
         match map_address(addr) {
             MappedAddress::Vip(addr) => self.vip.read_word(addr),
+            MappedAddress::Vsu(addr) => self.vsu.read_word(addr),
             MappedAddress::LinkControlReg => {
                 panic!("Read word from Link Control Register not yet implemented");
             }
@@ -83,6 +89,7 @@ impl Interconnect {
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         match map_address(addr) {
             MappedAddress::Vip(addr) => self.vip.write_byte(addr, value),
+            MappedAddress::Vsu(addr) => self.vsu.write_byte(addr, value),
             MappedAddress::LinkControlReg => {
                 println!("WARNING: Write byte to Link Control Register not yet implemented (value: 0x{:02x})", value);
             }
@@ -108,6 +115,7 @@ impl Interconnect {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
             MappedAddress::Vip(addr) => self.vip.write_halfword(addr, value),
+            MappedAddress::Vsu(addr) => self.vsu.write_halfword(addr, value),
             MappedAddress::LinkControlReg => {
                 println!("WARNING: Write halfword to Link Control Register not yet implemented (value: 0x{:04x})", value);
             }
@@ -131,6 +139,7 @@ impl Interconnect {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
             MappedAddress::Vip(addr) => self.vip.write_word(addr, value),
+            MappedAddress::Vsu(addr) => self.vsu.write_word(addr, value),
             MappedAddress::LinkControlReg => {
                 println!("WARNING: Write word to Link Control Register not yet implemented (value: 0x{:08x})", value);
             }
