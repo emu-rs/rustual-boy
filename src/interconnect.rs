@@ -159,7 +159,7 @@ impl Interconnect {
         }
     }
 
-    pub fn cycles(&mut self, _cycles: usize) {
-        // TODO
+    pub fn cycles(&mut self, cycles: usize) {
+        self.vip.cycles(cycles);
     }
 }

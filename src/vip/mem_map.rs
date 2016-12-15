@@ -52,6 +52,9 @@ pub const OAM_START: u32 = 0x0003e000;
 pub const OAM_LENGTH: u32 = 0x00002000;
 pub const OAM_END: u32 = OAM_START + OAM_LENGTH - 1;
 
+pub const DISPLAY_CONTROL_READ_REG: u32 = 0x0005f820;
+pub const DISPLAY_CONTROL_WRITE_REG: u32 = 0x0005f822;
+
 pub const CHR_RAM_PATTERN_TABLE_0_MIRROR_START: u32 = 0x00078000;
 pub const CHR_RAM_PATTERN_TABLE_0_MIRROR_LENGTH: u32 = CHR_RAM_PATTERN_TABLE_0_LENGTH;
 pub const CHR_RAM_PATTERN_TABLE_0_MIRROR_END: u32 = CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_MIRROR_LENGTH - 1;
@@ -70,12 +73,18 @@ pub const CHR_RAM_PATTERN_TABLE_3_MIRROR_END: u32 = CHR_RAM_PATTERN_TABLE_3_MIRR
 
 pub enum MappedAddress {
     Vram(u32),
+
+    DisplayControlReadReg,
+    DisplayControlWriteReg,
 }
 
 pub fn map_address(addr: u32) -> MappedAddress {
     let addr = addr & 0x0007ffff;
     match addr {
         VRAM_START ... VRAM_END => MappedAddress::Vram(addr - VRAM_START),
+
+        DISPLAY_CONTROL_READ_REG => MappedAddress::DisplayControlReadReg,
+        DISPLAY_CONTROL_WRITE_REG => MappedAddress::DisplayControlWriteReg,
 
         CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
             MappedAddress::Vram(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START),
