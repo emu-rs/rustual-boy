@@ -3,13 +3,13 @@ mod mem_map;
 use self::mem_map::*;
 
 pub struct Vip {
-    vram: [u8; VRAM_LENGTH as usize],
+    vram: Box<[u8]>,
 }
 
 impl Vip {
     pub fn new() -> Vip {
         Vip {
-            vram: [0; VRAM_LENGTH as usize],
+            vram: vec![0; VRAM_LENGTH as usize].into_boxed_slice(),
         }
     }
 
