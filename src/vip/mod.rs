@@ -70,11 +70,194 @@ impl Vip {
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {
-        panic!("VIP read byte not yet implemented (addr: 0x{:08x})", addr);
+        match map_address(addr) {
+            MappedAddress::InterruptPendingReg => {
+                println!("WARNING: Attempted read byte from Interrupt Pending Reg");
+                0
+            }
+            MappedAddress::InterruptEnableReg => {
+                println!("WARNING: Attempted read byte from Interrupt Enable Reg");
+                0
+            }
+            MappedAddress::InterruptClearReg => {
+                println!("WARNING: Attempted read byte from Interrupt Clear Reg");
+                0
+            }
+            MappedAddress::DisplayControlReadReg => {
+                println!("WARNING: Attempted read byte from Display Control Read Reg");
+                0
+            }
+            MappedAddress::DisplayControlWriteReg => {
+                println!("WARNING: Attempted read byte from Display Control Write Reg");
+                0
+            }
+            MappedAddress::LedBrightness1Reg => {
+                println!("WARNING: Attempted read byte from LED Brightness 1 Reg");
+                0
+            }
+            MappedAddress::LedBrightness2Reg => {
+                println!("WARNING: Attempted read byte from LED Brightness 2 Reg");
+                0
+            }
+            MappedAddress::LedBrightness3Reg => {
+                println!("WARNING: Attempted read byte from LED Brightness 3 Reg");
+                0
+            }
+            MappedAddress::LedBrightnessIdleReg => {
+                println!("WARNING: Attempted read byte from LED Brightness Idle Reg");
+                0
+            }
+            MappedAddress::GameFrameControlReg => {
+                println!("WARNING: Attempted read byte from Game Frame Control Reg");
+                0
+            }
+            MappedAddress::DrawingControlReadReg => {
+                println!("WARNING: Attempted read byte from Drawing Control Read Reg");
+                0
+            }
+            MappedAddress::DrawingControlWriteReg => {
+                println!("WARNING: Attempted read byte from Drawing Control Write Reg");
+                0
+            }
+            MappedAddress::ObjGroup0PointerReg => {
+                println!("WARNING: Attempted read byte from OBJ Group 0 Pointer Reg");
+                0
+            }
+            MappedAddress::ObjGroup1PointerReg => {
+                println!("WARNING: Attempted read byte from OBJ Group 1 Pointer Reg");
+                0
+            }
+            MappedAddress::ObjGroup2PointerReg => {
+                println!("WARNING: Attempted read byte from OBJ Group 2 Pointer Reg");
+                0
+            }
+            MappedAddress::ObjGroup3PointerReg => {
+                println!("WARNING: Attempted read byte from OBJ Group 3 Pointer Reg");
+                0
+            }
+            MappedAddress::BgPalette0Reg => {
+                println!("WARNING: Attempted read byte from BG Palette 0 Reg");
+                0
+            }
+            MappedAddress::BgPalette1Reg => {
+                println!("WARNING: Attempted read byte from BG Palette 1 Reg");
+                0
+            }
+            MappedAddress::BgPalette2Reg => {
+                println!("WARNING: Attempted read byte from BG Palette 2 Reg");
+                0
+            }
+            MappedAddress::BgPalette3Reg => {
+                println!("WARNING: Attempted read byte from BG Palette 3 Reg");
+                0
+            }
+            MappedAddress::ObjPalette0Reg => {
+                println!("WARNING: Attempted read byte from OBJ Palette 0 Reg");
+                0
+            }
+            MappedAddress::ObjPalette1Reg => {
+                println!("WARNING: Attempted read byte from OBJ Palette 1 Reg");
+                0
+            }
+            MappedAddress::ObjPalette2Reg => {
+                println!("WARNING: Attempted read byte from OBJ Palette 2 Reg");
+                0
+            }
+            MappedAddress::ObjPalette3Reg => {
+                println!("WARNING: Attempted read byte from OBJ Palette 3 Reg");
+                0
+            }
+            MappedAddress::ClearColorReg => {
+                println!("WARNING: Attempted read byte from Clear Color Reg");
+                0
+            }
+            MappedAddress::Vram(addr) => {
+                self.vram[addr as usize]
+            }
+        }
     }
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
-        panic!("VIP write byte not yet implemented (addr: 0x{:08x}, value: 0x{:02x})", addr, value);
+        match map_address(addr) {
+            MappedAddress::InterruptPendingReg => {
+                println!("WARNING: Attempted write byte to Interrupt Pending Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::InterruptEnableReg => {
+                println!("WARNING: Attempted write byte to Interrupt Enable Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::InterruptClearReg => {
+                println!("WARNING: Attempted write byte to Interrupt Clear Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::DisplayControlReadReg => {
+                println!("WARNING: Attempted write byte to Display Control Read Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::DisplayControlWriteReg => {
+                println!("WARNING: Attempted write byte to Display Control Write Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::LedBrightness1Reg => {
+                println!("WARNING: Attempted write byte to LED Brightness 1 Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::LedBrightness2Reg => {
+                println!("WARNING: Attempted write byte to LED Brightness 2 Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::LedBrightness3Reg => {
+                println!("WARNING: Attempted write byte to LED Brightness 3 Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::LedBrightnessIdleReg => {
+                println!("WARNING: Attempted write byte to LED Brightness Idle Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::GameFrameControlReg => {
+                println!("WARNING: Attempted write byte to Game Frame Control Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::DrawingControlReadReg => {
+                println!("WARNING: Attempted write byte to Drawing Control Read Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::DrawingControlWriteReg => {
+                println!("WARNING: Attempted write byte to Drawing Control Write Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::ObjGroup0PointerReg => {
+                println!("WARNING: Attempted write byte to OBJ Group 0 Pointer Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::ObjGroup1PointerReg => {
+                println!("WARNING: Attempted write byte to OBJ Group 1 Pointer Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::ObjGroup2PointerReg => {
+                println!("WARNING: Attempted write byte to OBJ Group 2 Pointer Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::ObjGroup3PointerReg => {
+                println!("WARNING: Attempted write byte to OBJ Group 3 Pointer Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::BgPalette0Reg => {
+                println!("WARNING: Attempted write byte to BG Palette 0 Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::BgPalette1Reg => {
+                println!("WARNING: Attempted write byte to BG Palette 1 Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::BgPalette2Reg => {
+                println!("WARNING: Attempted write byte to BG Palette 2 Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::BgPalette3Reg => {
+                println!("WARNING: Attempted write byte to BG Palette 3 Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::ObjPalette0Reg => {
+                println!("WARNING: Attempted write byte to OBJ Palette 0 Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::ObjPalette1Reg => {
+                println!("WARNING: Attempted write byte to OBJ Palette 1 Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::ObjPalette2Reg => {
+                println!("WARNING: Attempted write byte to OBJ Palette 2 Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::ObjPalette3Reg => {
+                println!("WARNING: Attempted write byte to OBJ Palette 3 Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::ClearColorReg => {
+                println!("WARNING: Attempted write byte to Clear Color Reg (value: 0x{:02x})", value);
+            }
+            MappedAddress::Vram(addr) => {
+                self.vram[addr as usize] = value;
+            }
+        }
     }
 
     pub fn read_halfword(&self, addr: u32) -> u16 {
@@ -566,16 +749,22 @@ impl Vip {
             let parallax = self.read_vram_halfword(window_offset + 2) as i16;
             let y = self.read_vram_halfword(window_offset + 3);
             let bg_x = self.read_vram_halfword(window_offset + 4) as i16;
-            let bg_y = self.read_vram_halfword(window_offset + 5) as i16;
-            let width = self.read_vram_halfword(window_offset + 6);
-            let height = self.read_vram_halfword(window_offset + 7);
+            let bg_parallax = self.read_vram_halfword(window_offset + 5) as i16;
+            let bg_y = self.read_vram_halfword(window_offset + 6);
+            let width = self.read_vram_halfword(window_offset + 7);
+            let height = self.read_vram_halfword(window_offset + 8);
+            let param_base = self.read_vram_halfword(window_offset + 9) & 0xfff0;
+            let out_of_bounds_char = self.read_vram_halfword(window_offset + 10);
             println!(" X: {}", x);
             println!(" Parallax: {}", parallax);
             println!(" Y: {}", y);
             println!(" BG X: {}", bg_x);
+            println!(" BG Parallax: {}", bg_parallax);
             println!(" BG Y: {}", bg_y);
             println!(" Width: {}", width);
             println!(" Height: {}", height);
+            println!(" Param base: 0x{:04x}", param_base);
+            println!(" Out of bounds char: 0x{:04x}", out_of_bounds_char);
 
             if stop {
                 break;
