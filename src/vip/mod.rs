@@ -7,8 +7,13 @@ use self::mem_map::*;
 const MS_TO_NS: u64 = 1000000;
 
 const CPU_CYCLE_PERIOD_NS: u64 = 50;
+
 const FRAME_CLOCK_PERIOD_MS: u64 = 20;
 const FRAME_CLOCK_PERIOD_NS: u64 = FRAME_CLOCK_PERIOD_MS * MS_TO_NS;
+
+// Hardcoded drawing period for now
+const DRAWING_PERIOD_MS: u64 = 10;
+const DRAWING_PERIOD_NS: u64 = DRAWING_PERIOD_MS * MS_TO_NS;
 
 enum DisplayState {
     Idle,
@@ -16,15 +21,29 @@ enum DisplayState {
     RightFramebufferDisplayProcessing,
 }
 
+enum DrawingState {
+    Idle,
+    Drawing,
+}
+
 pub struct Vip {
     vram: Box<[u8]>,
 
     display_state: DisplayState,
 
+    drawing_state: DrawingState,
+
     reg_display_control_display_enable: bool,
     reg_display_control_sync_enable: bool,
 
+    reg_drawing_control_drawing_enable: bool,
+
     reg_game_frame_control: usize,
+
+    frame_clock_counter: u64,
+    game_frame_clock_counter: usize,
+
+    drawing_counter: u64,
 }
 
 impl Vip {
@@ -34,10 +53,19 @@ impl Vip {
 
             display_state: DisplayState::Idle,
 
+            drawing_state: DrawingState::Idle,
+
             reg_display_control_display_enable: false,
             reg_display_control_sync_enable: false,
 
+            reg_drawing_control_drawing_enable: false,
+
             reg_game_frame_control: 1,
+
+            frame_clock_counter: 0,
+            game_frame_clock_counter: 0,
+
+            drawing_counter: 0,
         }
     }
 
@@ -65,6 +93,7 @@ impl Vip {
                 0
             }
             MappedAddress::DisplayControlReadReg => {
+                println!("WARNING: Read halfword from Display Control Read Reg not fully implemented");
                 let scan_ready = true; // TODO
                 let frame_clock = false; // TODO
                 let mem_refresh = false; // TODO
@@ -188,6 +217,7 @@ impl Vip {
                 println!("WARNING: Attempted write halfword to Display Control Read Reg");
             }
             MappedAddress::DisplayControlWriteReg => {
+                println!("WARNING: Write halfword to Display Control Write Reg not fully implemented (value: 0x{:04x})", value);
                 let _reset = (value & 0x01) != 0; // TODO: Soft reset
                 self.reg_display_control_display_enable = (value & 0x02) != 0;
                 let _mem_refresh = (value & 0x10) != 0; // TODO
@@ -216,7 +246,8 @@ impl Vip {
                 println!("WARNING: Attempted write halfword to Drawing Control Read Reg (value: 0x{:04x})", value);
             }
             MappedAddress::DrawingControlWriteReg => {
-                println!("WARNING: Write halfword to Drawing Control Write Reg not yet implemented (value: 0x{:04x})", value);
+                println!("WARNING: Write halfword to Drawing Control Write Reg not fully implemented (value: 0x{:04x})", value);
+                self.reg_drawing_control_drawing_enable = (value & 0x02) != 0;
             }
             MappedAddress::ObjGroup0PointerReg => {
                 println!("WARNING: Write halfword to OBJ Group 0 Pointer Reg not yet implemented (value: 0x{:04x})", value);
@@ -463,7 +494,47 @@ impl Vip {
         }
     }
 
-    pub fn cycles(&mut self, _cycles: usize) {
-        // TODO
+    pub fn cycles(&mut self, cycles: usize) {
+        for _ in 0..cycles {
+            self.frame_clock_counter += CPU_CYCLE_PERIOD_NS;
+            if self.frame_clock_counter >= FRAME_CLOCK_PERIOD_NS {
+                self.frame_clock_counter -= FRAME_CLOCK_PERIOD_NS;
+                self.frame_clock();
+            }
+
+            if let DrawingState::Drawing = self.drawing_state {
+                self.drawing_counter += CPU_CYCLE_PERIOD_NS;
+                if self.drawing_counter >= DRAWING_PERIOD_NS {
+                    self.end_drawing_process();
+                }
+            }
+        }
+    }
+
+    fn frame_clock(&mut self) {
+        println!("Frame clock rising edge");
+        self.game_frame_clock_counter += 1;
+        if self.game_frame_clock_counter >= self.reg_game_frame_control {
+            self.game_frame_clock_counter = 0;
+            self.game_clock();
+        }
+    }
+
+    fn game_clock(&mut self) {
+        println!("Game clock rising edge");
+        if self.reg_drawing_control_drawing_enable {
+            self.begin_drawing_process();
+        }
+    }
+
+    fn begin_drawing_process(&mut self) {
+        println!("Begin drawing process");
+        self.drawing_state = DrawingState::Drawing;
+        self.drawing_counter = 0;
+    }
+
+    fn end_drawing_process(&mut self) {
+        println!("End drawing process");
+        self.drawing_state = DrawingState::Idle;
     }
 }
