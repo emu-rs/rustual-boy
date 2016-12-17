@@ -20,6 +20,7 @@ pub struct Vip {
     display_state: DisplayState,
 
     reg_display_control_display_enable: bool,
+    reg_display_control_sync_enable: bool,
 
     reg_game_frame_control: usize,
 }
@@ -32,6 +33,7 @@ impl Vip {
             display_state: DisplayState::Idle,
 
             reg_display_control_display_enable: false,
+            reg_display_control_sync_enable: false,
 
             reg_game_frame_control: 0,
         }
@@ -46,14 +48,25 @@ impl Vip {
     }
 
     pub fn read_halfword(&self, addr: u32) -> u16 {
-        let addr = addr & 0xfffffffc;
+        let addr = addr & 0xfffffffe;
         match map_address(addr) {
+            MappedAddress::InterruptPendingReg => {
+                println!("WARNING: Read halfword from Interrupt Pending Reg not yet implemented");
+                0
+            }
+            MappedAddress::InterruptEnableReg => {
+                println!("WARNING: Attempted read halfword from Interrupt Enable Reg");
+                0
+            }
+            MappedAddress::InterruptClearReg => {
+                println!("WARNING: Attempted read halfword from Interrupt Clear Reg");
+                0
+            }
             MappedAddress::DisplayControlReadReg => {
                 let scan_ready = true; // TODO
                 let frame_clock = false; // TODO
-                let refresh = false; // TODO
-                let sync_enable = false; // TODO
-                let columb_table_addr_lock = false; // TODO
+                let mem_refresh = false; // TODO
+                let column_table_addr_lock = false; // TODO
 
                 (if self.reg_display_control_display_enable { 1 } else { 0 } << 1) |
                 (match self.display_state {
@@ -63,9 +76,9 @@ impl Vip {
                 } << 2) |
                 (if scan_ready { 1 } else { 0 } << 6) |
                 (if frame_clock { 1 } else { 0 } << 7) |
-                (if refresh { 1 } else { 0 } << 8) |
-                (if sync_enable { 1 } else { 0 } << 9) |
-                (if columb_table_addr_lock { 1 } else { 0 } << 10)
+                (if mem_refresh { 1 } else { 0 } << 8) |
+                (if self.reg_display_control_sync_enable { 1 } else { 0 } << 9) |
+                (if column_table_addr_lock { 1 } else { 0 } << 10)
             }
             MappedAddress::DisplayControlWriteReg => {
                 println!("WARNING: Attempted read halfword from Display Control Write Reg");
@@ -81,11 +94,26 @@ impl Vip {
     pub fn write_halfword(&mut self, addr: u32, value: u16) {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
+            MappedAddress::InterruptPendingReg => {
+                println!("WARNING: Attempted write halfword to Interrupt Pending Reg");
+            }
+            MappedAddress::InterruptEnableReg => {
+                println!("WARNING: Write halfword to Interrupt Enable Reg not yet implemented (value: 0x{:04x})", value);
+            }
+            MappedAddress::InterruptClearReg => {
+                println!("WARNING: Write halfword to Interrupt Clear Reg not yet implemented (value: 0x{:04x})", value);
+            }
             MappedAddress::DisplayControlReadReg => {
                 println!("WARNING: Attempted write halfword to Display Control Read Reg");
             }
             MappedAddress::DisplayControlWriteReg => {
-                panic!("WARNING: Attempted write halfword to Display Control Write Reg (value: 0x{:04x})", value);
+                let _reset = (value & 0x01) != 0; // TODO: Soft reset
+                self.reg_display_control_display_enable = (value & 0x02) != 0;
+                let _mem_refresh = (value & 0x10) != 0; // TODO
+                self.reg_display_control_sync_enable = (value & 0x20) != 0;
+                let _column_table_addr_lock = (value & 0x40) != 0;
+
+                // TODO
             }
             MappedAddress::Vram(addr) => {
                 self.vram[addr as usize] = value as u8;
@@ -97,6 +125,18 @@ impl Vip {
     pub fn read_word(&self, addr: u32) -> u32 {
         let addr = addr & 0xfffffffc;
         match map_address(addr) {
+            MappedAddress::InterruptPendingReg => {
+                println!("WARNING: Attempted read word from Interrupt Pending Reg");
+                0
+            }
+            MappedAddress::InterruptEnableReg => {
+                println!("WARNING: Attempted read word from Interrupt Enable Reg");
+                0
+            }
+            MappedAddress::InterruptClearReg => {
+                println!("WARNING: Attempted read word from Interrupt Clear Reg");
+                0
+            }
             MappedAddress::DisplayControlReadReg => {
                 println!("WARNING: Attempted read word from Display Control Read Reg");
                 0
@@ -117,6 +157,15 @@ impl Vip {
     pub fn write_word(&mut self, addr: u32, value: u32) {
         let addr = addr & 0xfffffffc;
         match map_address(addr) {
+            MappedAddress::InterruptPendingReg => {
+                println!("WARNING: Attempted write word to Interrupt Pending Reg (value: 0x{:08x})", value);
+            }
+            MappedAddress::InterruptEnableReg => {
+                println!("WARNING: Attempted write word to Interrupt Enable Reg (value: 0x{:08x})", value);
+            }
+            MappedAddress::InterruptClearReg => {
+                println!("WARNING: Attempted write word to Interrupt Clear Reg (value: 0x{:08x})", value);
+            }
             MappedAddress::DisplayControlReadReg => {
                 println!("WARNING: Attempted write word to Display Control Read Reg (value: 0x{:08x})", value);
             }
@@ -132,6 +181,7 @@ impl Vip {
         }
     }
 
-    pub fn cycles(&mut self, cycles: usize) {
+    pub fn cycles(&mut self, _cycles: usize) {
+        // TODO
     }
 }

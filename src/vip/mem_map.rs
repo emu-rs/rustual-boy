@@ -52,6 +52,9 @@ pub const OAM_START: u32 = 0x0003e000;
 pub const OAM_LENGTH: u32 = 0x00002000;
 pub const OAM_END: u32 = OAM_START + OAM_LENGTH - 1;
 
+pub const INTERRUPT_PENDING_REG: u32 = 0x0005f800;
+pub const INTERRUPT_ENABLE_REG: u32 = 0x0005f802;
+pub const INTERRUPT_CLEAR_REG: u32 = 0x0005f804;
 pub const DISPLAY_CONTROL_READ_REG: u32 = 0x0005f820;
 pub const DISPLAY_CONTROL_WRITE_REG: u32 = 0x0005f822;
 
@@ -74,6 +77,9 @@ pub const CHR_RAM_PATTERN_TABLE_3_MIRROR_END: u32 = CHR_RAM_PATTERN_TABLE_3_MIRR
 pub enum MappedAddress {
     Vram(u32),
 
+    InterruptPendingReg,
+    InterruptEnableReg,
+    InterruptClearReg,
     DisplayControlReadReg,
     DisplayControlWriteReg,
 }
@@ -83,6 +89,9 @@ pub fn map_address(addr: u32) -> MappedAddress {
     match addr {
         VRAM_START ... VRAM_END => MappedAddress::Vram(addr - VRAM_START),
 
+        INTERRUPT_PENDING_REG => MappedAddress::InterruptPendingReg,
+        INTERRUPT_ENABLE_REG => MappedAddress::InterruptEnableReg,
+        INTERRUPT_CLEAR_REG => MappedAddress::InterruptClearReg,
         DISPLAY_CONTROL_READ_REG => MappedAddress::DisplayControlReadReg,
         DISPLAY_CONTROL_WRITE_REG => MappedAddress::DisplayControlWriteReg,
 
