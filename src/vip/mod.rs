@@ -105,6 +105,14 @@ impl Vip {
             MappedAddress::GameFrameControlReg => {
                 (self.reg_game_frame_control - 1) as u16
             }
+            MappedAddress::DrawingControlReadReg => {
+                println!("WARNING: Read halfword from Drawing Control Read Reg not yet implemented");
+                0
+            }
+            MappedAddress::DrawingControlWriteReg => {
+                println!("WARNING: Attempted read halfword from Drawing Control Write Reg");
+                0
+            }
             MappedAddress::ObjGroup0PointerReg => {
                 println!("WARNING: Read halfword from OBJ Group 0 Pointer Reg not yet implemented");
                 0
@@ -204,6 +212,12 @@ impl Vip {
                 println!("Game Frame Control written (value: 0x{:04x})", value);
                 self.reg_game_frame_control = (value as usize) + 1;
             }
+            MappedAddress::DrawingControlReadReg => {
+                println!("WARNING: Attempted write halfword to Drawing Control Read Reg (value: 0x{:04x})", value);
+            }
+            MappedAddress::DrawingControlWriteReg => {
+                println!("WARNING: Write halfword to Drawing Control Write Reg not yet implemented (value: 0x{:04x})", value);
+            }
             MappedAddress::ObjGroup0PointerReg => {
                 println!("WARNING: Write halfword to OBJ Group 0 Pointer Reg not yet implemented (value: 0x{:04x})", value);
             }
@@ -291,6 +305,14 @@ impl Vip {
             }
             MappedAddress::GameFrameControlReg => {
                 println!("WARNING: Attempted read word from Game Frame Control Reg");
+                0
+            }
+            MappedAddress::DrawingControlReadReg => {
+                println!("WARNING: Attempted read word from Drawing Control Read Reg");
+                0
+            }
+            MappedAddress::DrawingControlWriteReg => {
+                println!("WARNING: Attempted read word from Drawing Control Write Reg");
                 0
             }
             MappedAddress::ObjGroup0PointerReg => {
@@ -386,6 +408,12 @@ impl Vip {
             }
             MappedAddress::GameFrameControlReg => {
                 println!("WARNING: Attempted write word to Game Frame Control Reg (value: 0x{:08x})", value);
+            }
+            MappedAddress::DrawingControlReadReg => {
+                println!("WARNING: Attempted write word to Drawing Control Read Reg (value: 0x{:08x})", value);
+            }
+            MappedAddress::DrawingControlWriteReg => {
+                println!("WARNING: Attempted write word to Drawing Control Write Reg (value: 0x{:08x})", value);
             }
             MappedAddress::ObjGroup0PointerReg => {
                 println!("WARNING: Attempted write word to OBJ Group 0 Pointer Reg (value: 0x{:08x})", value);

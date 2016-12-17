@@ -66,6 +66,9 @@ pub const LED_BRIGHTNESS_IDLE_REG: u32 = 0x0005f82a;
 
 pub const GAME_FRAME_CONTROL_REG: u32 = 0x0005f82e;
 
+pub const DRAWING_CONTROL_READ_REG: u32 = 0x0005f840;
+pub const DRAWING_CONTROL_WRITE_REG: u32 = 0x0005f842;
+
 pub const OBJ_GROUP_0_POINTER_REG: u32 = 0x0005f848;
 pub const OBJ_GROUP_1_POINTER_REG: u32 = 0x0005f84a;
 pub const OBJ_GROUP_2_POINTER_REG: u32 = 0x0005f84c;
@@ -116,6 +119,9 @@ pub enum MappedAddress {
 
     GameFrameControlReg,
 
+    DrawingControlReadReg,
+    DrawingControlWriteReg,
+
     ObjGroup0PointerReg,
     ObjGroup1PointerReg,
     ObjGroup2PointerReg,
@@ -152,6 +158,9 @@ pub fn map_address(addr: u32) -> MappedAddress {
         LED_BRIGHTNESS_IDLE_REG => MappedAddress::LedBrightnessIdleReg,
 
         GAME_FRAME_CONTROL_REG => MappedAddress::GameFrameControlReg,
+
+        DRAWING_CONTROL_READ_REG => MappedAddress::DrawingControlReadReg,
+        DRAWING_CONTROL_WRITE_REG => MappedAddress::DrawingControlWriteReg,
 
         OBJ_GROUP_0_POINTER_REG => MappedAddress::ObjGroup0PointerReg,
         OBJ_GROUP_1_POINTER_REG => MappedAddress::ObjGroup1PointerReg,
