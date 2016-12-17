@@ -142,6 +142,12 @@ impl Nvc {
                 let rhs = self.reg_gpr(reg1);
                 self.sub_and_set_flags(lhs, rhs);
             }, first_halfword),
+            Opcode::ShlReg => format_i(|reg1, reg2| {
+                let lhs = self.reg_gpr(reg2);
+                let rhs = self.reg_gpr(reg1);
+                let res = self.shl_and_set_flags(lhs, rhs);
+                self.set_reg_gpr(reg2, res);
+            }, first_halfword),
             Opcode::Jmp => format_i(|reg1, _| {
                 next_pc = self.reg_gpr(reg1);
             }, first_halfword),
@@ -239,6 +245,12 @@ impl Nvc {
                 let lhs = self.reg_gpr(reg2);
                 let rhs = sign_extend_imm5(imm5);
                 self.sub_and_set_flags(lhs, rhs);
+            }, first_halfword),
+            Opcode::ShlImm => format_ii(|imm5, reg2| {
+                let lhs = self.reg_gpr(reg2);
+                let rhs = sign_extend_imm5(imm5);
+                let res = self.shl_and_set_flags(lhs, rhs);
+                self.set_reg_gpr(reg2, res);
             }, first_halfword),
             Opcode::Cli => format_ii(|_, _| {
                 self.psw_interrupt_disable = false;
@@ -411,6 +423,20 @@ impl Nvc {
         let (res, carry) = lhs.overflowing_sub(rhs);
         self.set_zero_sign_flags(res);
         self.psw_overflow = (((lhs ^ rhs) & !(rhs ^ res)) & 0x80000000) != 0;
+        self.psw_carry = carry;
+        res
+    }
+
+    fn shl_and_set_flags(&mut self, lhs: u32, rhs: u32) -> u32 {
+        let mut res = lhs;
+        let mut carry = false;
+        let shift = (rhs as usize) & 0x1f;
+        for _ in 0..shift {
+            carry = res & 0x80000000 != 0;
+            res = res.wrapping_shl(1);
+        }
+        self.set_zero_sign_flags(res);
+        self.psw_overflow = false;
         self.psw_carry = carry;
         res
     }
