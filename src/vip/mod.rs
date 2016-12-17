@@ -494,6 +494,11 @@ impl Vip {
         }
     }
 
+    fn read_vram_halfword(&self, addr: u32) -> u16 {
+        (self.vram[addr as usize] as u16) |
+        ((self.vram[addr as usize + 1] as u16) << 8)
+    }
+
     pub fn cycles(&mut self, cycles: usize) {
         for _ in 0..cycles {
             self.frame_clock_counter += CPU_CYCLE_PERIOD_NS;
@@ -534,6 +539,52 @@ impl Vip {
     }
 
     fn end_drawing_process(&mut self) {
+        const WINDOW_ENTRY_LENGTH: u32 = 32;
+        let mut window_offset = WINDOW_ATTRIBS_END + 1 - WINDOW_ENTRY_LENGTH;
+        let mut window_index = 31;
+        for _ in 0..32 {
+            println!("Window {}", window_index);
+
+            let header = self.read_vram_halfword(window_offset);
+            println!(" Header: 0x{:04x}", header);
+            let base = (header & 0x000f) as usize;
+            let stop = (header & 0x0040) != 0;
+            let out_of_bounds = (header & 0x0080) != 0;
+            let bg_height = ((header >> 8) & 0x02) as usize;
+            let bg_width = ((header >> 10) & 0x02) as usize;
+            let mode = ((header >> 12) & 0x02) as usize;
+            let right_on = (header & 0x4000) != 0;
+            let left_on = (header & 0x8000) != 0;
+            println!("  base: 0x{:02x}", base);
+            println!("  stop: {}", stop);
+            println!("  out of bounds: {}", out_of_bounds);
+            println!("  w, h: {}, {}", bg_width, bg_height);
+            println!("  mode: {}", mode);
+            println!("  l, r: {}, {}", left_on, right_on);
+
+            let x = self.read_vram_halfword(window_offset + 1) as i16;
+            let parallax = self.read_vram_halfword(window_offset + 2) as i16;
+            let y = self.read_vram_halfword(window_offset + 3);
+            let bg_x = self.read_vram_halfword(window_offset + 4) as i16;
+            let bg_y = self.read_vram_halfword(window_offset + 5) as i16;
+            let width = self.read_vram_halfword(window_offset + 6);
+            let height = self.read_vram_halfword(window_offset + 7);
+            println!(" X: {}", x);
+            println!(" Parallax: {}", parallax);
+            println!(" Y: {}", y);
+            println!(" BG X: {}", bg_x);
+            println!(" BG Y: {}", bg_y);
+            println!(" Width: {}", width);
+            println!(" Height: {}", height);
+
+            if stop {
+                break;
+            }
+
+            window_offset -= WINDOW_ENTRY_LENGTH;
+            window_index -= 1;
+        }
+
         println!("End drawing process");
         self.drawing_state = DrawingState::Idle;
     }
