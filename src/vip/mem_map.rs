@@ -55,8 +55,33 @@ pub const OAM_END: u32 = OAM_START + OAM_LENGTH - 1;
 pub const INTERRUPT_PENDING_REG: u32 = 0x0005f800;
 pub const INTERRUPT_ENABLE_REG: u32 = 0x0005f802;
 pub const INTERRUPT_CLEAR_REG: u32 = 0x0005f804;
+
 pub const DISPLAY_CONTROL_READ_REG: u32 = 0x0005f820;
 pub const DISPLAY_CONTROL_WRITE_REG: u32 = 0x0005f822;
+
+pub const LED_BRIGHTNESS_1_REG: u32 = 0x0005f824;
+pub const LED_BRIGHTNESS_2_REG: u32 = 0x0005f826;
+pub const LED_BRIGHTNESS_3_REG: u32 = 0x0005f828;
+pub const LED_BRIGHTNESS_IDLE_REG: u32 = 0x0005f82a;
+
+pub const GAME_FRAME_CONTROL_REG: u32 = 0x0005f82e;
+
+pub const OBJ_GROUP_0_POINTER_REG: u32 = 0x0005f848;
+pub const OBJ_GROUP_1_POINTER_REG: u32 = 0x0005f84a;
+pub const OBJ_GROUP_2_POINTER_REG: u32 = 0x0005f84c;
+pub const OBJ_GROUP_3_POINTER_REG: u32 = 0x0005f84e;
+
+pub const BG_PALETTE_0_REG: u32 = 0x0005f860;
+pub const BG_PALETTE_1_REG: u32 = 0x0005f862;
+pub const BG_PALETTE_2_REG: u32 = 0x0005f864;
+pub const BG_PALETTE_3_REG: u32 = 0x0005f866;
+
+pub const OBJ_PALETTE_0_REG: u32 = 0x0005f868;
+pub const OBJ_PALETTE_1_REG: u32 = 0x0005f86a;
+pub const OBJ_PALETTE_2_REG: u32 = 0x0005f86c;
+pub const OBJ_PALETTE_3_REG: u32 = 0x0005f86e;
+
+pub const CLEAR_COLOR_REG: u32 = 0x0005f870;
 
 pub const CHR_RAM_PATTERN_TABLE_0_MIRROR_START: u32 = 0x00078000;
 pub const CHR_RAM_PATTERN_TABLE_0_MIRROR_LENGTH: u32 = CHR_RAM_PATTERN_TABLE_0_LENGTH;
@@ -80,8 +105,33 @@ pub enum MappedAddress {
     InterruptPendingReg,
     InterruptEnableReg,
     InterruptClearReg,
+
     DisplayControlReadReg,
     DisplayControlWriteReg,
+
+    LedBrightness1Reg,
+    LedBrightness2Reg,
+    LedBrightness3Reg,
+    LedBrightnessIdleReg,
+
+    GameFrameControlReg,
+
+    ObjGroup0PointerReg,
+    ObjGroup1PointerReg,
+    ObjGroup2PointerReg,
+    ObjGroup3PointerReg,
+
+    BgPalette0Reg,
+    BgPalette1Reg,
+    BgPalette2Reg,
+    BgPalette3Reg,
+
+    ObjPalette0Reg,
+    ObjPalette1Reg,
+    ObjPalette2Reg,
+    ObjPalette3Reg,
+
+    ClearColorReg,
 }
 
 pub fn map_address(addr: u32) -> MappedAddress {
@@ -92,8 +142,33 @@ pub fn map_address(addr: u32) -> MappedAddress {
         INTERRUPT_PENDING_REG => MappedAddress::InterruptPendingReg,
         INTERRUPT_ENABLE_REG => MappedAddress::InterruptEnableReg,
         INTERRUPT_CLEAR_REG => MappedAddress::InterruptClearReg,
+
         DISPLAY_CONTROL_READ_REG => MappedAddress::DisplayControlReadReg,
         DISPLAY_CONTROL_WRITE_REG => MappedAddress::DisplayControlWriteReg,
+
+        LED_BRIGHTNESS_1_REG => MappedAddress::LedBrightness1Reg,
+        LED_BRIGHTNESS_2_REG => MappedAddress::LedBrightness2Reg,
+        LED_BRIGHTNESS_3_REG => MappedAddress::LedBrightness3Reg,
+        LED_BRIGHTNESS_IDLE_REG => MappedAddress::LedBrightnessIdleReg,
+
+        GAME_FRAME_CONTROL_REG => MappedAddress::GameFrameControlReg,
+
+        OBJ_GROUP_0_POINTER_REG => MappedAddress::ObjGroup0PointerReg,
+        OBJ_GROUP_1_POINTER_REG => MappedAddress::ObjGroup1PointerReg,
+        OBJ_GROUP_2_POINTER_REG => MappedAddress::ObjGroup2PointerReg,
+        OBJ_GROUP_3_POINTER_REG => MappedAddress::ObjGroup3PointerReg,
+
+        BG_PALETTE_0_REG => MappedAddress::BgPalette0Reg,
+        BG_PALETTE_1_REG => MappedAddress::BgPalette1Reg,
+        BG_PALETTE_2_REG => MappedAddress::BgPalette2Reg,
+        BG_PALETTE_3_REG => MappedAddress::BgPalette3Reg,
+
+        OBJ_PALETTE_0_REG => MappedAddress::ObjPalette0Reg,
+        OBJ_PALETTE_1_REG => MappedAddress::ObjPalette1Reg,
+        OBJ_PALETTE_2_REG => MappedAddress::ObjPalette2Reg,
+        OBJ_PALETTE_3_REG => MappedAddress::ObjPalette3Reg,
+
+        CLEAR_COLOR_REG => MappedAddress::ClearColorReg,
 
         CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
             MappedAddress::Vram(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START),
