@@ -157,6 +157,12 @@ impl Nvc {
             Opcode::Jmp => format_i(|reg1, _| {
                 next_pc = self.reg_gpr(reg1);
             }, first_halfword),
+            Opcode::SarReg => format_i(|reg1, reg2| {
+                let lhs = self.reg_gpr(reg2);
+                let rhs = self.reg_gpr(reg1);
+                let res = self.sar_and_set_flags(lhs, rhs);
+                self.set_reg_gpr(reg2, res);
+            }, first_halfword),
             Opcode::Mul => format_i(|reg1, reg2| {
                 let lhs = self.reg_gpr(reg2) as i64;
                 let rhs = self.reg_gpr(reg1) as i64;
@@ -266,6 +272,12 @@ impl Nvc {
             }, first_halfword),
             Opcode::Cli => format_ii(|_, _| {
                 self.psw_interrupt_disable = false;
+            }, first_halfword),
+            Opcode::SarImm => format_ii(|imm5, reg2| {
+                let lhs = self.reg_gpr(reg2);
+                let rhs = sign_extend_imm5(imm5);
+                let res = self.sar_and_set_flags(lhs, rhs);
+                self.set_reg_gpr(reg2, res);
             }, first_halfword),
             Opcode::Ldsr => format_ii(|imm5, reg2| {
                 let value = self.reg_gpr(reg2);
@@ -460,6 +472,21 @@ impl Nvc {
         for _ in 0..shift {
             carry = res & 0x00000001 != 0;
             res = res.wrapping_shr(1);
+        }
+        self.set_zero_sign_flags(res);
+        self.psw_overflow = false;
+        self.psw_carry = carry;
+        res
+    }
+
+    fn sar_and_set_flags(&mut self, lhs: u32, rhs: u32) -> u32 {
+        let mut res = lhs;
+        let mut carry = false;
+        let shift = (rhs as usize) & 0x1f;
+        for _ in 0..shift {
+            let sign = res & 0x80000000;
+            carry = res & 0x00000001 != 0;
+            res = sign | res.wrapping_shr(1);
         }
         self.set_zero_sign_flags(res);
         self.psw_overflow = false;
