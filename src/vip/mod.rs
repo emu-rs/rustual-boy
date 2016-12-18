@@ -806,16 +806,16 @@ impl Vip {
             println!("  mode: {}", mode);
             println!("  l, r: {}, {}", left_on, right_on);
 
-            let x = self.read_vram_halfword(window_offset + 1) as i16;
-            let parallax = self.read_vram_halfword(window_offset + 2) as i16;
-            let y = self.read_vram_halfword(window_offset + 3);
-            let bg_x = self.read_vram_halfword(window_offset + 4) as i16;
-            let bg_parallax = self.read_vram_halfword(window_offset + 5) as i16;
-            let bg_y = self.read_vram_halfword(window_offset + 6);
-            let width = self.read_vram_halfword(window_offset + 7);
-            let height = self.read_vram_halfword(window_offset + 8);
-            let param_base = self.read_vram_halfword(window_offset + 9) & 0xfff0;
-            let out_of_bounds_char = self.read_vram_halfword(window_offset + 10);
+            let x = self.read_vram_halfword(window_offset + 2) as i16;
+            let parallax = self.read_vram_halfword(window_offset + 4) as i16;
+            let y = self.read_vram_halfword(window_offset + 6);
+            let bg_x = self.read_vram_halfword(window_offset + 8) as i16;
+            let bg_parallax = self.read_vram_halfword(window_offset + 10) as i16;
+            let bg_y = self.read_vram_halfword(window_offset + 12);
+            let width = self.read_vram_halfword(window_offset + 14);
+            let height = self.read_vram_halfword(window_offset + 16);
+            let param_base = self.read_vram_halfword(window_offset + 18) & 0xfff0;
+            let out_of_bounds_char = self.read_vram_halfword(window_offset + 20);
             println!(" X: {}", x);
             println!(" Parallax: {}", parallax);
             println!(" Y: {}", y);
