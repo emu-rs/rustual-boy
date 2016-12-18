@@ -95,7 +95,8 @@ impl Interconnect {
                 panic!("Read halfword from Game Pad Input High Register not yet implemented");
             }
             MappedAddress::TimerCounterReloadLowReg => {
-                panic!("Read halfword from Timer Counter/Reload Low Register not yet implemented");
+                println!("Read halfword from Timer Counter/Reload Low Register not yet implemented");
+                0
             }
             MappedAddress::TimerCounterReloadHighReg => {
                 panic!("Read halfword from Timer Counter/Reload High Register not yet implemented");
@@ -236,7 +237,7 @@ impl Interconnect {
                 println!("WARNING: Write halfword to Timer Control Register not yet implemented (value: 0x{:04x})", value);
             }
             MappedAddress::WaitControlReg => {
-                panic!("Write halfword to Wait Control Register not yet implemented");
+                println!("WARNING: Write halfword to Wait Control Register not yet implemented (value: 0x{:04x})", value);
             }
             MappedAddress::GamePadInputControlReg => {
                 println!("WARNING: Write halfword to Game Pad Input Control Register not yet implemented (value: 0x{:04x})", value);
