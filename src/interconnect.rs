@@ -31,11 +31,25 @@ impl Interconnect {
             MappedAddress::AuxLinkReg => {
                 panic!("Read byte from Auxiliary Link Register not yet implemented");
             }
+            MappedAddress::LinkTransmitDataReg => {
+                panic!("Read byte from Link Transmit Data Register not yet implemented");
+            }
+            MappedAddress::LinkReceiveDataReg => {
+                panic!("Read byte from Link Receive Data Register not yet implemented");
+            }
+            MappedAddress::GamePadInputLowReg => {
+                println!("WARNING: Read byte from Game Pad Input Low Register not yet implemented");
+                0
+            }
+            MappedAddress::GamePadInputHighReg => {
+                println!("WARNING: Read byte from Game Pad Input High Register not yet implemented");
+                0
+            }
             MappedAddress::WaitControlReg => {
                 panic!("Read byte from Wait Control Register not yet implemented");
             }
             MappedAddress::GamePadInputControlReg => {
-                println!("Read byte from Game Pad Input Control Register not yet implemented");
+                println!("WARNING: Read byte from Game Pad Input Control Register not yet implemented");
                 0
             }
             MappedAddress::Wram(addr) => self.wram.read_byte(addr),
@@ -53,6 +67,18 @@ impl Interconnect {
             }
             MappedAddress::AuxLinkReg => {
                 panic!("Read halfword from Auxiliary Link Register not yet implemented");
+            }
+            MappedAddress::LinkTransmitDataReg => {
+                panic!("Read halfword from Link Transmit Data Register not yet implemented");
+            }
+            MappedAddress::LinkReceiveDataReg => {
+                panic!("Read halfword from Link Receive Data Register not yet implemented");
+            }
+            MappedAddress::GamePadInputLowReg => {
+                panic!("Read halfword from Game Pad Input Low Register not yet implemented");
+            }
+            MappedAddress::GamePadInputHighReg => {
+                panic!("Read halfword from Game Pad Input High Register not yet implemented");
             }
             MappedAddress::WaitControlReg => {
                 panic!("Read halfword from Wait Control Register not yet implemented");
@@ -76,6 +102,18 @@ impl Interconnect {
             MappedAddress::AuxLinkReg => {
                 panic!("Read word from Auxiliary Link Register not yet implemented");
             }
+            MappedAddress::LinkTransmitDataReg => {
+                panic!("Read word from Link Transmit Data Register not yet implemented");
+            }
+            MappedAddress::LinkReceiveDataReg => {
+                panic!("Read word from Link Receive Data Register not yet implemented");
+            }
+            MappedAddress::GamePadInputLowReg => {
+                panic!("Read word from Game Pad Input Low Register not yet implemented");
+            }
+            MappedAddress::GamePadInputHighReg => {
+                panic!("Read word from Game Pad Input High Register not yet implemented");
+            }
             MappedAddress::WaitControlReg => {
                 panic!("Read word from Wait Control Register not yet implemented");
             }
@@ -96,6 +134,18 @@ impl Interconnect {
             }
             MappedAddress::AuxLinkReg => {
                 println!("WARNING: Write byte to Auxiliary Link Register not yet implemented (value: 0x{:02x})", value);
+            }
+            MappedAddress::LinkTransmitDataReg => {
+                println!("WARNING: Write byte to Link Transmit Data Register not yet implemented (value: 0x{:02x})", value);
+            }
+            MappedAddress::LinkReceiveDataReg => {
+                println!("WARNING: Write byte to Link Receive Data Register not yet implemented (value: 0x{:02x})", value);
+            }
+            MappedAddress::GamePadInputLowReg => {
+                println!("WARNING: Write byte to Game Pad Input Low Register not yet implemented (value: 0x{:02x})", value);
+            }
+            MappedAddress::GamePadInputHighReg => {
+                println!("WARNING: Write byte to Game Pad Input High Register not yet implemented (value: 0x{:02x})", value);
             }
             MappedAddress::WaitControlReg => {
                 println!("Wait Control Register (0x{:08x}) written: 0x{:02x}", addr, value);
@@ -123,6 +173,18 @@ impl Interconnect {
             MappedAddress::AuxLinkReg => {
                 println!("WARNING: Write halfword to Auxiliary Link Register not yet implemented (value: 0x{:04x})", value);
             }
+            MappedAddress::LinkTransmitDataReg => {
+                println!("WARNING: Write halfword to Link Transmit Data Register not yet implemented (value: 0x{:04x})", value);
+            }
+            MappedAddress::LinkReceiveDataReg => {
+                println!("WARNING: Write halfword to Link Receive Data Register not yet implemented (value: 0x{:04x})", value);
+            }
+            MappedAddress::GamePadInputLowReg => {
+                println!("WARNING: Write halfword to Game Pad Input Low Register not yet implemented (value: 0x{:04x})", value);
+            }
+            MappedAddress::GamePadInputHighReg => {
+                println!("WARNING: Write halfword to Game Pad Input High Register not yet implemented (value: 0x{:04x})", value);
+            }
             MappedAddress::WaitControlReg => {
                 panic!("Write halfword to Wait Control Register not yet implemented");
             }
@@ -146,6 +208,18 @@ impl Interconnect {
             }
             MappedAddress::AuxLinkReg => {
                 println!("WARNING: Write word to Auxiliary Link Register not yet implemented (value: 0x{:08x})", value);
+            }
+            MappedAddress::LinkTransmitDataReg => {
+                println!("WARNING: Write word to Link Transmit Data Register not yet implemented (value: 0x{:08x})", value);
+            }
+            MappedAddress::LinkReceiveDataReg => {
+                println!("WARNING: Write word to Link Receive Data Register not yet implemented (value: 0x{:08x})", value);
+            }
+            MappedAddress::GamePadInputLowReg => {
+                println!("WARNING: Write word to Game Pad Input Low Register not yet implemented (value: 0x{:08x})", value);
+            }
+            MappedAddress::GamePadInputHighReg => {
+                println!("WARNING: Write word to Game Pad Input High Register not yet implemented (value: 0x{:08x})", value);
             }
             MappedAddress::WaitControlReg => {
                 panic!("Write word to Wait Control Register not yet implemented");

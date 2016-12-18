@@ -8,6 +8,10 @@ pub const VSU_END: u32 = VSU_START + VSU_LENGTH - 1;
 
 pub const LINK_CONTROL_REG: u32 = 0x02000000;
 pub const AUX_LINK_REG: u32 = 0x02000004;
+pub const LINK_TRANSMIT_DATA_REG: u32 = 0x02000008;
+pub const LINK_RECEIVE_DATA_REG: u32 = 0x0200000c;
+pub const GAME_PAD_INPUT_LOW_REG: u32 = 0x02000010;
+pub const GAME_PAD_INPUT_HIGH_REG: u32 = 0x02000014;
 pub const WAIT_CONTROL_REG: u32 = 0x02000024;
 pub const GAME_PAD_INPUT_CONTROL_REG: u32 = 0x02000028;
 
@@ -26,6 +30,10 @@ pub enum MappedAddress {
 
     LinkControlReg,
     AuxLinkReg,
+    LinkTransmitDataReg,
+    LinkReceiveDataReg,
+    GamePadInputLowReg,
+    GamePadInputHighReg,
     WaitControlReg,
     GamePadInputControlReg,
 
@@ -43,6 +51,10 @@ pub fn map_address(addr: u32) -> MappedAddress {
 
         LINK_CONTROL_REG => MappedAddress::LinkControlReg,
         AUX_LINK_REG => MappedAddress::AuxLinkReg,
+        LINK_TRANSMIT_DATA_REG => MappedAddress::LinkTransmitDataReg,
+        LINK_RECEIVE_DATA_REG => MappedAddress::LinkReceiveDataReg,
+        GAME_PAD_INPUT_LOW_REG => MappedAddress::GamePadInputLowReg,
+        GAME_PAD_INPUT_HIGH_REG => MappedAddress::GamePadInputHighReg,
         WAIT_CONTROL_REG => MappedAddress::WaitControlReg,
         GAME_PAD_INPUT_CONTROL_REG => MappedAddress::GamePadInputControlReg,
 
