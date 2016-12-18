@@ -834,6 +834,10 @@ impl Vip {
             println!(" Param base: 0x{:04x}", param_base);
             println!(" Out of bounds char: 0x{:04x}", out_of_bounds_char);
 
+            if stop {
+                break;
+            }
+
             if left_on || right_on {
                 let width = (width as usize) + 1;
                 let height = (height as usize) + 1;
@@ -866,10 +870,6 @@ impl Vip {
                         }
                     }
                 }
-            }
-
-            if stop {
-                break;
             }
 
             window_offset -= WINDOW_ENTRY_LENGTH;
