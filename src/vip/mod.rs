@@ -33,6 +33,9 @@ pub struct Vip {
 
     drawing_state: DrawingState,
 
+    reg_interrupt_enable_drawing_started: bool,
+    reg_interrupt_enable_drawing_finished: bool,
+
     reg_display_control_display_enable: bool,
     reg_display_control_sync_enable: bool,
 
@@ -54,6 +57,9 @@ impl Vip {
             display_state: DisplayState::Idle,
 
             drawing_state: DrawingState::Idle,
+
+            reg_interrupt_enable_drawing_started: false,
+            reg_interrupt_enable_drawing_finished: false,
 
             reg_display_control_display_enable: false,
             reg_display_control_sync_enable: false,
@@ -391,7 +397,9 @@ impl Vip {
                 println!("WARNING: Attempted write halfword to Interrupt Pending Reg");
             }
             MappedAddress::InterruptEnableReg => {
-                println!("WARNING: Write halfword to Interrupt Enable Reg not yet implemented (value: 0x{:04x})", value);
+                println!("WARNING: Write halfword to Interrupt Enable Reg not fully implemented (value: 0x{:04x})", value);
+                self.reg_interrupt_enable_drawing_started = (value & 0x0008) != 0;
+                self.reg_interrupt_enable_drawing_finished = (value & 0x4000) != 0;
             }
             MappedAddress::InterruptClearReg => {
                 println!("WARNING: Write halfword to Interrupt Clear Reg not yet implemented (value: 0x{:04x})", value);
@@ -682,37 +690,57 @@ impl Vip {
         ((self.vram[addr as usize + 1] as u16) << 8)
     }
 
-    pub fn cycles(&mut self, cycles: usize) {
+    pub fn cycles(&mut self, cycles: usize) -> bool {
+        let mut raise_interrupt = false;
+
         for _ in 0..cycles {
             self.frame_clock_counter += CPU_CYCLE_PERIOD_NS;
             if self.frame_clock_counter >= FRAME_CLOCK_PERIOD_NS {
                 self.frame_clock_counter -= FRAME_CLOCK_PERIOD_NS;
-                self.frame_clock();
+                raise_interrupt |= self.frame_clock();
             }
 
             if let DrawingState::Drawing = self.drawing_state {
                 self.drawing_counter += CPU_CYCLE_PERIOD_NS;
                 if self.drawing_counter >= DRAWING_PERIOD_NS {
                     self.end_drawing_process();
+                    if self.reg_interrupt_enable_drawing_finished {
+                        raise_interrupt = true;
+                    }
                 }
             }
         }
+
+        raise_interrupt
     }
 
-    fn frame_clock(&mut self) {
+    fn frame_clock(&mut self) -> bool {
         println!("Frame clock rising edge");
+
+        let mut raise_interrupt = false;
+
         self.game_frame_clock_counter += 1;
         if self.game_frame_clock_counter >= self.reg_game_frame_control {
             self.game_frame_clock_counter = 0;
-            self.game_clock();
+            raise_interrupt |= self.game_clock();
         }
+
+        raise_interrupt
     }
 
-    fn game_clock(&mut self) {
+    fn game_clock(&mut self) -> bool {
         println!("Game clock rising edge");
+
+        let mut raise_interrupt = false;
+
         if self.reg_drawing_control_drawing_enable {
             self.begin_drawing_process();
+            if self.reg_interrupt_enable_drawing_started {
+                raise_interrupt = true;
+            }
         }
+
+        raise_interrupt
     }
 
     fn begin_drawing_process(&mut self) {
@@ -729,7 +757,6 @@ impl Vip {
             println!("Window {}", window_index);
 
             let header = self.read_vram_halfword(window_offset);
-            println!(" Header: 0x{:04x}", header);
             let base = (header & 0x000f) as usize;
             let stop = (header & 0x0040) != 0;
             let out_of_bounds = (header & 0x0080) != 0;
@@ -738,6 +765,7 @@ impl Vip {
             let mode = ((header >> 12) & 0x02) as usize;
             let right_on = (header & 0x4000) != 0;
             let left_on = (header & 0x8000) != 0;
+            println!(" Header: 0x{:04x}", header);
             println!("  base: 0x{:02x}", base);
             println!("  stop: {}", stop);
             println!("  out of bounds: {}", out_of_bounds);

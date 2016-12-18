@@ -159,7 +159,11 @@ impl Interconnect {
         }
     }
 
-    pub fn cycles(&mut self, cycles: usize) {
-        self.vip.cycles(cycles);
+    pub fn cycles(&mut self, cycles: usize) -> Option<u16> {
+        if self.vip.cycles(cycles) {
+            Some(0xfe40)
+        } else {
+            None
+        }
     }
 }

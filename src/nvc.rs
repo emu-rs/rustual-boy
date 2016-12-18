@@ -5,6 +5,10 @@ pub struct Nvc {
     reg_pc: u32,
     reg_gpr: [u32; 31],
 
+    reg_eipc: u32,
+    reg_eipsw: u32,
+    reg_ecr: u16,
+
     psw_zero: bool,
     psw_sign: bool,
     psw_overflow: bool,
@@ -27,6 +31,10 @@ impl Nvc {
         Nvc {
             reg_pc: 0xfffffff0,
             reg_gpr: [0xdeadbeef; 31],
+
+            reg_eipc: 0xdeadbeef,
+            reg_eipsw: 0xdeadbeef,
+            reg_ecr: 0xbeef,
 
             psw_zero: false,
             psw_sign: false,
@@ -62,6 +70,18 @@ impl Nvc {
         if index != 0 {
             self.reg_gpr[index - 1] = value;
         }
+    }
+
+    pub fn reg_eipc(&self) -> u32 {
+        self.reg_eipc
+    }
+
+    pub fn reg_eipsw(&self) -> u32 {
+        self.reg_eipsw
+    }
+
+    pub fn reg_ecr(&self) -> u16 {
+        self.reg_ecr
     }
 
     pub fn reg_psw(&self) -> u32 {
@@ -279,6 +299,9 @@ impl Nvc {
                 let res = self.sar_and_set_flags(lhs, rhs);
                 self.set_reg_gpr(reg2, res);
             }, first_halfword),
+            Opcode::Reti => format_ii(|_, _| {
+                next_pc = self.return_from_exception();
+            }, first_halfword),
             Opcode::Ldsr => format_ii(|imm5, reg2| {
                 let value = self.reg_gpr(reg2);
                 let system_register = opcode.system_register(imm5);
@@ -432,7 +455,9 @@ impl Nvc {
 
         self.reg_pc = next_pc;
 
-        interconnect.cycles(opcode.num_cycles(take_branch));
+        if let Some(exception_code) = interconnect.cycles(opcode.num_cycles(take_branch)) {
+            self.request_exception(exception_code);
+        }
     }
 
     fn add(&mut self, lhs: u32, rhs: u32, reg2: usize) {
@@ -497,6 +522,28 @@ impl Nvc {
     fn set_zero_sign_flags(&mut self, value: u32) {
         self.psw_zero = value == 0;
         self.psw_sign = value & 0x80000000 != 0;
+    }
+
+    fn request_exception(&mut self, exception_code: u16) {
+        println!("Exception requested: 0x{:04x}", exception_code);
+
+        if self.psw_nmi_pending || self.psw_exception_pending || self.psw_interrupt_disable {
+            println!(" Exception ignored");
+            return;
+        }
+
+        println!(" Exception accepted");
+        self.reg_eipc = self.reg_pc;
+        self.reg_eipsw = self.reg_psw();
+        self.reg_ecr = exception_code;
+        self.psw_exception_pending = true;
+        self.reg_pc = 0xffff0000 | (exception_code as u32);
+    }
+
+    fn return_from_exception(&mut self) -> u32 {
+        let psw = self.reg_eipsw;
+        self.set_reg_psw(psw);
+        self.reg_eipc
     }
 }
 
