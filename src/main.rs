@@ -3,6 +3,8 @@ extern crate encoding;
 #[macro_use]
 extern crate nom;
 
+extern crate minifb;
+
 mod rom;
 mod wram;
 mod vip;

@@ -2,6 +2,8 @@
 
 mod mem_map;
 
+use minifb::{WindowOptions, Window};
+
 use self::mem_map::*;
 
 const MS_TO_NS: u64 = 1000000;
@@ -52,6 +54,9 @@ pub struct Vip {
     game_frame_clock_counter: usize,
 
     drawing_counter: u64,
+
+    // Lol
+    window: Window,
 }
 
 impl Vip {
@@ -82,6 +87,8 @@ impl Vip {
             game_frame_clock_counter: 0,
 
             drawing_counter: 0,
+
+            window: Window::new("vb-rs", 384, 224, WindowOptions::default()).unwrap(),
         }
     }
 
@@ -783,6 +790,8 @@ impl Vip {
     }
 
     fn end_drawing_process(&mut self) {
+        let mut buffer = vec![0; 384 * 224];
+
         const WINDOW_ENTRY_LENGTH: u32 = 32;
         let mut window_offset = WINDOW_ATTRIBS_END + 1 - WINDOW_ENTRY_LENGTH;
         let mut window_index = 31;
@@ -827,6 +836,41 @@ impl Vip {
             println!(" Param base: 0x{:04x}", param_base);
             println!(" Out of bounds char: 0x{:04x}", out_of_bounds_char);
 
+            let width = (width as usize) + 1;
+            let height = (height as usize) + 1;
+            let segment_offset = 0x00020000 + base * 0x00002000;
+
+            for segment_y in 0..height / 8 {
+                for segment_x in 0..width / 8 {
+                    let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
+                    let entry = self.read_vram_halfword(segment_addr as _);
+                    let char_index = (entry & 0x07ff) as usize;
+
+                    let char_offset = if char_index < 0x0200 {
+                        0x00006000 + char_index * 16
+                    } else if char_index < 0x0400 {
+                        0x0000e000 + (char_index - 0x0200) * 16
+                    } else if char_index < 0x0600 {
+                        0x00016000 + (char_index - 0x0400) * 16
+                    } else {
+                        0x0001e000 + (char_index - 0x0600) * 16
+                    };
+
+                    for y in 0..8 {
+                        let char_row_offset = char_offset + y * 2;
+                        let char_row_data = self.read_vram_halfword(char_row_offset as _);
+                        for x in 0..8 {
+                            let palette_index = (char_row_data as u32) >> (x * 2);
+                            let color = palette_index << 6;
+                            buffer[(segment_y * 8 + y) * 384 + segment_x * 8 + x] = color << 16;
+                        }
+                    }
+
+                    //print!("{:02x}", char_index & 0xff);
+                }
+                //println!("");
+            }
+
             if stop {
                 break;
             }
@@ -834,6 +878,8 @@ impl Vip {
             window_offset -= WINDOW_ENTRY_LENGTH;
             window_index -= 1;
         }
+
+        self.window.update_with_buffer(&buffer);
 
         println!("End drawing process");
         self.drawing_state = DrawingState::Idle;
