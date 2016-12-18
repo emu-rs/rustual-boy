@@ -89,10 +89,12 @@ impl Interconnect {
                 panic!("Read halfword from Link Receive Data Register not yet implemented");
             }
             MappedAddress::GamePadInputLowReg => {
-                panic!("Read halfword from Game Pad Input Low Register not yet implemented");
+                println!("Read halfword from Game Pad Input Low Register not yet implemented");
+                0
             }
             MappedAddress::GamePadInputHighReg => {
-                panic!("Read halfword from Game Pad Input High Register not yet implemented");
+                println!("Read halfword from Game Pad Input High Register not yet implemented");
+                0
             }
             MappedAddress::TimerCounterReloadLowReg => {
                 println!("Read halfword from Timer Counter/Reload Low Register not yet implemented");
@@ -108,7 +110,8 @@ impl Interconnect {
                 panic!("Read halfword from Wait Control Register not yet implemented");
             }
             MappedAddress::GamePadInputControlReg => {
-                panic!("Read halfword from Game Pad Input Control Register not yet implemented");
+                println!("Read halfword from Game Pad Input Control Register not yet implemented");
+                0
             }
             MappedAddress::Wram(addr) => self.wram.read_halfword(addr),
             MappedAddress::CartridgeRom(addr) => self.rom.read_halfword(addr),
