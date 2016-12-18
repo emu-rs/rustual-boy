@@ -751,11 +751,9 @@ impl Vip {
 
         let mut raise_interrupt = false;
 
-        if self.reg_display_control_display_enable {
-            self.reg_interrupt_pending_start_of_frame_processing = true;
-            if self.reg_interrupt_enable_start_of_frame_processing {
-                raise_interrupt = true;
-            }
+        self.reg_interrupt_pending_start_of_frame_processing = true;
+        if self.reg_interrupt_enable_start_of_frame_processing {
+            raise_interrupt = true;
         }
 
         self.game_frame_clock_counter += 1;

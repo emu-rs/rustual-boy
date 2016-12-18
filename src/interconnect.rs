@@ -26,10 +26,12 @@ impl Interconnect {
             MappedAddress::Vip(addr) => self.vip.read_byte(addr),
             MappedAddress::Vsu(addr) => self.vsu.read_byte(addr),
             MappedAddress::LinkControlReg => {
-                panic!("Read byte from Link Control Register not yet implemented");
+                println!("WARNING: Read byte from Link Control Register not yet implemented");
+                0
             }
             MappedAddress::AuxLinkReg => {
-                panic!("Read byte from Auxiliary Link Register not yet implemented");
+                println!("WARNING: Read byte from Auxiliary Link Register not yet implemented");
+                0
             }
             MappedAddress::LinkTransmitDataReg => {
                 panic!("Read byte from Link Transmit Data Register not yet implemented");
@@ -43,6 +45,18 @@ impl Interconnect {
             }
             MappedAddress::GamePadInputHighReg => {
                 println!("WARNING: Read byte from Game Pad Input High Register not yet implemented");
+                0
+            }
+            MappedAddress::TimerCounterReloadLowReg => {
+                println!("WARNING: Read byte from Timer Counter/Reload Low Register not yet implemented");
+                0
+            }
+            MappedAddress::TimerCounterReloadHighReg => {
+                println!("WARNING: Read byte from Timer Counter/Reload High Register not yet implemented");
+                0
+            }
+            MappedAddress::TimerControlReg => {
+                println!("WARNING: Read byte from Timer Control Register not yet implemented");
                 0
             }
             MappedAddress::WaitControlReg => {
@@ -80,6 +94,15 @@ impl Interconnect {
             MappedAddress::GamePadInputHighReg => {
                 panic!("Read halfword from Game Pad Input High Register not yet implemented");
             }
+            MappedAddress::TimerCounterReloadLowReg => {
+                panic!("Read halfword from Timer Counter/Reload Low Register not yet implemented");
+            }
+            MappedAddress::TimerCounterReloadHighReg => {
+                panic!("Read halfword from Timer Counter/Reload High Register not yet implemented");
+            }
+            MappedAddress::TimerControlReg => {
+                panic!("Read halfword from Timer Control Register not yet implemented");
+            }
             MappedAddress::WaitControlReg => {
                 panic!("Read halfword from Wait Control Register not yet implemented");
             }
@@ -114,6 +137,15 @@ impl Interconnect {
             MappedAddress::GamePadInputHighReg => {
                 panic!("Read word from Game Pad Input High Register not yet implemented");
             }
+            MappedAddress::TimerCounterReloadLowReg => {
+                panic!("Read word from Timer Counter/Reload Low Register not yet implemented");
+            }
+            MappedAddress::TimerCounterReloadHighReg => {
+                panic!("Read word from Timer Counter/Reload High Register not yet implemented");
+            }
+            MappedAddress::TimerControlReg => {
+                panic!("Read word from Timer Control Register not yet implemented");
+            }
             MappedAddress::WaitControlReg => {
                 panic!("Read word from Wait Control Register not yet implemented");
             }
@@ -146,6 +178,15 @@ impl Interconnect {
             }
             MappedAddress::GamePadInputHighReg => {
                 println!("WARNING: Write byte to Game Pad Input High Register not yet implemented (value: 0x{:02x})", value);
+            }
+            MappedAddress::TimerCounterReloadLowReg => {
+                println!("WARNING: Write byte to Timer Counter/Reload Low Register not yet implemented (value: 0x{:02x})", value);
+            }
+            MappedAddress::TimerCounterReloadHighReg => {
+                println!("WARNING: Write byte to Timer Counter/Reload High Register not yet implemented (value: 0x{:02x})", value);
+            }
+            MappedAddress::TimerControlReg => {
+                println!("WARNING: Write byte to Timer Control Register not yet implemented (value: 0x{:02x})", value);
             }
             MappedAddress::WaitControlReg => {
                 println!("Wait Control Register (0x{:08x}) written: 0x{:02x}", addr, value);
@@ -185,6 +226,15 @@ impl Interconnect {
             MappedAddress::GamePadInputHighReg => {
                 println!("WARNING: Write halfword to Game Pad Input High Register not yet implemented (value: 0x{:04x})", value);
             }
+            MappedAddress::TimerCounterReloadLowReg => {
+                println!("WARNING: Write halfword to Timer Counter/Reload Low Register not yet implemented (value: 0x{:04x})", value);
+            }
+            MappedAddress::TimerCounterReloadHighReg => {
+                println!("WARNING: Write halfword to Timer Counter/Reload High Register not yet implemented (value: 0x{:04x})", value);
+            }
+            MappedAddress::TimerControlReg => {
+                println!("WARNING: Write halfword to Timer Control Register not yet implemented (value: 0x{:04x})", value);
+            }
             MappedAddress::WaitControlReg => {
                 panic!("Write halfword to Wait Control Register not yet implemented");
             }
@@ -220,6 +270,15 @@ impl Interconnect {
             }
             MappedAddress::GamePadInputHighReg => {
                 println!("WARNING: Write word to Game Pad Input High Register not yet implemented (value: 0x{:08x})", value);
+            }
+            MappedAddress::TimerCounterReloadLowReg => {
+                println!("WARNING: Write word to Timer Counter/Reload Low Register not yet implemented (value: 0x{:08x})", value);
+            }
+            MappedAddress::TimerCounterReloadHighReg => {
+                println!("WARNING: Write word to Timer Counter/Reload High Register not yet implemented (value: 0x{:08x})", value);
+            }
+            MappedAddress::TimerControlReg => {
+                println!("WARNING: Write word to Timer Control Register not yet implemented (value: 0x{:08x})", value);
             }
             MappedAddress::WaitControlReg => {
                 panic!("Write word to Wait Control Register not yet implemented");
