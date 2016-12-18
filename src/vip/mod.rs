@@ -33,6 +33,9 @@ pub struct Vip {
 
     drawing_state: DrawingState,
 
+    reg_interrupt_pending_drawing_started: bool,
+    reg_interrupt_pending_drawing_finished: bool,
+
     reg_interrupt_enable_drawing_started: bool,
     reg_interrupt_enable_drawing_finished: bool,
 
@@ -57,6 +60,9 @@ impl Vip {
             display_state: DisplayState::Idle,
 
             drawing_state: DrawingState::Idle,
+
+            reg_interrupt_pending_drawing_started: false,
+            reg_interrupt_pending_drawing_finished: false,
 
             reg_interrupt_enable_drawing_started: false,
             reg_interrupt_enable_drawing_finished: false,
@@ -270,12 +276,14 @@ impl Vip {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
             MappedAddress::InterruptPendingReg => {
-                println!("WARNING: Read halfword from Interrupt Pending Reg not yet implemented");
-                0
+                println!("WARNING: Read halfword from Interrupt Pending Reg not fully implemented");
+                (if self.reg_interrupt_pending_drawing_started { 1 } else { 0 } << 4) |
+                (if self.reg_interrupt_pending_drawing_finished { 1 } else { 0 } << 14)
             }
             MappedAddress::InterruptEnableReg => {
-                println!("WARNING: Attempted read halfword from Interrupt Enable Reg");
-                0
+                println!("WARNING: Read halfword from Interrupt Enable Reg not fully implemented");
+                (if self.reg_interrupt_enable_drawing_started { 1 } else { 0 } << 4) |
+                (if self.reg_interrupt_enable_drawing_finished { 1 } else { 0 } << 14)
             }
             MappedAddress::InterruptClearReg => {
                 println!("WARNING: Attempted read halfword from Interrupt Clear Reg");
@@ -402,7 +410,13 @@ impl Vip {
                 self.reg_interrupt_enable_drawing_finished = (value & 0x4000) != 0;
             }
             MappedAddress::InterruptClearReg => {
-                println!("WARNING: Write halfword to Interrupt Clear Reg not yet implemented (value: 0x{:04x})", value);
+                println!("WARNING: Write halfword to Interrupt Clear Reg not fully implemented (value: 0x{:04x})", value);
+                if (value & 0x0008) != 0 {
+                    self.reg_interrupt_pending_drawing_started = false;
+                }
+                if (value & 0x4000) != 0 {
+                    self.reg_interrupt_pending_drawing_finished = false;
+                }
             }
             MappedAddress::DisplayControlReadReg => {
                 println!("WARNING: Attempted write halfword to Display Control Read Reg");
@@ -704,6 +718,7 @@ impl Vip {
                 self.drawing_counter += CPU_CYCLE_PERIOD_NS;
                 if self.drawing_counter >= DRAWING_PERIOD_NS {
                     self.end_drawing_process();
+                    self.reg_interrupt_pending_drawing_finished = true;
                     if self.reg_interrupt_enable_drawing_finished {
                         raise_interrupt = true;
                     }
@@ -735,6 +750,7 @@ impl Vip {
 
         if self.reg_drawing_control_drawing_enable {
             self.begin_drawing_process();
+            self.reg_interrupt_pending_drawing_started = true;
             if self.reg_interrupt_enable_drawing_started {
                 raise_interrupt = true;
             }
