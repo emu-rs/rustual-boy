@@ -793,9 +793,9 @@ impl Vip {
             let base = (header & 0x000f) as usize;
             let stop = (header & 0x0040) != 0;
             let out_of_bounds = (header & 0x0080) != 0;
-            let bg_height = ((header >> 8) & 0x02) as usize;
-            let bg_width = ((header >> 10) & 0x02) as usize;
-            let mode = ((header >> 12) & 0x02) as usize;
+            let bg_height = ((header >> 8) & 0x03) as usize;
+            let bg_width = ((header >> 10) & 0x03) as usize;
+            let mode = ((header >> 12) & 0x03) as usize;
             let right_on = (header & 0x4000) != 0;
             let left_on = (header & 0x8000) != 0;
             println!(" Header: 0x{:04x}", header);
