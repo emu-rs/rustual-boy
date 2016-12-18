@@ -35,7 +35,8 @@ impl Interconnect {
                 panic!("Read byte from Wait Control Register not yet implemented");
             }
             MappedAddress::GamePadInputControlReg => {
-                panic!("Read byte from Game Pad Input Control Register not yet implemented");
+                println!("Read byte from Game Pad Input Control Register not yet implemented");
+                0
             }
             MappedAddress::Wram(addr) => self.wram.read_byte(addr),
             MappedAddress::CartridgeRom(addr) => self.rom.read_byte(addr),

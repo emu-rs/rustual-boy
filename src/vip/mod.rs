@@ -34,9 +34,11 @@ pub struct Vip {
     drawing_state: DrawingState,
 
     reg_interrupt_pending_drawing_started: bool,
+    reg_interrupt_pending_start_of_frame_processing: bool,
     reg_interrupt_pending_drawing_finished: bool,
 
     reg_interrupt_enable_drawing_started: bool,
+    reg_interrupt_enable_start_of_frame_processing: bool,
     reg_interrupt_enable_drawing_finished: bool,
 
     reg_display_control_display_enable: bool,
@@ -62,9 +64,11 @@ impl Vip {
             drawing_state: DrawingState::Idle,
 
             reg_interrupt_pending_drawing_started: false,
+            reg_interrupt_pending_start_of_frame_processing: false,
             reg_interrupt_pending_drawing_finished: false,
 
             reg_interrupt_enable_drawing_started: false,
+            reg_interrupt_enable_start_of_frame_processing: false,
             reg_interrupt_enable_drawing_finished: false,
 
             reg_display_control_display_enable: false,
@@ -277,12 +281,14 @@ impl Vip {
         match map_address(addr) {
             MappedAddress::InterruptPendingReg => {
                 println!("WARNING: Read halfword from Interrupt Pending Reg not fully implemented");
-                (if self.reg_interrupt_pending_drawing_started { 1 } else { 0 } << 4) |
+                (if self.reg_interrupt_pending_drawing_started { 1 } else { 0 } << 3) |
+                (if self.reg_interrupt_pending_start_of_frame_processing { 1 } else { 0 } << 4) |
                 (if self.reg_interrupt_pending_drawing_finished { 1 } else { 0 } << 14)
             }
             MappedAddress::InterruptEnableReg => {
                 println!("WARNING: Read halfword from Interrupt Enable Reg not fully implemented");
-                (if self.reg_interrupt_enable_drawing_started { 1 } else { 0 } << 4) |
+                (if self.reg_interrupt_enable_drawing_started { 1 } else { 0 } << 3) |
+                (if self.reg_interrupt_enable_start_of_frame_processing { 1 } else { 0 } << 4) |
                 (if self.reg_interrupt_enable_drawing_finished { 1 } else { 0 } << 14)
             }
             MappedAddress::InterruptClearReg => {
@@ -407,12 +413,16 @@ impl Vip {
             MappedAddress::InterruptEnableReg => {
                 println!("WARNING: Write halfword to Interrupt Enable Reg not fully implemented (value: 0x{:04x})", value);
                 self.reg_interrupt_enable_drawing_started = (value & 0x0008) != 0;
+                self.reg_interrupt_enable_start_of_frame_processing = (value & 0x0010) != 0;
                 self.reg_interrupt_enable_drawing_finished = (value & 0x4000) != 0;
             }
             MappedAddress::InterruptClearReg => {
                 println!("WARNING: Write halfword to Interrupt Clear Reg not fully implemented (value: 0x{:04x})", value);
                 if (value & 0x0008) != 0 {
                     self.reg_interrupt_pending_drawing_started = false;
+                }
+                if (value & 0x0010) != 0 {
+                    self.reg_interrupt_pending_start_of_frame_processing = false;
                 }
                 if (value & 0x4000) != 0 {
                     self.reg_interrupt_pending_drawing_finished = false;
@@ -733,6 +743,13 @@ impl Vip {
         println!("Frame clock rising edge");
 
         let mut raise_interrupt = false;
+
+        if self.reg_display_control_display_enable {
+            self.reg_interrupt_pending_start_of_frame_processing = true;
+            if self.reg_interrupt_enable_start_of_frame_processing {
+                raise_interrupt = true;
+            }
+        }
 
         self.game_frame_clock_counter += 1;
         if self.game_frame_clock_counter >= self.reg_game_frame_control {
