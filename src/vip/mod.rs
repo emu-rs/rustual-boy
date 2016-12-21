@@ -191,6 +191,10 @@ impl Vip {
             MappedAddress::Vram(addr) => {
                 self.vram[addr as usize]
             }
+            MappedAddress::Unrecognized(addr) => {
+                println!("WARNING: Attempted read byte from unrecognized VIP address (addr: 0x{:08x})", addr);
+                0
+            }
         }
     }
 
@@ -273,6 +277,9 @@ impl Vip {
             }
             MappedAddress::Vram(addr) => {
                 self.vram[addr as usize] = value;
+            }
+            MappedAddress::Unrecognized(addr) => {
+                println!("WARNING: Attempted write byte to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:02x})", addr, value);
             }
         }
     }
@@ -402,6 +409,10 @@ impl Vip {
                 (self.vram[addr as usize] as u16) |
                 ((self.vram[addr as usize + 1] as u16) << 8)
             }
+            MappedAddress::Unrecognized(addr) => {
+                println!("WARNING: Attempted read halfword from unrecognized VIP address (addr: 0x{:08x})", addr);
+                0
+            }
         }
     }
 
@@ -507,6 +518,9 @@ impl Vip {
             MappedAddress::Vram(addr) => {
                 self.vram[addr as usize] = value as u8;
                 self.vram[addr as usize + 1] = (value >> 8) as u8;
+            }
+            MappedAddress::Unrecognized(addr) => {
+                println!("WARNING: Attempted write halfword to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
             }
         }
     }
@@ -620,6 +634,10 @@ impl Vip {
                 ((self.vram[addr as usize + 2] as u32) << 16) |
                 ((self.vram[addr as usize + 3] as u32) << 24)
             }
+            MappedAddress::Unrecognized(addr) => {
+                println!("WARNING: Attempted read word from unrecognized VIP address (addr: 0x{:08x})", addr);
+                0
+            }
         }
     }
 
@@ -706,6 +724,9 @@ impl Vip {
                 self.vram[addr as usize + 1] = (value >> 8) as u8;
                 self.vram[addr as usize + 2] = (value >> 16) as u8;
                 self.vram[addr as usize + 3] = (value >> 24) as u8;
+            }
+            MappedAddress::Unrecognized(addr) => {
+                println!("WARNING: Attempted write word to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:08x})", addr, value);
             }
         }
     }

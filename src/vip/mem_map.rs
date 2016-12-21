@@ -138,6 +138,8 @@ pub enum MappedAddress {
     ObjPalette3Reg,
 
     ClearColorReg,
+
+    Unrecognized(u32),
 }
 
 pub fn map_address(addr: u32) -> MappedAddress {
@@ -188,6 +190,6 @@ pub fn map_address(addr: u32) -> MappedAddress {
         CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
             MappedAddress::Vram(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START),
 
-        _ => panic!("Unrecognized VIP addr: 0x{:08x}", addr)
+        _ => MappedAddress::Unrecognized(addr)
     }
 }
