@@ -18,6 +18,10 @@ pub const TIMER_CONTROL_REG: u32 = 0x02000020;
 pub const WAIT_CONTROL_REG: u32 = 0x02000024;
 pub const GAME_PAD_INPUT_CONTROL_REG: u32 = 0x02000028;
 
+pub const CARTRIDGE_EXPANSION_START: u32 = 0x04000000;
+pub const CARTRIDGE_EXPANSION_LENGTH: u32 = 0x01000000;
+pub const CARTRIDGE_EXPANSION_END: u32 = CARTRIDGE_EXPANSION_START + CARTRIDGE_EXPANSION_LENGTH - 1;
+
 pub const WRAM_START: u32 = 0x05000000;
 pub const WRAM_LENGTH: u32 = 0x01000000;
 pub const WRAM_END: u32 = WRAM_START + WRAM_LENGTH - 1;
@@ -43,6 +47,8 @@ pub enum MappedAddress {
     WaitControlReg,
     GamePadInputControlReg,
 
+    CartridgeExpansion(u32),
+
     Wram(u32),
 
     CartridgeRom(u32)
@@ -66,6 +72,8 @@ pub fn map_address(addr: u32) -> MappedAddress {
         TIMER_CONTROL_REG => MappedAddress::TimerControlReg,
         WAIT_CONTROL_REG => MappedAddress::WaitControlReg,
         GAME_PAD_INPUT_CONTROL_REG => MappedAddress::GamePadInputControlReg,
+
+        CARTRIDGE_EXPANSION_START ... CARTRIDGE_EXPANSION_END => MappedAddress::CartridgeExpansion(addr - CARTRIDGE_EXPANSION_START),
 
         WRAM_START ... WRAM_END => MappedAddress::Wram(addr - WRAM_START),
 
