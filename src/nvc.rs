@@ -328,6 +328,31 @@ impl Nvc {
                     }
                 }
             }, first_halfword),
+            Opcode::Stsr => format_ii(|imm5, reg2| {
+                let system_register = opcode.system_register(imm5);
+                let value = match system_register {
+                    SystemRegister::Eipc => self.reg_eipc,
+                    SystemRegister::Eipsw => self.reg_eipsw,
+                    SystemRegister::Fepc => {
+                        println!("WARNING: stsr fepc not yet implemented");
+                        0
+                    }
+                    SystemRegister::Fepsw => {
+                        println!("WARNING: stsr fepsw not yet implemented");
+                        0
+                    }
+                    SystemRegister::Ecr => {
+                        println!("WARNING: stsr ecr not yet implemented");
+                        0
+                    }
+                    SystemRegister::Psw => self.reg_psw(),
+                    SystemRegister::Chcw => {
+                        println!("WARNING: stsr chcw not yet implemented");
+                        0
+                    }
+                };
+                self.set_reg_gpr(reg2, value);
+            }, first_halfword),
             Opcode::Sei => format_ii(|_, _| {
                 self.psw_interrupt_disable = true;
             }, first_halfword),
