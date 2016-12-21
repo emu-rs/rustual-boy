@@ -26,6 +26,10 @@ pub const WRAM_START: u32 = 0x05000000;
 pub const WRAM_LENGTH: u32 = 0x01000000;
 pub const WRAM_END: u32 = WRAM_START + WRAM_LENGTH - 1;
 
+pub const CARTRIDGE_RAM_START: u32 = 0x06000000;
+pub const CARTRIDGE_RAM_LENGTH: u32 = 0x01000000;
+pub const CARTRIDGE_RAM_END: u32 = CARTRIDGE_RAM_START + CARTRIDGE_RAM_LENGTH - 1;
+
 pub const CARTRIDGE_ROM_START: u32 = 0x07000000;
 pub const CARTRIDGE_ROM_LENGTH: u32 = 0x01000000;
 pub const CARTRIDGE_ROM_END: u32 = CARTRIDGE_ROM_START + CARTRIDGE_ROM_LENGTH - 1;
@@ -51,7 +55,9 @@ pub enum MappedAddress {
 
     Wram(u32),
 
-    CartridgeRom(u32)
+    CartridgeRam(u32),
+
+    CartridgeRom(u32),
 }
 
 pub fn map_address(addr: u32) -> MappedAddress {
@@ -76,6 +82,8 @@ pub fn map_address(addr: u32) -> MappedAddress {
         CARTRIDGE_EXPANSION_START ... CARTRIDGE_EXPANSION_END => MappedAddress::CartridgeExpansion(addr - CARTRIDGE_EXPANSION_START),
 
         WRAM_START ... WRAM_END => MappedAddress::Wram(addr - WRAM_START),
+
+        CARTRIDGE_RAM_START ... CARTRIDGE_RAM_END => MappedAddress::CartridgeRam(addr - CARTRIDGE_RAM_START),
 
         CARTRIDGE_ROM_START ... CARTRIDGE_ROM_END => MappedAddress::CartridgeRom(addr - CARTRIDGE_ROM_START),
 

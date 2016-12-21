@@ -72,6 +72,10 @@ impl Interconnect {
                 0
             }
             MappedAddress::Wram(addr) => self.wram.read_byte(addr),
+            MappedAddress::CartridgeRam(addr) => {
+                println!("WARNING: Read byte from Cartridge RAM not yet implemented (addr: 0x{:08x})", addr);
+                0
+            }
             MappedAddress::CartridgeRom(addr) => self.rom.read_byte(addr),
         }
     }
@@ -123,6 +127,10 @@ impl Interconnect {
                 0
             }
             MappedAddress::Wram(addr) => self.wram.read_halfword(addr),
+            MappedAddress::CartridgeRam(addr) => {
+                println!("WARNING: Read halfword from Cartridge RAM not yet implemented (addr: 0x{:08x})", addr);
+                0
+            }
             MappedAddress::CartridgeRom(addr) => self.rom.read_halfword(addr),
         }
     }
@@ -167,6 +175,10 @@ impl Interconnect {
             }
             MappedAddress::CartridgeExpansion(addr) => {
                 println!("WARNING: Read word from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr);
+                0
+            }
+            MappedAddress::CartridgeRam(addr) => {
+                println!("WARNING: Read word from Cartridge RAM not yet implemented (addr: 0x{:08x})", addr);
                 0
             }
             MappedAddress::Wram(addr) => self.wram.read_word(addr),
@@ -217,6 +229,9 @@ impl Interconnect {
                 println!("WARNING: Write byte to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:02x})", addr, value);
             }
             MappedAddress::Wram(addr) => self.wram.write_byte(addr, value),
+            MappedAddress::CartridgeRam(addr) => {
+                println!("WARNING: Write byte to Cartridge RAM not yet implemented (addr: 0x{:08x}, value: 0x{:02x})", addr, value);
+            }
             MappedAddress::CartridgeRom(_) => {
                 println!("WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr);
             }
@@ -265,6 +280,9 @@ impl Interconnect {
                 println!("WARNING: Write halfword to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
             }
             MappedAddress::Wram(addr) => self.wram.write_halfword(addr, value),
+            MappedAddress::CartridgeRam(addr) => {
+                println!("WARNING: Write halfword to Cartridge RAM not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
+            }
             MappedAddress::CartridgeRom(_) => {
                 println!("WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr);
             }
@@ -313,6 +331,9 @@ impl Interconnect {
                 println!("WARNING: Write word to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:08x})", addr, value);
             }
             MappedAddress::Wram(addr) => self.wram.write_word(addr, value),
+            MappedAddress::CartridgeRam(addr) => {
+                println!("WARNING: Write word to Cartridge RAM not yet implemented (addr: 0x{:08x}, value: 0x{:08x})", addr, value);
+            }
             MappedAddress::CartridgeRom(_) => {
                 println!("WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr);
             }
