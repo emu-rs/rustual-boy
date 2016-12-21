@@ -307,6 +307,21 @@ impl Nvc {
                 let value = self.reg_gpr(reg2);
                 let system_register = opcode.system_register(imm5);
                 match system_register {
+                    SystemRegister::Eipc => {
+                        self.reg_eipc = value;
+                    }
+                    SystemRegister::Eipsw => {
+                        self.reg_eipsw = value;
+                    }
+                    SystemRegister::Fepc => {
+                        println!("WARNING: ldsr fepc not yet implemented (value: 0x{:08x})", value);
+                    }
+                    SystemRegister::Fepsw => {
+                        println!("WARNING: ldsr fepsw not yet implemented (value: 0x{:08x})", value);
+                    }
+                    SystemRegister::Ecr => {
+                        println!("WARNING: Attempted ldsr ecr (value: 0x{:08x})", value);
+                    }
                     SystemRegister::Psw => self.set_reg_psw(value),
                     SystemRegister::Chcw => {
                         println!("WARNING: ldsr chcw not yet implemented (value: 0x{:08x})", value);

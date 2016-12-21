@@ -212,6 +212,11 @@ impl Opcode {
 
     pub fn system_register(&self, imm5: usize) -> SystemRegister {
         match imm5 {
+            0 => SystemRegister::Eipc,
+            1 => SystemRegister::Eipsw,
+            2 => SystemRegister::Fepc,
+            3 => SystemRegister::Fepsw,
+            4 => SystemRegister::Ecr,
             5 => SystemRegister::Psw,
             24 => SystemRegister::Chcw,
             _ => panic!("Unrecognized system register: {}", imm5),
@@ -373,6 +378,11 @@ impl InstructionFormat {
 }
 
 pub enum SystemRegister {
+    Eipc,
+    Eipsw,
+    Fepc,
+    Fepsw,
+    Ecr,
     Psw,
     Chcw
 }
@@ -380,6 +390,11 @@ pub enum SystemRegister {
 impl fmt::Display for SystemRegister {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mnemonic = match self {
+            &SystemRegister::Eipc => "eipc",
+            &SystemRegister::Eipsw => "eipsw",
+            &SystemRegister::Fepc => "fepc",
+            &SystemRegister::Fepsw => "fepsw",
+            &SystemRegister::Ecr => "ecr",
             &SystemRegister::Psw => "psw",
             &SystemRegister::Chcw => "chcw",
         };

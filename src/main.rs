@@ -141,7 +141,7 @@ fn main() {
                 println!("psw: 0x{:08x}", virtual_boy.cpu.reg_psw());
                 println!("eipc: 0x{:08x}", virtual_boy.cpu.reg_eipc());
                 println!("eipsw: 0x{:08x}", virtual_boy.cpu.reg_eipsw());
-                println!("ecr: 0x{:04x}", virtual_boy.cpu.reg_ecr());
+                println!("ecr: 0x{:08x}", virtual_boy.cpu.reg_ecr());
             }
             Ok(Command::Step) => {
                 virtual_boy.step(&mut video_driver);
