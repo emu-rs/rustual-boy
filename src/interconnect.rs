@@ -61,7 +61,8 @@ impl Interconnect {
                 0
             }
             MappedAddress::WaitControlReg => {
-                panic!("Read byte from Wait Control Register not yet implemented");
+                println!("WARNING: Read byte from Wait Control Register not yet implemented");
+                0
             }
             MappedAddress::GamePadInputControlReg => {
                 println!("WARNING: Read byte from Game Pad Input Control Register not yet implemented");
