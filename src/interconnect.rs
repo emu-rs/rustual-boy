@@ -114,7 +114,8 @@ impl Interconnect {
                 panic!("Read halfword from Timer Counter/Reload High Register not yet implemented");
             }
             MappedAddress::TimerControlReg => {
-                panic!("Read halfword from Timer Control Register not yet implemented");
+                println!("WARNING: Read halfword from Timer Control Register not yet implemented");
+                0
             }
             MappedAddress::WaitControlReg => {
                 panic!("Read halfword from Wait Control Register not yet implemented");
