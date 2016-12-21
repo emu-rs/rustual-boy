@@ -5,6 +5,7 @@ extern crate nom;
 
 extern crate minifb;
 
+mod video_driver;
 mod rom;
 mod wram;
 mod vip;
@@ -16,6 +17,9 @@ mod nvc;
 
 use nom::{IResult, eof, space, digit, hex_digit, alphanumeric};
 
+use minifb::{WindowOptions, Window};
+
+use video_driver::*;
 use rom::*;
 use interconnect::*;
 use instruction::*;
@@ -26,6 +30,16 @@ use std::io::{stdin, stdout, Write};
 use std::borrow::Cow;
 use std::str::{self, FromStr};
 use std::collections::{HashSet, HashMap};
+
+struct WindowVideoDriver<'a> {
+    window: &'a mut Window,
+}
+
+impl<'a> VideoDriver for WindowVideoDriver<'a> {
+    fn output_frame(&mut self, frame: &[u32]) {
+        self.window.update_with_buffer(frame);
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Command {
@@ -69,8 +83,8 @@ impl VirtualBoy {
         }
     }
 
-    pub fn step(&mut self) {
-        self.cpu.step(&mut self.interconnect);
+    pub fn step(&mut self, video_driver: &mut VideoDriver) {
+        self.cpu.step(&mut self.interconnect, video_driver);
     }
 }
 
@@ -93,6 +107,11 @@ fn main() {
     println!(" maker code: \"{}\"", rom.maker_code().unwrap());
     println!(" game code: \"{}\"", rom.game_code().unwrap());
     println!(" game version: 1.{:#02}", rom.game_version_byte());
+
+    let mut window = Window::new("vb-rs", 384, 224, WindowOptions::default()).unwrap();
+    let mut video_driver = WindowVideoDriver {
+        window: &mut window
+    };
 
     let mut virtual_boy = VirtualBoy::new(rom);
 
@@ -125,7 +144,7 @@ fn main() {
                 println!("ecr: 0x{:04x}", virtual_boy.cpu.reg_ecr());
             }
             Ok(Command::Step) => {
-                virtual_boy.step();
+                virtual_boy.step(&mut video_driver);
                 cursor = virtual_boy.cpu.reg_pc();
                 disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
                 cursor = virtual_boy.cpu.reg_pc();
@@ -134,7 +153,7 @@ fn main() {
                 // TODO: Main loop shouldn't be here probably; should
                 //  break out to something else
                 loop {
-                    virtual_boy.step();
+                    virtual_boy.step(&mut video_driver);
                     cursor = virtual_boy.cpu.reg_pc();
                     if breakpoints.contains(&cursor) {
                         break;

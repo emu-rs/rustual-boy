@@ -2,8 +2,7 @@
 
 mod mem_map;
 
-use minifb::{WindowOptions, Window};
-
+use video_driver::*;
 use self::mem_map::*;
 
 const MS_TO_NS: u64 = 1000000;
@@ -54,9 +53,6 @@ pub struct Vip {
     game_frame_clock_counter: usize,
 
     drawing_counter: u64,
-
-    // Lol
-    window: Window,
 }
 
 impl Vip {
@@ -87,8 +83,6 @@ impl Vip {
             game_frame_clock_counter: 0,
 
             drawing_counter: 0,
-
-            window: Window::new("vb-rs", 384, 224, WindowOptions::default()).unwrap(),
         }
     }
 
@@ -721,7 +715,7 @@ impl Vip {
         ((self.vram[addr as usize + 1] as u16) << 8)
     }
 
-    pub fn cycles(&mut self, cycles: usize) -> bool {
+    pub fn cycles(&mut self, cycles: usize, video_driver: &mut VideoDriver) -> bool {
         let mut raise_interrupt = false;
 
         for _ in 0..cycles {
@@ -734,7 +728,7 @@ impl Vip {
             if let DrawingState::Drawing = self.drawing_state {
                 self.drawing_counter += CPU_CYCLE_PERIOD_NS;
                 if self.drawing_counter >= DRAWING_PERIOD_NS {
-                    self.end_drawing_process();
+                    self.end_drawing_process(video_driver);
                     self.reg_interrupt_pending_drawing_finished = true;
                     if self.reg_interrupt_enable_drawing_finished {
                         raise_interrupt = true;
@@ -787,7 +781,7 @@ impl Vip {
         self.drawing_counter = 0;
     }
 
-    fn end_drawing_process(&mut self) {
+    fn end_drawing_process(&mut self, video_driver: &mut VideoDriver) {
         let mut buffer = vec![0; 384 * 224];
 
         const WINDOW_ENTRY_LENGTH: u32 = 32;
@@ -876,7 +870,7 @@ impl Vip {
             window_index -= 1;
         }
 
-        self.window.update_with_buffer(&buffer);
+        video_driver.output_frame(&buffer);
 
         println!("End drawing process");
         self.drawing_state = DrawingState::Idle;

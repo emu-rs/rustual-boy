@@ -1,3 +1,4 @@
+use video_driver::*;
 use rom::*;
 use wram::*;
 use vip::*;
@@ -297,8 +298,8 @@ impl Interconnect {
         }
     }
 
-    pub fn cycles(&mut self, cycles: usize) -> Option<u16> {
-        if self.vip.cycles(cycles) {
+    pub fn cycles(&mut self, cycles: usize, video_driver: &mut VideoDriver) -> Option<u16> {
+        if self.vip.cycles(cycles, video_driver) {
             Some(0xfe40)
         } else {
             None
