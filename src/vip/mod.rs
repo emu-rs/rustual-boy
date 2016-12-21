@@ -782,7 +782,10 @@ impl Vip {
     }
 
     fn end_drawing_process(&mut self, video_driver: &mut VideoDriver) {
-        let mut buffer = vec![0; 384 * 224];
+        const RESOLUTION_X: usize = 384;
+        const RESOLUTION_Y: usize = 224;
+
+        let mut buffer = vec![0; RESOLUTION_X * RESOLUTION_Y];
 
         const WINDOW_ENTRY_LENGTH: u32 = 32;
         let mut window_offset = WINDOW_ATTRIBS_END + 1 - WINDOW_ENTRY_LENGTH;
@@ -859,7 +862,7 @@ impl Vip {
                             for x in 0..8 {
                                 let palette_index = (char_row_data as u32) >> (x * 2);
                                 let color = palette_index << 6;
-                                buffer[(segment_y * 8 + y) * 384 + segment_x * 8 + x] = color << 16;
+                                buffer[(segment_y * 8 + y) * RESOLUTION_X + segment_x * 8 + x] = color << 16;
                             }
                         }
                     }
