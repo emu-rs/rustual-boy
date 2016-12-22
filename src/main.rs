@@ -184,7 +184,7 @@ fn main() {
                             print!(" ");
                         }
                     }
-                    println!("");
+                    println!();
                 }
             }
             Ok(Command::Disassemble(count)) => {
