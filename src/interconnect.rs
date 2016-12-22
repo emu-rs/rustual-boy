@@ -12,6 +12,8 @@ pub struct Interconnect {
     vip: Vip,
     vsu: Vsu,
     timer: Timer,
+
+    gamepad_strobe_hack: bool,
 }
 
 impl Interconnect {
@@ -22,6 +24,8 @@ impl Interconnect {
             vip: Vip::new(),
             vsu: Vsu::new(),
             timer: Timer::new(),
+
+            gamepad_strobe_hack: false,
         }
     }
 
@@ -45,11 +49,11 @@ impl Interconnect {
             }
             MappedAddress::GamePadInputLowReg => {
                 println!("WARNING: Read byte from Game Pad Input Low Register not yet implemented");
-                0xfe
+                if self.gamepad_strobe_hack { 0xfe } else { 0x00 }
             }
             MappedAddress::GamePadInputHighReg => {
                 println!("WARNING: Read byte from Game Pad Input High Register not yet implemented");
-                0xff
+                if self.gamepad_strobe_hack { 0xff } else { 0x00 }
             }
             MappedAddress::TimerCounterReloadLowReg => self.timer.read_counter_reload_low_reg(),
             MappedAddress::TimerCounterReloadHighReg => self.timer.read_counter_reload_high_reg(),
@@ -313,6 +317,10 @@ impl Interconnect {
 
         if self.vip.cycles(cycles, video_driver) {
             interrupt = Some(0xfe40);
+        }
+
+        for _ in 0..cycles {
+            self.gamepad_strobe_hack = !self.gamepad_strobe_hack;
         }
 
         interrupt
