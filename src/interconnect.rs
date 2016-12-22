@@ -42,11 +42,11 @@ impl Interconnect {
             }
             MappedAddress::GamePadInputLowReg => {
                 println!("WARNING: Read byte from Game Pad Input Low Register not yet implemented");
-                0
+                0xfe
             }
             MappedAddress::GamePadInputHighReg => {
                 println!("WARNING: Read byte from Game Pad Input High Register not yet implemented");
-                0
+                0xff
             }
             MappedAddress::TimerCounterReloadLowReg => {
                 println!("WARNING: Read byte from Timer Counter/Reload Low Register not yet implemented");
