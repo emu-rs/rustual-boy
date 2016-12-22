@@ -3,6 +3,7 @@ use rom::*;
 use wram::*;
 use vip::*;
 use vsu::*;
+use timer::*;
 use mem_map::*;
 
 pub struct Interconnect {
@@ -10,6 +11,7 @@ pub struct Interconnect {
     wram: Wram,
     vip: Vip,
     vsu: Vsu,
+    timer: Timer,
 }
 
 impl Interconnect {
@@ -19,6 +21,7 @@ impl Interconnect {
             wram: Wram::new(),
             vip: Vip::new(),
             vsu: Vsu::new(),
+            timer: Timer::new(),
         }
     }
 
@@ -48,18 +51,9 @@ impl Interconnect {
                 println!("WARNING: Read byte from Game Pad Input High Register not yet implemented");
                 0xff
             }
-            MappedAddress::TimerCounterReloadLowReg => {
-                println!("WARNING: Read byte from Timer Counter/Reload Low Register not yet implemented");
-                0
-            }
-            MappedAddress::TimerCounterReloadHighReg => {
-                println!("WARNING: Read byte from Timer Counter/Reload High Register not yet implemented");
-                0
-            }
-            MappedAddress::TimerControlReg => {
-                println!("WARNING: Read byte from Timer Control Register not yet implemented");
-                0
-            }
+            MappedAddress::TimerCounterReloadLowReg => self.timer.read_counter_reload_low_reg(),
+            MappedAddress::TimerCounterReloadHighReg => self.timer.read_counter_reload_high_reg(),
+            MappedAddress::TimerControlReg => self.timer.read_control_reg(),
             MappedAddress::WaitControlReg => {
                 println!("WARNING: Read byte from Wait Control Register not yet implemented");
                 0
@@ -106,17 +100,9 @@ impl Interconnect {
                 println!("Read halfword from Game Pad Input High Register not yet implemented");
                 0
             }
-            MappedAddress::TimerCounterReloadLowReg => {
-                println!("Read halfword from Timer Counter/Reload Low Register not yet implemented");
-                0
-            }
-            MappedAddress::TimerCounterReloadHighReg => {
-                panic!("Read halfword from Timer Counter/Reload High Register not yet implemented");
-            }
-            MappedAddress::TimerControlReg => {
-                println!("WARNING: Read halfword from Timer Control Register not yet implemented");
-                0
-            }
+            MappedAddress::TimerCounterReloadLowReg => self.timer.read_counter_reload_low_reg() as _,
+            MappedAddress::TimerCounterReloadHighReg => self.timer.read_counter_reload_high_reg() as _,
+            MappedAddress::TimerControlReg => self.timer.read_control_reg() as _,
             MappedAddress::WaitControlReg => {
                 panic!("Read halfword from Wait Control Register not yet implemented");
             }
@@ -160,15 +146,9 @@ impl Interconnect {
             MappedAddress::GamePadInputHighReg => {
                 panic!("Read word from Game Pad Input High Register not yet implemented");
             }
-            MappedAddress::TimerCounterReloadLowReg => {
-                panic!("Read word from Timer Counter/Reload Low Register not yet implemented");
-            }
-            MappedAddress::TimerCounterReloadHighReg => {
-                panic!("Read word from Timer Counter/Reload High Register not yet implemented");
-            }
-            MappedAddress::TimerControlReg => {
-                panic!("Read word from Timer Control Register not yet implemented");
-            }
+            MappedAddress::TimerCounterReloadLowReg => self.timer.read_counter_reload_low_reg() as _,
+            MappedAddress::TimerCounterReloadHighReg => self.timer.read_counter_reload_high_reg() as _,
+            MappedAddress::TimerControlReg => self.timer.read_control_reg() as _,
             MappedAddress::WaitControlReg => {
                 panic!("Read word from Wait Control Register not yet implemented");
             }
@@ -210,15 +190,9 @@ impl Interconnect {
             MappedAddress::GamePadInputHighReg => {
                 println!("WARNING: Write byte to Game Pad Input High Register not yet implemented (value: 0x{:02x})", value);
             }
-            MappedAddress::TimerCounterReloadLowReg => {
-                println!("WARNING: Write byte to Timer Counter/Reload Low Register not yet implemented (value: 0x{:02x})", value);
-            }
-            MappedAddress::TimerCounterReloadHighReg => {
-                println!("WARNING: Write byte to Timer Counter/Reload High Register not yet implemented (value: 0x{:02x})", value);
-            }
-            MappedAddress::TimerControlReg => {
-                println!("WARNING: Write byte to Timer Control Register not yet implemented (value: 0x{:02x})", value);
-            }
+            MappedAddress::TimerCounterReloadLowReg => self.timer.write_counter_reload_low_reg(value),
+            MappedAddress::TimerCounterReloadHighReg => self.timer.write_counter_reload_high_reg(value),
+            MappedAddress::TimerControlReg => self.timer.write_control_reg(value),
             MappedAddress::WaitControlReg => {
                 println!("Wait Control Register (0x{:08x}) written: 0x{:02x}", addr, value);
                 println!(" Cartridge ROM Waits: {}", if value & 0x01 == 0 { 2 } else { 1 });
@@ -263,15 +237,9 @@ impl Interconnect {
             MappedAddress::GamePadInputHighReg => {
                 println!("WARNING: Write halfword to Game Pad Input High Register not yet implemented (value: 0x{:04x})", value);
             }
-            MappedAddress::TimerCounterReloadLowReg => {
-                println!("WARNING: Write halfword to Timer Counter/Reload Low Register not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::TimerCounterReloadHighReg => {
-                println!("WARNING: Write halfword to Timer Counter/Reload High Register not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::TimerControlReg => {
-                println!("WARNING: Write halfword to Timer Control Register not yet implemented (value: 0x{:04x})", value);
-            }
+            MappedAddress::TimerCounterReloadLowReg => self.timer.write_counter_reload_low_reg(value as _),
+            MappedAddress::TimerCounterReloadHighReg => self.timer.write_counter_reload_high_reg(value as _),
+            MappedAddress::TimerControlReg => self.timer.write_control_reg(value as _),
             MappedAddress::WaitControlReg => {
                 println!("WARNING: Write halfword to Wait Control Register not yet implemented (value: 0x{:04x})", value);
             }
@@ -314,15 +282,9 @@ impl Interconnect {
             MappedAddress::GamePadInputHighReg => {
                 println!("WARNING: Write word to Game Pad Input High Register not yet implemented (value: 0x{:08x})", value);
             }
-            MappedAddress::TimerCounterReloadLowReg => {
-                println!("WARNING: Write word to Timer Counter/Reload Low Register not yet implemented (value: 0x{:08x})", value);
-            }
-            MappedAddress::TimerCounterReloadHighReg => {
-                println!("WARNING: Write word to Timer Counter/Reload High Register not yet implemented (value: 0x{:08x})", value);
-            }
-            MappedAddress::TimerControlReg => {
-                println!("WARNING: Write word to Timer Control Register not yet implemented (value: 0x{:08x})", value);
-            }
+            MappedAddress::TimerCounterReloadLowReg => self.timer.write_counter_reload_low_reg(value as _),
+            MappedAddress::TimerCounterReloadHighReg => self.timer.write_counter_reload_high_reg(value as _),
+            MappedAddress::TimerControlReg => self.timer.write_control_reg(value as _),
             MappedAddress::WaitControlReg => {
                 panic!("Write word to Wait Control Register not yet implemented");
             }
@@ -343,10 +305,16 @@ impl Interconnect {
     }
 
     pub fn cycles(&mut self, cycles: usize, video_driver: &mut VideoDriver) -> Option<u16> {
-        if self.vip.cycles(cycles, video_driver) {
-            Some(0xfe40)
-        } else {
-            None
+        let mut interrupt = None;
+
+        if self.timer.cycles(cycles) {
+            interrupt = Some(0xfe10);
         }
+
+        if self.vip.cycles(cycles, video_driver) {
+            interrupt = Some(0xfe40);
+        }
+
+        interrupt
     }
 }

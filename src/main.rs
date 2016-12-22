@@ -10,6 +10,7 @@ mod rom;
 mod wram;
 mod vip;
 mod vsu;
+mod timer;
 mod mem_map;
 mod interconnect;
 mod instruction;
