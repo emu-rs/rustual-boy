@@ -833,10 +833,10 @@ impl Vip {
 
             let x = self.read_vram_halfword(window_offset + 2) as i16;
             let parallax = self.read_vram_halfword(window_offset + 4) as i16;
-            let y = self.read_vram_halfword(window_offset + 6);
+            let y = self.read_vram_halfword(window_offset + 6) as i16;
             let bg_x = self.read_vram_halfword(window_offset + 8) as i16;
             let bg_parallax = self.read_vram_halfword(window_offset + 10) as i16;
-            let bg_y = self.read_vram_halfword(window_offset + 12);
+            let bg_y = self.read_vram_halfword(window_offset + 12) as i16;
             let width = self.read_vram_halfword(window_offset + 14);
             let height = self.read_vram_halfword(window_offset + 16);
             let param_base = self.read_vram_halfword(window_offset + 18) & 0xfff0;
@@ -863,8 +863,15 @@ impl Vip {
 
                 for pixel_y in 0..height {
                     for pixel_x in 0..width {
-                        let background_x = pixel_x.wrapping_add(bg_x as u32);
-                        let background_y = pixel_y.wrapping_add(bg_y as u32);
+                        let window_x = pixel_x.wrapping_sub(x as u32);
+                        let window_y = pixel_y.wrapping_sub(y as u32);
+
+                        if window_x >= width || window_y >= height {
+                            continue;
+                        }
+
+                        let background_x = window_x.wrapping_add(bg_x as u32);
+                        let background_y = window_y.wrapping_add(bg_y as u32);
 
                         let segment_x = background_x >> 3;
                         let segment_y = background_y >> 3;
@@ -887,6 +894,11 @@ impl Vip {
                         let char_row_offset = char_offset + offset_y * 2;
                         let char_row_data = self.read_vram_halfword(char_row_offset as _);
                         let palette_index = (char_row_data as u32) >> (offset_x * 2);
+
+                        if palette_index == 0 {
+                            continue;
+                        }
+
                         let color = palette_index << 6;
                         buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = color << 16;
                     }
