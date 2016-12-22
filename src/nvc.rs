@@ -570,7 +570,7 @@ impl Nvc {
             return;
         }
 
-        println!("Entering exception (code: 0x{:04x}", exception_code);
+        println!("Entering exception (code: 0x{:04x})", exception_code);
         self.reg_eipc = self.reg_pc;
         self.reg_eipsw = self.reg_psw();
         self.reg_ecr = exception_code;
@@ -579,7 +579,7 @@ impl Nvc {
     }
 
     fn return_from_exception(&mut self) -> u32 {
-        println!("Returning from exception (code: 0x{:04x}", self.reg_ecr);
+        println!("Returning from exception (code: 0x{:04x})", self.reg_ecr);
         let psw = self.reg_eipsw;
         self.set_reg_psw(psw);
         self.reg_eipc
