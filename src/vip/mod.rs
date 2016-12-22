@@ -861,8 +861,12 @@ impl Vip {
                 let height = (height as usize) + 1;
                 let segment_offset = 0x00020000 + base * 0x00002000;
 
-                for segment_y in 0..height / 8 {
-                    for segment_x in 0..width / 8 {
+                for pixel_y in 0..height {
+                    for pixel_x in 0..width {
+                        let segment_x = pixel_x >> 3;
+                        let segment_y = pixel_y >> 3;
+                        let offset_x = pixel_x & 0x07;
+                        let offset_y = pixel_y & 0x07;
                         let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
                         let entry = self.read_vram_halfword(segment_addr as _);
                         let char_index = (entry & 0x07ff) as usize;
@@ -877,15 +881,11 @@ impl Vip {
                             0x0001e000 + (char_index - 0x0600) * 16
                         };
 
-                        for y in 0..8 {
-                            let char_row_offset = char_offset + y * 2;
-                            let char_row_data = self.read_vram_halfword(char_row_offset as _);
-                            for x in 0..8 {
-                                let palette_index = (char_row_data as u32) >> (x * 2);
-                                let color = palette_index << 6;
-                                buffer[(segment_y * 8 + y) * RESOLUTION_X + segment_x * 8 + x] = color << 16;
-                            }
-                        }
+                        let char_row_offset = char_offset + offset_y * 2;
+                        let char_row_data = self.read_vram_halfword(char_row_offset as _);
+                        let palette_index = (char_row_data as u32) >> (offset_x * 2);
+                        let color = palette_index << 6;
+                        buffer[pixel_y * RESOLUTION_X + pixel_x] = color << 16;
                     }
                 }
             }
