@@ -743,7 +743,7 @@ impl Vip {
             self.frame_clock_counter += CPU_CYCLE_PERIOD_NS;
             if self.frame_clock_counter >= FRAME_CLOCK_PERIOD_NS {
                 self.frame_clock_counter -= FRAME_CLOCK_PERIOD_NS;
-                raise_interrupt |= self.frame_clock();
+                self.frame_clock(&mut raise_interrupt);
             }
 
             if let DrawingState::Drawing = self.drawing_state {
@@ -761,39 +761,31 @@ impl Vip {
         raise_interrupt
     }
 
-    fn frame_clock(&mut self) -> bool {
+    fn frame_clock(&mut self, raise_interrupt: &mut bool) {
         println!("Frame clock rising edge");
-
-        let mut raise_interrupt = false;
 
         self.reg_interrupt_pending_start_of_frame_processing = true;
         if self.reg_interrupt_enable_start_of_frame_processing {
-            raise_interrupt = true;
+            *raise_interrupt = true;
         }
 
         self.game_frame_clock_counter += 1;
         if self.game_frame_clock_counter >= self.reg_game_frame_control {
             self.game_frame_clock_counter = 0;
-            raise_interrupt |= self.game_clock();
+            self.game_clock(raise_interrupt);
         }
-
-        raise_interrupt
     }
 
-    fn game_clock(&mut self) -> bool {
+    fn game_clock(&mut self, raise_interrupt: &mut bool) {
         println!("Game clock rising edge");
-
-        let mut raise_interrupt = false;
 
         if self.reg_drawing_control_drawing_enable {
             self.begin_drawing_process();
             self.reg_interrupt_pending_drawing_started = true;
             if self.reg_interrupt_enable_drawing_started {
-                raise_interrupt = true;
+                *raise_interrupt = true;
             }
         }
-
-        raise_interrupt
     }
 
     fn begin_drawing_process(&mut self) {
