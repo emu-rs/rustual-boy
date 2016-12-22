@@ -853,8 +853,8 @@ impl Vip {
                 let height = (height as u32) + 1;
                 let segment_offset = 0x00020000 + base * 0x00002000;
 
-                for pixel_y in 0..height {
-                    for pixel_x in 0..width {
+                for pixel_y in 0..RESOLUTION_Y as u32 {
+                    for pixel_x in 0..RESOLUTION_X as u32 {
                         let window_x = pixel_x.wrapping_sub(x as u32);
                         let window_y = pixel_y.wrapping_sub(y as u32);
 
