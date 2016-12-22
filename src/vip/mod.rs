@@ -815,7 +815,7 @@ impl Vip {
             println!("Window {}", window_index);
 
             let header = self.read_vram_halfword(window_offset);
-            let base = (header & 0x000f) as usize;
+            let base = (header & 0x000f) as u32;
             let stop = (header & 0x0040) != 0;
             let out_of_bounds = (header & 0x0080) != 0;
             let bg_height = ((header >> 8) & 0x03) as usize;
@@ -857,19 +857,22 @@ impl Vip {
             }
 
             if left_on || right_on {
-                let width = (width as usize) + 1;
-                let height = (height as usize) + 1;
+                let width = (width as u32) + 1;
+                let height = (height as u32) + 1;
                 let segment_offset = 0x00020000 + base * 0x00002000;
 
                 for pixel_y in 0..height {
                     for pixel_x in 0..width {
-                        let segment_x = pixel_x >> 3;
-                        let segment_y = pixel_y >> 3;
-                        let offset_x = pixel_x & 0x07;
-                        let offset_y = pixel_y & 0x07;
+                        let background_x = pixel_x.wrapping_add(bg_x as u32);
+                        let background_y = pixel_y.wrapping_add(bg_y as u32);
+
+                        let segment_x = background_x >> 3;
+                        let segment_y = background_y >> 3;
+                        let offset_x = background_x & 0x07;
+                        let offset_y = background_y & 0x07;
                         let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
                         let entry = self.read_vram_halfword(segment_addr as _);
-                        let char_index = (entry & 0x07ff) as usize;
+                        let char_index = (entry & 0x07ff) as u32;
 
                         let char_offset = if char_index < 0x0200 {
                             0x00006000 + char_index * 16
@@ -885,7 +888,7 @@ impl Vip {
                         let char_row_data = self.read_vram_halfword(char_row_offset as _);
                         let palette_index = (char_row_data as u32) >> (offset_x * 2);
                         let color = palette_index << 6;
-                        buffer[pixel_y * RESOLUTION_X + pixel_x] = color << 16;
+                        buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = color << 16;
                     }
                 }
             }
