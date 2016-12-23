@@ -19,6 +19,7 @@ pub struct Timer {
     counter: u16,
 
     tick_counter: u64,
+    zero_interrupt: bool,
 }
 
 impl Timer {
@@ -32,6 +33,7 @@ impl Timer {
             counter: 0,
 
             tick_counter: 0,
+            zero_interrupt: false,
         }
     }
 
@@ -52,8 +54,11 @@ impl Timer {
             Interval::Small
         };
         self.zero_interrupt_enable = ((value >> 3) & 0x01) != 0;
-        if ((value >> 2) & 0x01) != 0 && !self.zero_interrupt_enable {
-            self.zero_status = false;
+        if !self.zero_interrupt_enable {
+            self.zero_interrupt = false;
+            if ((value >> 2) & 0x01) != 0 {
+                self.zero_status = false;
+            }
         }
         self.enable = (value & 0x01) != 0;
     }
@@ -90,6 +95,9 @@ impl Timer {
                     self.counter = match self.counter {
                         0 => {
                             self.zero_status = true;
+                            if self.zero_interrupt_enable {
+                                self.zero_interrupt = true;
+                            }
                             self.reload
                         },
                         _ => self.counter - 1
@@ -98,6 +106,6 @@ impl Timer {
             }
         }
 
-        false//self.zero_interrupt_enable && self.zero_status
+        self.zero_interrupt
     }
 }
