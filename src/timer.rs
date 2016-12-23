@@ -98,6 +98,6 @@ impl Timer {
             }
         }
 
-        self.zero_interrupt_enable && self.zero_status
+        false//self.zero_interrupt_enable && self.zero_status
     }
 }
