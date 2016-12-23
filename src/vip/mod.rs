@@ -867,10 +867,18 @@ impl Vip {
 
                         let segment_x = background_x >> 3;
                         let segment_y = background_y >> 3;
-                        let offset_x = background_x & 0x07;
-                        let offset_y = background_y & 0x07;
+                        let mut offset_x = background_x & 0x07;
+                        let mut offset_y = background_y & 0x07;
                         let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
                         let entry = self.read_vram_halfword(segment_addr as _);
+                        let horizontal_flip = (entry & 0x2000) != 0;
+                        let vertical_flip = (entry & 0x1000) != 0;
+                        if horizontal_flip {
+                            offset_x = 7 - offset_x;
+                        }
+                        if vertical_flip {
+                            offset_y = 7 - offset_y;
+                        }
                         let char_index = (entry & 0x07ff) as u32;
 
                         let char_offset = if char_index < 0x0200 {
