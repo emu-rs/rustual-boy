@@ -14,6 +14,7 @@ pub struct Interconnect {
     timer: Timer,
 
     gamepad_strobe_hack: bool,
+    gamepad_strobe_hack_counter: u64,
 }
 
 impl Interconnect {
@@ -26,6 +27,7 @@ impl Interconnect {
             timer: Timer::new(),
 
             gamepad_strobe_hack: false,
+            gamepad_strobe_hack_counter: 0,
         }
     }
 
@@ -320,7 +322,11 @@ impl Interconnect {
         }
 
         for _ in 0..cycles {
-            self.gamepad_strobe_hack = !self.gamepad_strobe_hack;
+            self.gamepad_strobe_hack_counter += 1;
+            if self.gamepad_strobe_hack_counter >= 0x2dedbef {
+                self.gamepad_strobe_hack_counter = 0;
+                self.gamepad_strobe_hack = !self.gamepad_strobe_hack;
+            }
         }
 
         interrupt
