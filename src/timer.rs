@@ -63,7 +63,7 @@ impl Timer {
     }
 
     pub fn write_counter_reload_low_reg(&mut self, value: u8) {
-        self.reload |= value as u16;
+        self.reload = (self.reload & 0xff00) | (value as u16);
         self.counter = self.reload;
     }
 
@@ -72,7 +72,7 @@ impl Timer {
     }
 
     pub fn write_counter_reload_high_reg(&mut self, value: u8) {
-        self.reload |= (value as u16) << 8;
+        self.reload = ((value as u16) << 8) | (self.reload & 0xff);
         self.counter = self.reload;
     }
 
