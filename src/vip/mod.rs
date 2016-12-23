@@ -346,8 +346,11 @@ impl Vip {
                 (self.reg_game_frame_control - 1) as u16
             }
             MappedAddress::DrawingControlReadReg => {
-                println!("WARNING: Read halfword from Drawing Control Read Reg not yet implemented");
-                0
+                println!("WARNING: Read halfword from Drawing Control Read Reg not fully implemented");
+                match self.drawing_state {
+                    DrawingState::Idle => 0,
+                    DrawingState::Drawing => 0x000c,
+                }
             }
             MappedAddress::DrawingControlWriteReg => {
                 println!("WARNING: Attempted read halfword from Drawing Control Write Reg");
