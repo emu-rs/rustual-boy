@@ -865,8 +865,8 @@ impl Vip {
                         let background_x = window_x.wrapping_add(bg_x as u32);
                         let background_y = window_y.wrapping_add(bg_y as u32);
 
-                        let segment_x = background_x >> 3;
-                        let segment_y = background_y >> 3;
+                        let segment_x = (background_x >> 3) & 0x3f;
+                        let segment_y = (background_y >> 3) & 0x3f;
                         let mut offset_x = background_x & 0x07;
                         let mut offset_y = background_y & 0x07;
                         let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
