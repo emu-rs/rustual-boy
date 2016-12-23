@@ -893,7 +893,7 @@ impl Vip {
 
                         let char_row_offset = char_offset + offset_y * 2;
                         let char_row_data = self.read_vram_halfword(char_row_offset as _);
-                        let palette_index = (char_row_data as u32) >> (offset_x * 2);
+                        let palette_index = ((char_row_data as u32) >> (offset_x * 2)) & 0x03;
 
                         if palette_index == 0 {
                             continue;
