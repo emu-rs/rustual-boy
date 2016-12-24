@@ -49,6 +49,15 @@ pub struct Vip {
 
     reg_game_frame_control: usize,
 
+    reg_bg_palette_0: u8,
+    reg_bg_palette_1: u8,
+    reg_bg_palette_2: u8,
+    reg_bg_palette_3: u8,
+    reg_obj_palette_0: u8,
+    reg_obj_palette_1: u8,
+    reg_obj_palette_2: u8,
+    reg_obj_palette_3: u8,
+
     frame_clock_counter: u64,
     game_frame_clock_counter: usize,
 
@@ -78,6 +87,15 @@ impl Vip {
             reg_drawing_control_drawing_enable: false,
 
             reg_game_frame_control: 1,
+
+            reg_bg_palette_0: 0,
+            reg_bg_palette_1: 0,
+            reg_bg_palette_2: 0,
+            reg_bg_palette_3: 0,
+            reg_obj_palette_0: 0,
+            reg_obj_palette_1: 0,
+            reg_obj_palette_2: 0,
+            reg_obj_palette_3: 0,
 
             frame_clock_counter: 0,
             game_frame_clock_counter: 0,
@@ -152,38 +170,14 @@ impl Vip {
                 println!("WARNING: Attempted read byte from OBJ Group 3 Pointer Reg");
                 0
             }
-            MappedAddress::BgPalette0Reg => {
-                println!("WARNING: Attempted read byte from BG Palette 0 Reg");
-                0
-            }
-            MappedAddress::BgPalette1Reg => {
-                println!("WARNING: Attempted read byte from BG Palette 1 Reg");
-                0
-            }
-            MappedAddress::BgPalette2Reg => {
-                println!("WARNING: Attempted read byte from BG Palette 2 Reg");
-                0
-            }
-            MappedAddress::BgPalette3Reg => {
-                println!("WARNING: Attempted read byte from BG Palette 3 Reg");
-                0
-            }
-            MappedAddress::ObjPalette0Reg => {
-                println!("WARNING: Attempted read byte from OBJ Palette 0 Reg");
-                0
-            }
-            MappedAddress::ObjPalette1Reg => {
-                println!("WARNING: Attempted read byte from OBJ Palette 1 Reg");
-                0
-            }
-            MappedAddress::ObjPalette2Reg => {
-                println!("WARNING: Attempted read byte from OBJ Palette 2 Reg");
-                0
-            }
-            MappedAddress::ObjPalette3Reg => {
-                println!("WARNING: Attempted read byte from OBJ Palette 3 Reg");
-                0
-            }
+            MappedAddress::BgPalette0Reg => self.reg_bg_palette_0,
+            MappedAddress::BgPalette1Reg => self.reg_bg_palette_1,
+            MappedAddress::BgPalette2Reg => self.reg_bg_palette_2,
+            MappedAddress::BgPalette3Reg => self.reg_bg_palette_3,
+            MappedAddress::ObjPalette0Reg => self.reg_obj_palette_0,
+            MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1,
+            MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2,
+            MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3,
             MappedAddress::ClearColorReg => {
                 println!("WARNING: Attempted read byte from Clear Color Reg");
                 0
@@ -248,30 +242,14 @@ impl Vip {
             MappedAddress::ObjGroup3PointerReg => {
                 println!("WARNING: Attempted write byte to OBJ Group 3 Pointer Reg (value: 0x{:02x})", value);
             }
-            MappedAddress::BgPalette0Reg => {
-                println!("WARNING: Attempted write byte to BG Palette 0 Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::BgPalette1Reg => {
-                println!("WARNING: Attempted write byte to BG Palette 1 Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::BgPalette2Reg => {
-                println!("WARNING: Attempted write byte to BG Palette 2 Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::BgPalette3Reg => {
-                println!("WARNING: Attempted write byte to BG Palette 3 Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::ObjPalette0Reg => {
-                println!("WARNING: Attempted write byte to OBJ Palette 0 Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::ObjPalette1Reg => {
-                println!("WARNING: Attempted write byte to OBJ Palette 1 Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::ObjPalette2Reg => {
-                println!("WARNING: Attempted write byte to OBJ Palette 2 Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::ObjPalette3Reg => {
-                println!("WARNING: Attempted write byte to OBJ Palette 3 Reg (value: 0x{:02x})", value);
-            }
+            MappedAddress::BgPalette0Reg => self.reg_bg_palette_0 = value,
+            MappedAddress::BgPalette1Reg => self.reg_bg_palette_1 = value,
+            MappedAddress::BgPalette2Reg => self.reg_bg_palette_2 = value,
+            MappedAddress::BgPalette3Reg => self.reg_bg_palette_3 = value,
+            MappedAddress::ObjPalette0Reg => self.reg_obj_palette_0 = value,
+            MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1 = value,
+            MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2 = value,
+            MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3 = value,
             MappedAddress::ClearColorReg => {
                 println!("WARNING: Attempted write byte to Clear Color Reg (value: 0x{:02x})", value);
             }
@@ -372,38 +350,14 @@ impl Vip {
                 println!("WARNING: Read halfword from OBJ Group 3 Pointer Reg not yet implemented");
                 0
             }
-            MappedAddress::BgPalette0Reg => {
-                println!("WARNING: Read halfword from BG Palette 0 Reg not yet implemented");
-                0
-            }
-            MappedAddress::BgPalette1Reg => {
-                println!("WARNING: Read halfword from BG Palette 1 Reg not yet implemented");
-                0
-            }
-            MappedAddress::BgPalette2Reg => {
-                println!("WARNING: Read halfword from BG Palette 2 Reg not yet implemented");
-                0
-            }
-            MappedAddress::BgPalette3Reg => {
-                println!("WARNING: Read halfword from BG Palette 3 Reg not yet implemented");
-                0
-            }
-            MappedAddress::ObjPalette0Reg => {
-                println!("WARNING: Read halfword from OBJ Palette 0 Reg not yet implemented");
-                0
-            }
-            MappedAddress::ObjPalette1Reg => {
-                println!("WARNING: Read halfword from OBJ Palette 1 Reg not yet implemented");
-                0
-            }
-            MappedAddress::ObjPalette2Reg => {
-                println!("WARNING: Read halfword from OBJ Palette 2 Reg not yet implemented");
-                0
-            }
-            MappedAddress::ObjPalette3Reg => {
-                println!("WARNING: Read halfword from OBJ Palette 3 Reg not yet implemented");
-                0
-            }
+            MappedAddress::BgPalette0Reg => self.reg_bg_palette_0 as _,
+            MappedAddress::BgPalette1Reg => self.reg_bg_palette_1 as _,
+            MappedAddress::BgPalette2Reg => self.reg_bg_palette_2 as _,
+            MappedAddress::BgPalette3Reg => self.reg_bg_palette_3 as _,
+            MappedAddress::ObjPalette0Reg => self.reg_obj_palette_0 as _,
+            MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1 as _,
+            MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2 as _,
+            MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3 as _,
             MappedAddress::ClearColorReg => {
                 println!("WARNING: Read halfword from Clear Color Reg not yet implemented");
                 0
@@ -491,30 +445,14 @@ impl Vip {
             MappedAddress::ObjGroup3PointerReg => {
                 println!("WARNING: Write halfword to OBJ Group 3 Pointer Reg not yet implemented (value: 0x{:04x})", value);
             }
-            MappedAddress::BgPalette0Reg => {
-                println!("WARNING: Write halfword to BG Palette 0 Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::BgPalette1Reg => {
-                println!("WARNING: Write halfword to BG Palette 1 Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::BgPalette2Reg => {
-                println!("WARNING: Write halfword to BG Palette 2 Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::BgPalette3Reg => {
-                println!("WARNING: Write halfword to BG Palette 3 Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::ObjPalette0Reg => {
-                println!("WARNING: Write halfword to OBJ Palette 0 Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::ObjPalette1Reg => {
-                println!("WARNING: Write halfword to OBJ Palette 1 Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::ObjPalette2Reg => {
-                println!("WARNING: Write halfword to OBJ Palette 2 Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::ObjPalette3Reg => {
-                println!("WARNING: Write halfword to OBJ Palette 3 Reg not yet implemented (value: 0x{:04x})", value);
-            }
+            MappedAddress::BgPalette0Reg => self.reg_bg_palette_0 = value as _,
+            MappedAddress::BgPalette1Reg => self.reg_bg_palette_1 = value as _,
+            MappedAddress::BgPalette2Reg => self.reg_bg_palette_2 = value as _,
+            MappedAddress::BgPalette3Reg => self.reg_bg_palette_3 = value as _,
+            MappedAddress::ObjPalette0Reg => self.reg_obj_palette_0 = value as _,
+            MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1 = value as _,
+            MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2 = value as _,
+            MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3 = value as _,
             MappedAddress::ClearColorReg => {
                 println!("WARNING: Write halfword to Clear Color Reg not yet implemented (value: 0x{:04x})", value);
             }
@@ -874,6 +812,7 @@ impl Vip {
                         let mut offset_y = background_y & 0x07;
                         let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
                         let entry = self.read_vram_halfword(segment_addr as _);
+                        let pal = (entry >> 14) & 0x03;
                         let horizontal_flip = (entry & 0x2000) != 0;
                         let vertical_flip = (entry & 0x1000) != 0;
                         if horizontal_flip {
@@ -902,7 +841,14 @@ impl Vip {
                             continue;
                         }
 
-                        let color = palette_index << 6;
+                        let palette = match pal {
+                            0 => self.reg_bg_palette_0,
+                            1 => self.reg_bg_palette_1,
+                            2 => self.reg_bg_palette_2,
+                            _ => self.reg_bg_palette_3
+                        };
+
+                        let color = (((palette >> (palette_index * 2)) & 0x03) as u32) << 6;
                         buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = color << 16;
                     }
                 }
