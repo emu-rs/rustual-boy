@@ -49,6 +49,10 @@ pub struct Vip {
 
     reg_game_frame_control: usize,
 
+    reg_led_brightness_1: u8,
+    reg_led_brightness_2: u8,
+    reg_led_brightness_3: u8,
+
     reg_bg_palette_0: u8,
     reg_bg_palette_1: u8,
     reg_bg_palette_2: u8,
@@ -88,6 +92,10 @@ impl Vip {
 
             reg_game_frame_control: 1,
 
+            reg_led_brightness_1: 0,
+            reg_led_brightness_2: 0,
+            reg_led_brightness_3: 0,
+
             reg_bg_palette_0: 0,
             reg_bg_palette_1: 0,
             reg_bg_palette_2: 0,
@@ -126,18 +134,9 @@ impl Vip {
                 println!("WARNING: Attempted read byte from Display Control Write Reg");
                 0
             }
-            MappedAddress::LedBrightness1Reg => {
-                println!("WARNING: Attempted read byte from LED Brightness 1 Reg");
-                0
-            }
-            MappedAddress::LedBrightness2Reg => {
-                println!("WARNING: Attempted read byte from LED Brightness 2 Reg");
-                0
-            }
-            MappedAddress::LedBrightness3Reg => {
-                println!("WARNING: Attempted read byte from LED Brightness 3 Reg");
-                0
-            }
+            MappedAddress::LedBrightness1Reg => self.reg_led_brightness_1,
+            MappedAddress::LedBrightness2Reg => self.reg_led_brightness_2,
+            MappedAddress::LedBrightness3Reg => self.reg_led_brightness_3,
             MappedAddress::LedBrightnessIdleReg => {
                 println!("WARNING: Attempted read byte from LED Brightness Idle Reg");
                 0
@@ -209,15 +208,9 @@ impl Vip {
             MappedAddress::DisplayControlWriteReg => {
                 println!("WARNING: Attempted write byte to Display Control Write Reg (value: 0x{:02x})", value);
             }
-            MappedAddress::LedBrightness1Reg => {
-                println!("WARNING: Attempted write byte to LED Brightness 1 Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::LedBrightness2Reg => {
-                println!("WARNING: Attempted write byte to LED Brightness 2 Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::LedBrightness3Reg => {
-                println!("WARNING: Attempted write byte to LED Brightness 3 Reg (value: 0x{:02x})", value);
-            }
+            MappedAddress::LedBrightness1Reg => self.reg_led_brightness_1 = value,
+            MappedAddress::LedBrightness2Reg => self.reg_led_brightness_2 = value,
+            MappedAddress::LedBrightness3Reg => self.reg_led_brightness_3 = value,
             MappedAddress::LedBrightnessIdleReg => {
                 println!("WARNING: Attempted write byte to LED Brightness Idle Reg (value: 0x{:02x})", value);
             }
@@ -304,18 +297,9 @@ impl Vip {
                 println!("WARNING: Attempted read halfword from Display Control Write Reg");
                 0
             }
-            MappedAddress::LedBrightness1Reg => {
-                println!("WARNING: Read halfword from LED Brightness 1 Reg not yet implemented");
-                0
-            }
-            MappedAddress::LedBrightness2Reg => {
-                println!("WARNING: Read halfword from LED Brightness 2 Reg not yet implemented");
-                0
-            }
-            MappedAddress::LedBrightness3Reg => {
-                println!("WARNING: Read halfword from LED Brightness 3 Reg not yet implemented");
-                0
-            }
+            MappedAddress::LedBrightness1Reg => self.reg_led_brightness_1 as _,
+            MappedAddress::LedBrightness2Reg => self.reg_led_brightness_2 as _,
+            MappedAddress::LedBrightness3Reg => self.reg_led_brightness_3 as _,
             MappedAddress::LedBrightnessIdleReg => {
                 println!("WARNING: Read halfword from LED Brightness Idle Reg not yet implemented");
                 0
@@ -410,15 +394,9 @@ impl Vip {
 
                 // TODO
             }
-            MappedAddress::LedBrightness1Reg => {
-                println!("WARNING: Write halfword to LED Brightness 1 Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::LedBrightness2Reg => {
-                println!("WARNING: Write halfword to LED Brightness 2 Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::LedBrightness3Reg => {
-                println!("WARNING: Write halfword to LED Brightness 3 Reg not yet implemented (value: 0x{:04x})", value);
-            }
+            MappedAddress::LedBrightness1Reg => self.reg_led_brightness_1 = value as _,
+            MappedAddress::LedBrightness2Reg => self.reg_led_brightness_2 = value as _,
+            MappedAddress::LedBrightness3Reg => self.reg_led_brightness_3 = value as _,
             MappedAddress::LedBrightnessIdleReg => {
                 println!("WARNING: Write halfword to LED Brightness Idle Reg not yet implemented (value: 0x{:04x})", value);
             }
@@ -741,6 +719,19 @@ impl Vip {
 
         let mut buffer = vec![0; RESOLUTION_X * RESOLUTION_Y];
 
+        let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
+        let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
+        let mut brightness_3 = ((self.reg_led_brightness_1 as u32) + (self.reg_led_brightness_2 as u32) + (self.reg_led_brightness_3 as u32)) * 2;
+        if brightness_1 > 255 {
+            brightness_1 = 255;
+        }
+        if brightness_2 > 255 {
+            brightness_2 = 255;
+        }
+        if brightness_3 > 255 {
+            brightness_3 = 255;
+        }
+
         const WINDOW_ENTRY_LENGTH: u32 = 32;
         let mut window_offset = WINDOW_ATTRIBS_END + 1 - WINDOW_ENTRY_LENGTH;
         let mut window_index = 31;
@@ -848,8 +839,14 @@ impl Vip {
                             _ => self.reg_bg_palette_3
                         };
 
-                        let color = (((palette >> (palette_index * 2)) & 0x03) as u32) << 6;
-                        buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = color << 16;
+                        let color = (palette >> (palette_index * 2)) & 0x03;
+                        let brightness = match color {
+                            0 => 0,
+                            1 => brightness_1,
+                            2 => brightness_2,
+                            _ => brightness_3
+                        };
+                        buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = brightness << 16;
                     }
                 }
             }
