@@ -99,8 +99,6 @@ fn main() {
 
     let mut window = Window::new("vb-rs", 384, 224, WindowOptions::default()).unwrap();
 
-    let mut leftover_frame_cycles = 0;
-
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let frame_start_time = time::Instant::now();
 
@@ -108,12 +106,7 @@ fn main() {
             next: None
         };
 
-        let target_cycles = CPU_CYCLES_PER_FRAME - leftover_frame_cycles;
-        let mut num_cycles = 0;
-        while num_cycles < target_cycles {
-            num_cycles += virtual_boy.step(&mut video_driver);
-        }
-        leftover_frame_cycles = num_cycles - CPU_CYCLES_PER_FRAME;
+        virtual_boy.step_frame(&mut video_driver);
 
         match video_driver.next {
             Some(buffer) => window.update_with_buffer(&buffer),
