@@ -8,6 +8,7 @@ extern crate minifb;
 mod video_driver;
 mod rom;
 mod wram;
+mod sram;
 mod vip;
 mod vsu;
 mod timer;
