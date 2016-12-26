@@ -18,20 +18,20 @@ mod instruction;
 mod nvc;
 mod virtual_boy;
 
-use nom::{IResult, eof, space, digit, hex_digit, alphanumeric};
+//use nom::{IResult, eof, space, digit, hex_digit, alphanumeric};
 
 use minifb::{WindowOptions, Window};
 
 use video_driver::*;
 use rom::*;
-use instruction::*;
+//use instruction::*;
 use virtual_boy::*;
 
 use std::env;
-use std::io::{stdin, stdout, Write};
-use std::borrow::Cow;
-use std::str::{self, FromStr};
-use std::collections::{HashSet, HashMap};
+//use std::io::{stdin, stdout, Write};
+//use std::borrow::Cow;
+//use std::str::{self, FromStr};
+//use std::collections::{HashSet, HashMap};
 
 struct WindowVideoDriver<'a> {
     window: &'a mut Window,
@@ -43,7 +43,7 @@ impl<'a> VideoDriver for WindowVideoDriver<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
+/*#[derive(Debug, Clone)]
 enum Command {
     ShowRegs,
     Step,
@@ -70,7 +70,7 @@ impl FromStr for Command {
             err => Err(format!("Unable to parse command: {:?}", err).into()),
         }
     }
-}
+}*/
 
 fn main() {
     let rom_file_name = env::args().nth(1).unwrap();
@@ -99,7 +99,7 @@ fn main() {
 
     let mut virtual_boy = VirtualBoy::new(rom);
 
-    let mut labels = HashMap::new();
+    /*let mut labels = HashMap::new();
     let mut breakpoints = HashSet::new();
     let mut cursor = 0xfffffff0;
     let mut last_command = None;
@@ -210,10 +210,10 @@ fn main() {
         if let Ok(c) = command {
             last_command = Some(c);
         }
-    }
+    }*/
 }
 
-fn read_stdin() -> String {
+/*fn read_stdin() -> String {
     let mut input = String::new();
     stdin().read_line(&mut input).unwrap();
     input.trim().into()
@@ -447,4 +447,4 @@ named!(
 
 named!(
     repeat<Command>,
-    value!(Command::Repeat));
+    value!(Command::Repeat));*/
