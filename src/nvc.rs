@@ -121,7 +121,7 @@ impl Nvc {
         self.psw_interrupt_mask_level = ((value as usize) >> 16) & 0x0f;
     }
 
-    pub fn step(&mut self, interconnect: &mut Interconnect, video_driver: &mut VideoDriver) {
+    pub fn step(&mut self, interconnect: &mut Interconnect, video_driver: &mut VideoDriver) -> usize {
         let original_pc = self.reg_pc;
 
         let first_halfword = interconnect.read_halfword(original_pc);
@@ -496,9 +496,13 @@ impl Nvc {
 
         self.reg_pc = next_pc;
 
-        if let Some(exception_code) = interconnect.cycles(opcode.num_cycles(take_branch), video_driver) {
+        let num_cycles = opcode.num_cycles(take_branch);
+
+        if let Some(exception_code) = interconnect.cycles(num_cycles, video_driver) {
             self.request_exception(exception_code);
         }
+
+        num_cycles
     }
 
     fn add(&mut self, lhs: u32, rhs: u32, reg2: usize) {

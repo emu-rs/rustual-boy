@@ -1,3 +1,3 @@
 pub trait VideoDriver {
-    fn output_frame(&mut self, frame: &[u32]);
+    fn output_frame(&mut self, frame: Box<[u32]>);
 }

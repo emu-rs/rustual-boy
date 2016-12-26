@@ -855,7 +855,7 @@ impl Vip {
             window_index -= 1;
         }
 
-        video_driver.output_frame(&buffer);
+        video_driver.output_frame(buffer.into_boxed_slice());
 
         println!("End drawing process");
         self.drawing_state = DrawingState::Idle;

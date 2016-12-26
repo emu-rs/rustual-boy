@@ -3,6 +3,8 @@ use rom::*;
 use interconnect::*;
 use nvc::*;
 
+pub const CPU_CYCLES_PER_FRAME: usize = 400000;
+
 pub struct VirtualBoy {
     pub interconnect: Interconnect,
     pub cpu: Nvc,
@@ -16,7 +18,7 @@ impl VirtualBoy {
         }
     }
 
-    pub fn step(&mut self, video_driver: &mut VideoDriver) {
-        self.cpu.step(&mut self.interconnect, video_driver);
+    pub fn step(&mut self, video_driver: &mut VideoDriver) -> usize {
+        self.cpu.step(&mut self.interconnect, video_driver)
     }
 }

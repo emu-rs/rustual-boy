@@ -20,7 +20,7 @@ mod virtual_boy;
 
 //use nom::{IResult, eof, space, digit, hex_digit, alphanumeric};
 
-use minifb::{WindowOptions, Window};
+use minifb::{WindowOptions, Window, Key};
 
 use video_driver::*;
 use rom::*;
@@ -28,18 +28,21 @@ use rom::*;
 use virtual_boy::*;
 
 use std::env;
+use std::{time, thread};
 //use std::io::{stdin, stdout, Write};
 //use std::borrow::Cow;
 //use std::str::{self, FromStr};
 //use std::collections::{HashSet, HashMap};
 
-struct WindowVideoDriver<'a> {
-    window: &'a mut Window,
+const NS_TO_MS: u32 = 1000000;
+
+struct SimpleVideoDriver {
+    next: Option<Box<[u32]>>,
 }
 
-impl<'a> VideoDriver for WindowVideoDriver<'a> {
-    fn output_frame(&mut self, frame: &[u32]) {
-        self.window.update_with_buffer(frame);
+impl VideoDriver for SimpleVideoDriver {
+    fn output_frame(&mut self, frame: Box<[u32]>) {
+        self.next = Some(frame);
     }
 }
 
@@ -92,12 +95,39 @@ fn main() {
     println!(" game code: \"{}\"", rom.game_code().unwrap());
     println!(" game version: 1.{:#02}", rom.game_version_byte());
 
-    let mut window = Window::new("vb-rs", 384, 224, WindowOptions::default()).unwrap();
-    let mut video_driver = WindowVideoDriver {
-        window: &mut window
-    };
-
     let mut virtual_boy = VirtualBoy::new(rom);
+
+    let mut window = Window::new("vb-rs", 384, 224, WindowOptions::default()).unwrap();
+
+    let mut leftover_frame_cycles = 0;
+
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        let frame_start_time = time::Instant::now();
+
+        let mut video_driver = SimpleVideoDriver {
+            next: None
+        };
+
+        let target_cycles = CPU_CYCLES_PER_FRAME - leftover_frame_cycles;
+        let mut num_cycles = 0;
+        while num_cycles < target_cycles {
+            num_cycles += virtual_boy.step(&mut video_driver);
+        }
+        leftover_frame_cycles = num_cycles - CPU_CYCLES_PER_FRAME;
+
+        match video_driver.next {
+            Some(buffer) => window.update_with_buffer(&buffer),
+            _ => window.update()
+        }
+
+        let frame_duration = frame_start_time.elapsed();
+        println!("Frame duration: {}ms", frame_duration.subsec_nanos() / NS_TO_MS);
+        let target_frame_duration = time::Duration::from_millis(20);
+        if frame_duration < target_frame_duration {
+            let sleep_ms = (target_frame_duration - frame_duration).subsec_nanos() / NS_TO_MS;
+            thread::sleep(time::Duration::from_millis(sleep_ms as _));
+        }
+    }
 
     /*let mut labels = HashMap::new();
     let mut breakpoints = HashSet::new();
