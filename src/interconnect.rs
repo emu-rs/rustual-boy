@@ -54,11 +54,11 @@ impl Interconnect {
             }
             MappedAddress::GamePadInputLowReg => {
                 println!("WARNING: Read byte from Game Pad Input Low Register not yet implemented");
-                if self.gamepad_strobe_hack { 0x3e } else { 0x00 }
+                if self.gamepad_strobe_hack { 0x06 } else { 0x00 }
             }
             MappedAddress::GamePadInputHighReg => {
                 println!("WARNING: Read byte from Game Pad Input High Register not yet implemented");
-                if self.gamepad_strobe_hack { 0x30 } else { 0x00 }
+                if self.gamepad_strobe_hack { 0x10 } else { 0x00 }
             }
             MappedAddress::TimerCounterReloadLowReg => self.timer.read_counter_reload_low_reg(),
             MappedAddress::TimerCounterReloadHighReg => self.timer.read_counter_reload_high_reg(),
