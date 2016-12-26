@@ -16,6 +16,7 @@ mod mem_map;
 mod interconnect;
 mod instruction;
 mod nvc;
+mod virtual_boy;
 
 use nom::{IResult, eof, space, digit, hex_digit, alphanumeric};
 
@@ -23,9 +24,8 @@ use minifb::{WindowOptions, Window};
 
 use video_driver::*;
 use rom::*;
-use interconnect::*;
 use instruction::*;
-use nvc::*;
+use virtual_boy::*;
 
 use std::env;
 use std::io::{stdin, stdout, Write};
@@ -44,7 +44,7 @@ impl<'a> VideoDriver for WindowVideoDriver<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub enum Command {
+enum Command {
     ShowRegs,
     Step,
     Continue,
@@ -69,24 +69,6 @@ impl FromStr for Command {
             IResult::Done(_, c) => Ok(c),
             err => Err(format!("Unable to parse command: {:?}", err).into()),
         }
-    }
-}
-
-struct VirtualBoy {
-    pub interconnect: Interconnect,
-    pub cpu: Nvc,
-}
-
-impl VirtualBoy {
-    pub fn new(rom: Rom) -> VirtualBoy {
-        VirtualBoy {
-            interconnect: Interconnect::new(rom),
-            cpu: Nvc::new()
-        }
-    }
-
-    pub fn step(&mut self, video_driver: &mut VideoDriver) {
-        self.cpu.step(&mut self.interconnect, video_driver);
     }
 }
 
