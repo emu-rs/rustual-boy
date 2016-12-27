@@ -18,21 +18,23 @@ mod instruction;
 mod nvc;
 mod virtual_boy;
 
-//use nom::{IResult, eof, space, digit, hex_digit, alphanumeric};
+use nom::{IResult, eof, space, digit, hex_digit, alphanumeric};
 
-use minifb::{WindowOptions, Window, Key};
+use minifb::{WindowOptions, Window, Key, KeyRepeat};
 
 use video_driver::*;
 use rom::*;
-//use instruction::*;
+use instruction::*;
 use virtual_boy::*;
 
 use std::env;
-use std::{time, thread};
-//use std::io::{stdin, stdout, Write};
-//use std::borrow::Cow;
-//use std::str::{self, FromStr};
-//use std::collections::{HashSet, HashMap};
+use std::time;
+use std::thread;
+use std::io::{stdin, stdout, Write};
+use std::borrow::Cow;
+use std::str::{self, FromStr};
+use std::collections::{HashSet, HashMap};
+use std::sync::mpsc::channel;
 
 const NS_TO_MS: u32 = 1000000;
 
@@ -46,7 +48,12 @@ impl VideoDriver for SimpleVideoDriver {
     }
 }
 
-/*#[derive(Debug, Clone)]
+enum Mode {
+    Running,
+    Debugging,
+}
+
+#[derive(Debug, Clone)]
 enum Command {
     ShowRegs,
     Step,
@@ -73,7 +80,7 @@ impl FromStr for Command {
             err => Err(format!("Unable to parse command: {:?}", err).into()),
         }
     }
-}*/
+}
 
 fn main() {
     let rom_file_name = env::args().nth(1).unwrap();
@@ -97,16 +104,155 @@ fn main() {
 
     let mut virtual_boy = VirtualBoy::new(rom);
 
+    let mut mode = Mode::Running;
+
+    let (sender, receiver) = channel();
+    let _stdin_thread = thread::spawn(move || {
+        loop {
+            sender.send(read_stdin()).unwrap();
+        }
+    });
+
     let mut window = Window::new("vb-rs", 384, 224, WindowOptions::default()).unwrap();
 
-    while window.is_open() && !window.is_key_down(Key::Escape) {
+    let mut labels = HashMap::new();
+    let mut breakpoints = HashSet::new();
+    let mut cursor = 0xfffffff0;
+    let mut last_command = None;
+
+    'main_loop: while window.is_open() && !window.is_key_down(Key::Escape) {
         let frame_start_time = time::Instant::now();
 
         let mut video_driver = SimpleVideoDriver {
             next: None
         };
 
-        virtual_boy.step_frame(&mut video_driver);
+        match mode {
+            Mode::Running => {
+                virtual_boy.step_frame(&mut video_driver);
+
+                if window.is_key_pressed(Key::F12, KeyRepeat::No) {
+                    mode = Mode::Debugging;
+
+                    cursor = virtual_boy.cpu.reg_pc();
+                    disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
+                    cursor = virtual_boy.cpu.reg_pc();
+
+                    print!("(vb-rs 0x{:08x}) > ", cursor);
+                    stdout().flush().unwrap();
+                }
+            }
+            Mode::Debugging => {
+                while let Ok(command_string) = receiver.try_recv() {
+                    let command = match (command_string.parse(), last_command.clone()) {
+                        (Ok(Command::Repeat), Some(c)) => Ok(c),
+                        (Ok(Command::Repeat), None) => Err("No last command".into()),
+                        (Ok(c), _) => Ok(c),
+                        (Err(e), _) => Err(e),
+                    };
+
+                    match command {
+                        Ok(Command::ShowRegs) => {
+                            println!("pc: 0x{:08x}", virtual_boy.cpu.reg_pc());
+                            println!("gpr:");
+                            for i in 0..32 {
+                                println!(" r{}: 0x{:08x}", i, virtual_boy.cpu.reg_gpr(i));
+                            }
+                            println!("psw: 0x{:08x}", virtual_boy.cpu.reg_psw());
+                            println!("eipc: 0x{:08x}", virtual_boy.cpu.reg_eipc());
+                            println!("eipsw: 0x{:08x}", virtual_boy.cpu.reg_eipsw());
+                            println!("ecr: 0x{:08x}", virtual_boy.cpu.reg_ecr());
+                        }
+                        Ok(Command::Step) => {
+                            virtual_boy.step(&mut video_driver);
+                            cursor = virtual_boy.cpu.reg_pc();
+                            disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
+                            cursor = virtual_boy.cpu.reg_pc();
+                        }
+                        Ok(Command::Continue) => {
+                            // TODO: Main loop shouldn't be here probably; should
+                            //  break out to something else
+                            /*loop {
+                                virtual_boy.step(&mut video_driver);
+                                cursor = virtual_boy.cpu.reg_pc();
+                                if breakpoints.contains(&cursor) {
+                                    break;
+                                }
+                            }
+                            disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
+                            cursor = virtual_boy.cpu.reg_pc();*/
+                            mode = Mode::Running;
+                        }
+                        Ok(Command::Goto(addr)) => {
+                            cursor = addr;
+                        }
+                        Ok(Command::ShowMem(addr)) => {
+                            if let Some(addr) = addr {
+                                cursor = addr;
+                            }
+
+                            print_labels(&labels, cursor);
+
+                            const NUM_ROWS: usize = 16;
+                            const NUM_COLS: usize = 16;
+                            for _ in 0..NUM_ROWS {
+                                print!("0x{:08x}  ", cursor);
+                                for x in 0..NUM_COLS {
+                                    let byte = virtual_boy.interconnect.read_byte(cursor);
+                                    cursor = cursor.wrapping_add(1);
+                                    print!("{:02x}", byte);
+                                    if x < NUM_COLS - 1 {
+                                        print!(" ");
+                                    }
+                                }
+                                println!();
+                            }
+                        }
+                        Ok(Command::Disassemble(count)) => {
+                            for _ in 0..count {
+                                disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
+                            }
+                        }
+                        Ok(Command::Label) => {
+                            for (name, addr) in labels.iter() {
+                                println!(".{}: 0x{:08x}", name, addr);
+                            }
+                        }
+                        Ok(Command::AddLabel(ref name, addr)) => {
+                            labels.insert(name.clone(), addr);
+                        }
+                        Ok(Command::RemoveLabel(ref name)) => {
+                            if let None = labels.remove(name) {
+                                println!("Label .{} does not exist", name);
+                            }
+                        }
+                        Ok(Command::Breakpoint) => {
+                            for addr in breakpoints.iter() {
+                                println!("* 0x{:08x}", addr);
+                            }
+                        }
+                        Ok(Command::AddBreakpoint(addr)) => {
+                            breakpoints.insert(addr);
+                        }
+                        Ok(Command::RemoveBreakpoint(addr)) => {
+                            if !breakpoints.remove(&addr) {
+                                println!("Breakpoint at 0x{:08x} does not exist", addr);
+                            }
+                        }
+                        Ok(Command::Exit) => break 'main_loop,
+                        Ok(Command::Repeat) => unreachable!(),
+                        Err(ref e) => println!("{}", e),
+                    }
+
+                    if let Ok(c) = command {
+                        last_command = Some(c);
+                    }
+
+                    print!("(vb-rs 0x{:08x}) > ", cursor);
+                    stdout().flush().unwrap();
+                }
+            }
+        }
 
         match video_driver.next {
             Some(buffer) => window.update_with_buffer(&buffer),
@@ -114,129 +260,16 @@ fn main() {
         }
 
         let frame_duration = frame_start_time.elapsed();
-        println!("Frame duration: {}ms", frame_duration.subsec_nanos() / NS_TO_MS);
+        //println!("Frame duration: {}ms", frame_duration.subsec_nanos() / NS_TO_MS);
         let target_frame_duration = time::Duration::from_millis(20);
         if frame_duration < target_frame_duration {
             let sleep_ms = (target_frame_duration - frame_duration).subsec_nanos() / NS_TO_MS;
             thread::sleep(time::Duration::from_millis(sleep_ms as _));
         }
     }
-
-    /*let mut labels = HashMap::new();
-    let mut breakpoints = HashSet::new();
-    let mut cursor = 0xfffffff0;
-    let mut last_command = None;
-
-    loop {
-        print!("(vb-rs 0x{:08x}) > ", cursor);
-        stdout().flush().unwrap();
-
-        let command = match (read_stdin().parse(), last_command.clone()) {
-            (Ok(Command::Repeat), Some(c)) => Ok(c),
-            (Ok(Command::Repeat), None) => Err("No last command".into()),
-            (Ok(c), _) => Ok(c),
-            (Err(e), _) => Err(e),
-        };
-
-        match command {
-            Ok(Command::ShowRegs) => {
-                println!("pc: 0x{:08x}", virtual_boy.cpu.reg_pc());
-                println!("gpr:");
-                for i in 0..32 {
-                    println!(" r{}: 0x{:08x}", i, virtual_boy.cpu.reg_gpr(i));
-                }
-                println!("psw: 0x{:08x}", virtual_boy.cpu.reg_psw());
-                println!("eipc: 0x{:08x}", virtual_boy.cpu.reg_eipc());
-                println!("eipsw: 0x{:08x}", virtual_boy.cpu.reg_eipsw());
-                println!("ecr: 0x{:08x}", virtual_boy.cpu.reg_ecr());
-            }
-            Ok(Command::Step) => {
-                virtual_boy.step(&mut video_driver);
-                cursor = virtual_boy.cpu.reg_pc();
-                disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
-                cursor = virtual_boy.cpu.reg_pc();
-            }
-            Ok(Command::Continue) => {
-                // TODO: Main loop shouldn't be here probably; should
-                //  break out to something else
-                loop {
-                    virtual_boy.step(&mut video_driver);
-                    cursor = virtual_boy.cpu.reg_pc();
-                    if breakpoints.contains(&cursor) {
-                        break;
-                    }
-                }
-                disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
-                cursor = virtual_boy.cpu.reg_pc();
-            }
-            Ok(Command::Goto(addr)) => {
-                cursor = addr;
-            }
-            Ok(Command::ShowMem(addr)) => {
-                if let Some(addr) = addr {
-                    cursor = addr;
-                }
-
-                print_labels(&labels, cursor);
-
-                const NUM_ROWS: usize = 16;
-                const NUM_COLS: usize = 16;
-                for _ in 0..NUM_ROWS {
-                    print!("0x{:08x}  ", cursor);
-                    for x in 0..NUM_COLS {
-                        let byte = virtual_boy.interconnect.read_byte(cursor);
-                        cursor = cursor.wrapping_add(1);
-                        print!("{:02x}", byte);
-                        if x < NUM_COLS - 1 {
-                            print!(" ");
-                        }
-                    }
-                    println!();
-                }
-            }
-            Ok(Command::Disassemble(count)) => {
-                for _ in 0..count {
-                    disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
-                }
-            }
-            Ok(Command::Label) => {
-                for (name, addr) in labels.iter() {
-                    println!(".{}: 0x{:08x}", name, addr);
-                }
-            }
-            Ok(Command::AddLabel(ref name, addr)) => {
-                labels.insert(name.clone(), addr);
-            }
-            Ok(Command::RemoveLabel(ref name)) => {
-                if let None = labels.remove(name) {
-                    println!("Label .{} does not exist", name);
-                }
-            }
-            Ok(Command::Breakpoint) => {
-                for addr in breakpoints.iter() {
-                    println!("* 0x{:08x}", addr);
-                }
-            }
-            Ok(Command::AddBreakpoint(addr)) => {
-                breakpoints.insert(addr);
-            }
-            Ok(Command::RemoveBreakpoint(addr)) => {
-                if !breakpoints.remove(&addr) {
-                    println!("Breakpoint at 0x{:08x} does not exist", addr);
-                }
-            }
-            Ok(Command::Exit) => break,
-            Ok(Command::Repeat) => unreachable!(),
-            Err(ref e) => println!("{}", e),
-        }
-
-        if let Ok(c) = command {
-            last_command = Some(c);
-        }
-    }*/
 }
 
-/*fn read_stdin() -> String {
+fn read_stdin() -> String {
     let mut input = String::new();
     stdin().read_line(&mut input).unwrap();
     input.trim().into()
@@ -470,4 +503,4 @@ named!(
 
 named!(
     repeat<Command>,
-    value!(Command::Repeat));*/
+    value!(Command::Repeat));
