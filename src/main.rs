@@ -106,14 +106,16 @@ fn main() {
 
     let mut mode = Mode::Running;
 
-    let (sender, receiver) = channel();
+    let (stdin_sender, stdin_receiver) = channel();
     let _stdin_thread = thread::spawn(move || {
         loop {
-            sender.send(read_stdin()).unwrap();
+            stdin_sender.send(read_stdin()).unwrap();
         }
     });
 
     let mut window = Window::new("vb-rs", 384, 224, WindowOptions::default()).unwrap();
+
+    let mut frame_cycles = 0;
 
     let mut labels = HashMap::new();
     let mut breakpoints = HashSet::new();
@@ -129,9 +131,24 @@ fn main() {
 
         match mode {
             Mode::Running => {
-                virtual_boy.step_frame(&mut video_driver);
+                let mut start_debugger = false;
 
                 if window.is_key_pressed(Key::F12, KeyRepeat::No) {
+                    start_debugger = true;
+                }
+
+                while frame_cycles < CPU_CYCLES_PER_FRAME {
+                    frame_cycles += virtual_boy.step(&mut video_driver);
+                    if breakpoints.contains(&virtual_boy.cpu.reg_pc()) {
+                        start_debugger = true;
+                        break;
+                    }
+                }
+                if frame_cycles >= CPU_CYCLES_PER_FRAME {
+                    frame_cycles -= CPU_CYCLES_PER_FRAME;
+                }
+
+                if start_debugger {
                     mode = Mode::Debugging;
 
                     cursor = virtual_boy.cpu.reg_pc();
@@ -143,7 +160,7 @@ fn main() {
                 }
             }
             Mode::Debugging => {
-                while let Ok(command_string) = receiver.try_recv() {
+                while let Ok(command_string) = stdin_receiver.try_recv() {
                     let command = match (command_string.parse(), last_command.clone()) {
                         (Ok(Command::Repeat), Some(c)) => Ok(c),
                         (Ok(Command::Repeat), None) => Err("No last command".into()),
@@ -165,22 +182,14 @@ fn main() {
                         }
                         Ok(Command::Step) => {
                             virtual_boy.step(&mut video_driver);
+                            if frame_cycles >= CPU_CYCLES_PER_FRAME {
+                                frame_cycles -= CPU_CYCLES_PER_FRAME;
+                            }
                             cursor = virtual_boy.cpu.reg_pc();
                             disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
                             cursor = virtual_boy.cpu.reg_pc();
                         }
                         Ok(Command::Continue) => {
-                            // TODO: Main loop shouldn't be here probably; should
-                            //  break out to something else
-                            /*loop {
-                                virtual_boy.step(&mut video_driver);
-                                cursor = virtual_boy.cpu.reg_pc();
-                                if breakpoints.contains(&cursor) {
-                                    break;
-                                }
-                            }
-                            disassemble_instruction(&mut virtual_boy, &labels, &breakpoints, &mut cursor);
-                            cursor = virtual_boy.cpu.reg_pc();*/
                             mode = Mode::Running;
                         }
                         Ok(Command::Goto(addr)) => {
