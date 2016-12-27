@@ -5,6 +5,7 @@ use sram::*;
 use vip::*;
 use vsu::*;
 use timer::*;
+use game_pad::*;
 use mem_map::*;
 
 pub struct Interconnect {
@@ -14,9 +15,7 @@ pub struct Interconnect {
     vip: Vip,
     vsu: Vsu,
     timer: Timer,
-
-    gamepad_strobe_hack: bool,
-    gamepad_strobe_hack_counter: u64,
+    pub game_pad: GamePad,
 }
 
 impl Interconnect {
@@ -28,9 +27,7 @@ impl Interconnect {
             vip: Vip::new(),
             vsu: Vsu::new(),
             timer: Timer::new(),
-
-            gamepad_strobe_hack: false,
-            gamepad_strobe_hack_counter: 0,
+            game_pad: GamePad::new(),
         }
     }
 
@@ -52,14 +49,8 @@ impl Interconnect {
             MappedAddress::LinkReceiveDataReg => {
                 panic!("Read byte from Link Receive Data Register not yet implemented");
             }
-            MappedAddress::GamePadInputLowReg => {
-                println!("WARNING: Read byte from Game Pad Input Low Register not yet implemented");
-                if self.gamepad_strobe_hack { 0x06 } else { 0x00 }
-            }
-            MappedAddress::GamePadInputHighReg => {
-                println!("WARNING: Read byte from Game Pad Input High Register not yet implemented");
-                if self.gamepad_strobe_hack { 0x10 } else { 0x00 }
-            }
+            MappedAddress::GamePadInputLowReg => self.game_pad.read_input_low_reg(),
+            MappedAddress::GamePadInputHighReg => self.game_pad.read_input_high_reg(),
             MappedAddress::TimerCounterReloadLowReg => self.timer.read_counter_reload_low_reg(),
             MappedAddress::TimerCounterReloadHighReg => self.timer.read_counter_reload_high_reg(),
             MappedAddress::TimerControlReg => self.timer.read_control_reg(),
@@ -67,10 +58,7 @@ impl Interconnect {
                 println!("WARNING: Read byte from Wait Control Register not yet implemented");
                 0
             }
-            MappedAddress::GamePadInputControlReg => {
-                println!("WARNING: Read byte from Game Pad Input Control Register not yet implemented");
-                0
-            }
+            MappedAddress::GamePadInputControlReg => self.game_pad.read_input_control_reg(),
             MappedAddress::CartridgeExpansion(addr) => {
                 println!("WARNING: Read byte from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr);
                 0
@@ -98,24 +86,15 @@ impl Interconnect {
             MappedAddress::LinkReceiveDataReg => {
                 panic!("Read halfword from Link Receive Data Register not yet implemented");
             }
-            MappedAddress::GamePadInputLowReg => {
-                println!("Read halfword from Game Pad Input Low Register not yet implemented");
-                0
-            }
-            MappedAddress::GamePadInputHighReg => {
-                println!("Read halfword from Game Pad Input High Register not yet implemented");
-                0
-            }
+            MappedAddress::GamePadInputLowReg => self.game_pad.read_input_low_reg() as _,
+            MappedAddress::GamePadInputHighReg => self.game_pad.read_input_high_reg() as _,
             MappedAddress::TimerCounterReloadLowReg => self.timer.read_counter_reload_low_reg() as _,
             MappedAddress::TimerCounterReloadHighReg => self.timer.read_counter_reload_high_reg() as _,
             MappedAddress::TimerControlReg => self.timer.read_control_reg() as _,
             MappedAddress::WaitControlReg => {
                 panic!("Read halfword from Wait Control Register not yet implemented");
             }
-            MappedAddress::GamePadInputControlReg => {
-                println!("Read halfword from Game Pad Input Control Register not yet implemented");
-                0
-            }
+            MappedAddress::GamePadInputControlReg => self.game_pad.read_input_control_reg() as _,
             MappedAddress::CartridgeExpansion(addr) => {
                 println!("WARNING: Read halfword from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr);
                 0
@@ -143,21 +122,15 @@ impl Interconnect {
             MappedAddress::LinkReceiveDataReg => {
                 panic!("Read word from Link Receive Data Register not yet implemented");
             }
-            MappedAddress::GamePadInputLowReg => {
-                panic!("Read word from Game Pad Input Low Register not yet implemented");
-            }
-            MappedAddress::GamePadInputHighReg => {
-                panic!("Read word from Game Pad Input High Register not yet implemented");
-            }
+            MappedAddress::GamePadInputLowReg => self.game_pad.read_input_low_reg() as _,
+            MappedAddress::GamePadInputHighReg => self.game_pad.read_input_high_reg() as _,
             MappedAddress::TimerCounterReloadLowReg => self.timer.read_counter_reload_low_reg() as _,
             MappedAddress::TimerCounterReloadHighReg => self.timer.read_counter_reload_high_reg() as _,
             MappedAddress::TimerControlReg => self.timer.read_control_reg() as _,
             MappedAddress::WaitControlReg => {
                 panic!("Read word from Wait Control Register not yet implemented");
             }
-            MappedAddress::GamePadInputControlReg => {
-                panic!("Read word from Game Pad Input Control Register not yet implemented");
-            }
+            MappedAddress::GamePadInputControlReg => self.game_pad.read_input_control_reg() as _,
             MappedAddress::CartridgeExpansion(addr) => {
                 println!("WARNING: Read word from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr);
                 0
@@ -185,10 +158,10 @@ impl Interconnect {
                 println!("WARNING: Write byte to Link Receive Data Register not yet implemented (value: 0x{:02x})", value);
             }
             MappedAddress::GamePadInputLowReg => {
-                println!("WARNING: Write byte to Game Pad Input Low Register not yet implemented (value: 0x{:02x})", value);
+                println!("WARNING: Attempted write byte to Game Pad Input Low Register (value: 0x{:02x})", value);
             }
             MappedAddress::GamePadInputHighReg => {
-                println!("WARNING: Write byte to Game Pad Input High Register not yet implemented (value: 0x{:02x})", value);
+                println!("WARNING: Attempted write byte to Game Pad Input High Register (value: 0x{:02x})", value);
             }
             MappedAddress::TimerCounterReloadLowReg => self.timer.write_counter_reload_low_reg(value),
             MappedAddress::TimerCounterReloadHighReg => self.timer.write_counter_reload_high_reg(value),
@@ -198,9 +171,7 @@ impl Interconnect {
                 println!(" Cartridge ROM Waits: {}", if value & 0x01 == 0 { 2 } else { 1 });
                 println!(" Cartridge Expansion Waits: {}", if value & 0x02 == 0 { 2 } else { 1 });
             }
-            MappedAddress::GamePadInputControlReg => {
-                println!("WARNING: Write byte to Game Pad Input Control Register not yet implemented (value: 0x{:02x})", value);
-            }
+            MappedAddress::GamePadInputControlReg => self.game_pad.write_input_control_reg(value),
             MappedAddress::CartridgeExpansion(addr) => {
                 println!("WARNING: Write byte to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:02x})", addr, value);
             }
@@ -230,10 +201,10 @@ impl Interconnect {
                 println!("WARNING: Write halfword to Link Receive Data Register not yet implemented (value: 0x{:04x})", value);
             }
             MappedAddress::GamePadInputLowReg => {
-                println!("WARNING: Write halfword to Game Pad Input Low Register not yet implemented (value: 0x{:04x})", value);
+                println!("WARNING: Attempted halfword byte to Game Pad Input Low Register (value: 0x{:04x})", value);
             }
             MappedAddress::GamePadInputHighReg => {
-                println!("WARNING: Write halfword to Game Pad Input High Register not yet implemented (value: 0x{:04x})", value);
+                println!("WARNING: Attempted halfword byte to Game Pad Input High Register (value: 0x{:04x})", value);
             }
             MappedAddress::TimerCounterReloadLowReg => self.timer.write_counter_reload_low_reg(value as _),
             MappedAddress::TimerCounterReloadHighReg => self.timer.write_counter_reload_high_reg(value as _),
@@ -241,9 +212,7 @@ impl Interconnect {
             MappedAddress::WaitControlReg => {
                 println!("WARNING: Write halfword to Wait Control Register not yet implemented (value: 0x{:04x})", value);
             }
-            MappedAddress::GamePadInputControlReg => {
-                println!("WARNING: Write halfword to Game Pad Input Control Register not yet implemented (value: 0x{:04x})", value);
-            }
+            MappedAddress::GamePadInputControlReg => self.game_pad.write_input_control_reg(value as _),
             MappedAddress::CartridgeExpansion(addr) => {
                 println!("WARNING: Write halfword to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
             }
@@ -273,10 +242,10 @@ impl Interconnect {
                 println!("WARNING: Write word to Link Receive Data Register not yet implemented (value: 0x{:08x})", value);
             }
             MappedAddress::GamePadInputLowReg => {
-                println!("WARNING: Write word to Game Pad Input Low Register not yet implemented (value: 0x{:08x})", value);
+                println!("WARNING: Attempted word byte to Game Pad Input Low Register (value: 0x{:08x})", value);
             }
             MappedAddress::GamePadInputHighReg => {
-                println!("WARNING: Write word to Game Pad Input High Register not yet implemented (value: 0x{:08x})", value);
+                println!("WARNING: Attempted word byte to Game Pad Input High Register (value: 0x{:08x})", value);
             }
             MappedAddress::TimerCounterReloadLowReg => self.timer.write_counter_reload_low_reg(value as _),
             MappedAddress::TimerCounterReloadHighReg => self.timer.write_counter_reload_high_reg(value as _),
@@ -284,9 +253,7 @@ impl Interconnect {
             MappedAddress::WaitControlReg => {
                 panic!("Write word to Wait Control Register not yet implemented");
             }
-            MappedAddress::GamePadInputControlReg => {
-                println!("WARNING: Write word to Game Pad Input Control Register not yet implemented (value: 0x{:08x})", value);
-            }
+            MappedAddress::GamePadInputControlReg => self.game_pad.write_input_control_reg(value as _),
             MappedAddress::CartridgeExpansion(addr) => {
                 println!("WARNING: Write word to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:08x})", addr, value);
             }
@@ -307,14 +274,6 @@ impl Interconnect {
 
         if self.vip.cycles(cycles, video_driver) {
             interrupt = Some(0xfe40);
-        }
-
-        for _ in 0..cycles {
-            self.gamepad_strobe_hack_counter += 1;
-            if self.gamepad_strobe_hack_counter >= 0x2dedbef {
-                self.gamepad_strobe_hack_counter = 0;
-                self.gamepad_strobe_hack = !self.gamepad_strobe_hack;
-            }
         }
 
         interrupt

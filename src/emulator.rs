@@ -3,6 +3,7 @@ use minifb::{WindowOptions, Window, Key, KeyRepeat};
 use video_driver::*;
 use rom::*;
 use instruction::*;
+use game_pad::*;
 use virtual_boy::*;
 use command::*;
 
@@ -119,6 +120,8 @@ impl Emulator {
             start_debugger = true;
         }
 
+        self.read_input_keys();
+
         while self.frame_cycles < CPU_CYCLES_PER_FRAME {
             self.frame_cycles += self.virtual_boy.step(video_driver);
             if self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc()) {
@@ -133,6 +136,23 @@ impl Emulator {
         if start_debugger {
             self.start_debugger();
         }
+    }
+
+    fn read_input_keys(&mut self) {
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::A, self.window.is_key_down(Key::F));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::B, self.window.is_key_down(Key::H));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::Start, self.window.is_key_down(Key::Enter));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::Select, self.window.is_key_down(Key::Space));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::L, self.window.is_key_down(Key::E));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::R, self.window.is_key_down(Key::U));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::LeftDPadUp, self.window.is_key_down(Key::W));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::LeftDPadDown, self.window.is_key_down(Key::S));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::LeftDPadLeft, self.window.is_key_down(Key::A));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::LeftDPadRight, self.window.is_key_down(Key::D));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::RightDPadUp, self.window.is_key_down(Key::I));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::RightDPadDown, self.window.is_key_down(Key::K));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::RightDPadLeft, self.window.is_key_down(Key::J));
+        self.virtual_boy.interconnect.game_pad.set_button_pressed(Button::RightDPadRight, self.window.is_key_down(Key::L));
     }
 
     fn start_debugger(&mut self) {

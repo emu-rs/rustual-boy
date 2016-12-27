@@ -12,6 +12,7 @@ mod sram;
 mod vip;
 mod vsu;
 mod timer;
+mod game_pad;
 mod mem_map;
 mod interconnect;
 mod instruction;
