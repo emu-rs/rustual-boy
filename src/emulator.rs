@@ -89,7 +89,7 @@ impl Emulator {
                     self.run_frame(&mut video_driver);
                 }
                 Mode::Debugging => {
-                    if self.run_commands(&mut video_driver) {
+                    if self.run_debugger_commands(&mut video_driver) {
                         break;
                     }
                 }
@@ -144,7 +144,7 @@ impl Emulator {
         self.print_cursor();
     }
 
-    fn run_commands(&mut self, video_driver: &mut VideoDriver) -> bool {
+    fn run_debugger_commands(&mut self, video_driver: &mut VideoDriver) -> bool {
         while let Ok(command_string) = self.stdin_receiver.try_recv() {
             let command = match (command_string.parse(), self.last_command.clone()) {
                 (Ok(Command::Repeat), Some(c)) => Ok(c),
