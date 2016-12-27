@@ -24,6 +24,7 @@ impl VideoDriver for SimpleVideoDriver {
     }
 }
 
+#[derive(PartialEq, Eq)]
 enum Mode {
     Running,
     Debugging,
@@ -88,7 +89,9 @@ impl Emulator {
                     self.run_frame(&mut video_driver);
                 }
                 Mode::Debugging => {
-                    self.run_commands(&mut video_driver);
+                    if self.run_commands(&mut video_driver) {
+                        break;
+                    }
                 }
             }
 
@@ -98,7 +101,9 @@ impl Emulator {
             }
 
             let frame_duration = frame_start_time.elapsed();
-            //println!("Frame duration: {}ms", frame_duration.subsec_nanos() / NS_TO_MS);
+            if self.mode == Mode::Running {
+                println!("Frame duration: {}ms", frame_duration.subsec_nanos() / NS_TO_MS);
+            }
             let target_frame_duration = time::Duration::from_millis(20);
             if frame_duration < target_frame_duration {
                 let sleep_ms = (target_frame_duration - frame_duration).subsec_nanos() / NS_TO_MS;
@@ -126,14 +131,17 @@ impl Emulator {
         }
 
         if start_debugger {
-            self.mode = Mode::Debugging;
-
-            self.cursor = self.virtual_boy.cpu.reg_pc();
-            self.disassemble_instruction();
-
-            print!("(vb-rs 0x{:08x}) > ", self.cursor);
-            stdout().flush().unwrap();
+            self.start_debugger();
         }
+    }
+
+    fn start_debugger(&mut self) {
+        self.mode = Mode::Debugging;
+
+        self.cursor = self.virtual_boy.cpu.reg_pc();
+        self.disassemble_instruction();
+
+        self.print_cursor();
     }
 
     fn run_commands(&mut self, video_driver: &mut VideoDriver) -> bool {
@@ -158,7 +166,7 @@ impl Emulator {
                     println!("ecr: 0x{:08x}", self.virtual_boy.cpu.reg_ecr());
                 }
                 Ok(Command::Step) => {
-                    self.virtual_boy.step(video_driver);
+                    self.frame_cycles += self.virtual_boy.step(video_driver);
                     if self.frame_cycles >= CPU_CYCLES_PER_FRAME {
                         self.frame_cycles -= CPU_CYCLES_PER_FRAME;
                     }
@@ -235,11 +243,15 @@ impl Emulator {
                 self.last_command = Some(c);
             }
 
-            print!("(vb-rs 0x{:08x}) > ", self.cursor);
-            stdout().flush().unwrap();
+            self.print_cursor();
         }
 
         return false;
+    }
+
+    fn print_cursor(&self) {
+        print!("(vb-rs 0x{:08x}) > ", self.cursor);
+        stdout().flush().unwrap();
     }
 
     fn disassemble_instruction(&mut self) -> u32 {
