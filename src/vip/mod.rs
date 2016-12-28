@@ -16,6 +16,9 @@ const FRAME_CLOCK_PERIOD_NS: u64 = FRAME_CLOCK_PERIOD_MS * MS_TO_NS;
 const DRAWING_PERIOD_MS: u64 = 10;
 const DRAWING_PERIOD_NS: u64 = DRAWING_PERIOD_MS * MS_TO_NS;
 
+const RESOLUTION_X: usize = 384;
+const RESOLUTION_Y: usize = 224;
+
 enum DisplayState {
     Idle,
     LeftFramebufferDisplayProcessing,
@@ -25,6 +28,11 @@ enum DisplayState {
 enum DrawingState {
     Idle,
     Drawing,
+}
+
+enum Eye {
+    Left,
+    Right,
 }
 
 pub struct Vip {
@@ -714,9 +722,6 @@ impl Vip {
     }
 
     fn end_drawing_process(&mut self, video_driver: &mut VideoDriver) {
-        const RESOLUTION_X: usize = 384;
-        const RESOLUTION_Y: usize = 224;
-
         let mut left_buffer = vec![0; RESOLUTION_X * RESOLUTION_Y];
         let mut right_buffer = vec![0; RESOLUTION_X * RESOLUTION_Y];
 
@@ -781,21 +786,56 @@ impl Vip {
                 break;
             }
 
-            if left_on || right_on {
-                let width = (width as u32) + 1;
-                let height = (height as u32) + 1;
-                let segment_offset = 0x00020000 + base * 0x00002000;
+            let width = (width as u32) + 1;
+            let height = (height as u32) + 1;
+            let segment_offset = 0x00020000 + base * 0x00002000;
+
+            for i in 0..2 {
+                let eye = match i {
+                    0 => Eye::Left,
+                    _ => Eye::Right,
+                };
+
+                match eye {
+                    Eye::Left => {
+                        if !left_on {
+                            continue;
+                        }
+                    }
+                    Eye::Right => {
+                        if !right_on {
+                            continue;
+                        }
+                    }
+                }
+
+                let buffer = match eye {
+                    Eye::Left => &mut left_buffer,
+                    Eye::Right => &mut right_buffer,
+                };
 
                 for pixel_y in 0..RESOLUTION_Y as u32 {
                     for pixel_x in 0..RESOLUTION_X as u32 {
-                        let window_x = pixel_x.wrapping_sub(x as u32);
+                        let window_x = {
+                            let value = pixel_x.wrapping_sub(x as u32);
+                            match eye {
+                                Eye::Left => value.wrapping_sub(parallax as u32),
+                                Eye::Right => value.wrapping_add(parallax as u32),
+                            }
+                        };
                         let window_y = pixel_y.wrapping_sub(y as u32);
 
                         if window_x >= width || window_y >= height {
                             continue;
                         }
 
-                        let background_x = window_x.wrapping_add(bg_x as u32);
+                        let background_x = {
+                            let value = window_x.wrapping_add(bg_x as u32);
+                            match eye {
+                                Eye::Left => value.wrapping_sub(bg_parallax as u32),
+                                Eye::Right => value.wrapping_add(bg_parallax as u32),
+                            }
+                        };
                         let background_y = window_y.wrapping_add(bg_y as u32);
 
                         let segment_x = (background_x >> 3) & 0x3f;
@@ -847,12 +887,8 @@ impl Vip {
                             2 => brightness_2,
                             _ => brightness_3
                         };
-                        if left_on {
-                            left_buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = brightness as u8;
-                        }
-                        if right_on {
-                            right_buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = brightness as u8;
-                        }
+
+                        buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = brightness as u8;
                     }
                 }
             }
