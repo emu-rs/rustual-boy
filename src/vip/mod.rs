@@ -35,6 +35,13 @@ enum Eye {
     Right,
 }
 
+enum WindowMode {
+    Normal,
+    LineShift,
+    Affine,
+    Obj,
+}
+
 pub struct Vip {
     vram: Box<[u8]>,
 
@@ -769,7 +776,7 @@ impl Vip {
             let bg_y = self.read_vram_halfword(window_offset + 12) as i16;
             let width = self.read_vram_halfword(window_offset + 14);
             let height = self.read_vram_halfword(window_offset + 16);
-            let param_base = self.read_vram_halfword(window_offset + 18) & 0xfff0;
+            let param_base = self.read_vram_halfword(window_offset + 18) as u32;
             let out_of_bounds_char = self.read_vram_halfword(window_offset + 20);
             println!(" X: {}", x);
             println!(" Parallax: {}", parallax);
@@ -789,6 +796,14 @@ impl Vip {
             let width = (width as u32) + 1;
             let height = (height as u32) + 1;
             let segment_offset = 0x00020000 + base * 0x00002000;
+            let param_offset = 0x00020000 + param_base * 2;
+
+            let mode = match mode {
+                0 => WindowMode::Normal,
+                1 => WindowMode::LineShift,
+                2 => WindowMode::Affine,
+                _ => WindowMode::Obj
+            };
 
             for i in 0..2 {
                 let eye = match i {
@@ -815,9 +830,21 @@ impl Vip {
                 };
 
                 for pixel_y in 0..RESOLUTION_Y as u32 {
+                    let line_shift = match mode {
+                        WindowMode::LineShift => {
+                            let line_offset = param_offset + pixel_y * 4;
+                            let eye_offset = line_offset + match eye {
+                                Eye::Left => 0,
+                                Eye::Right => 2,
+                            };
+                            (self.read_vram_halfword(eye_offset) as i16) as u32
+                        }
+                        _ => 0
+                    };
+
                     for pixel_x in 0..RESOLUTION_X as u32 {
                         let window_x = {
-                            let value = pixel_x.wrapping_sub(x as u32);
+                            let value = pixel_x.wrapping_sub(x as u32).wrapping_add(line_shift);
                             match eye {
                                 Eye::Left => value.wrapping_sub(parallax as u32),
                                 Eye::Right => value.wrapping_add(parallax as u32),
