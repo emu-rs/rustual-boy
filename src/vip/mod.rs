@@ -337,18 +337,24 @@ impl Vip {
                 (self.reg_game_frame_control - 1) as u16
             }
             MappedAddress::DrawingControlReadReg => {
-                let drawing_to_frame_buffer_0 = match self.drawing_state {
-                    DrawingState::Idle => false,
-                    DrawingState::Drawing => true,
+                let draw_to_first_framebuffers = !self.display_first_framebuffers;
+                let (drawing_to_frame_buffer_0, drawing_to_frame_buffer_1) = match self.drawing_state {
+                    DrawingState::Drawing => {
+                        if draw_to_first_framebuffers {
+                            (true, false)
+                        } else {
+                            (false, true)
+                        }
+                    }
+                    _ => (false, false)
                 };
-                let drawing_to_frame_buffer_1 = drawing_to_frame_buffer_0; // TODO
                 let drawing_exceeds_frame_period = false;
                 let current_y_position = 0; // TODO
                 let drawing_at_y_position = false;
 
                 (if self.reg_drawing_control_drawing_enable { 1 } else { 0 } << 1) |
-                (if drawing_to_frame_buffer_1 { 1 } else { 0 } << 2) |
-                (if drawing_to_frame_buffer_0 { 1 } else { 0 } << 3) |
+                (if drawing_to_frame_buffer_0 { 1 } else { 0 } << 2) |
+                (if drawing_to_frame_buffer_1 { 1 } else { 0 } << 3) |
                 (if drawing_exceeds_frame_period { 1 } else { 0 } << 4) |
                 (current_y_position << 8) |
                 (if drawing_at_y_position { 1 } else { 0 } << 15)
