@@ -78,6 +78,8 @@ pub struct Vip {
     reg_obj_palette_2: u8,
     reg_obj_palette_3: u8,
 
+    reg_clear_color: u8,
+
     frame_clock_counter: u64,
     game_frame_clock_counter: usize,
 
@@ -120,6 +122,8 @@ impl Vip {
             reg_obj_palette_1: 0,
             reg_obj_palette_2: 0,
             reg_obj_palette_3: 0,
+
+            reg_clear_color: 0,
 
             frame_clock_counter: 0,
             game_frame_clock_counter: 0,
@@ -193,10 +197,7 @@ impl Vip {
             MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1,
             MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2,
             MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3,
-            MappedAddress::ClearColorReg => {
-                println!("WARNING: Attempted read byte from Clear Color Reg");
-                0
-            }
+            MappedAddress::ClearColorReg => self.reg_clear_color,
             MappedAddress::Vram(addr) => {
                 self.vram[addr as usize]
             }
@@ -259,9 +260,7 @@ impl Vip {
             MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1 = value,
             MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2 = value,
             MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3 = value,
-            MappedAddress::ClearColorReg => {
-                println!("WARNING: Attempted write byte to Clear Color Reg (value: 0x{:02x})", value);
-            }
+            MappedAddress::ClearColorReg => self.reg_clear_color = value & 0x03,
             MappedAddress::Vram(addr) => {
                 self.vram[addr as usize] = value;
             }
@@ -358,10 +357,7 @@ impl Vip {
             MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1 as _,
             MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2 as _,
             MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3 as _,
-            MappedAddress::ClearColorReg => {
-                println!("WARNING: Read halfword from Clear Color Reg not yet implemented");
-                0
-            }
+            MappedAddress::ClearColorReg => self.reg_clear_color as _,
             MappedAddress::Vram(addr) => {
                 (self.vram[addr as usize] as u16) |
                 ((self.vram[addr as usize + 1] as u16) << 8)
@@ -447,9 +443,7 @@ impl Vip {
             MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1 = value as _,
             MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2 = value as _,
             MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3 = value as _,
-            MappedAddress::ClearColorReg => {
-                println!("WARNING: Write halfword to Clear Color Reg not yet implemented (value: 0x{:04x})", value);
-            }
+            MappedAddress::ClearColorReg => self.reg_clear_color = (value & 0x03) as _,
             MappedAddress::Vram(addr) => {
                 self.vram[addr as usize] = value as u8;
                 self.vram[addr as usize + 1] = (value >> 8) as u8;
@@ -730,9 +724,6 @@ impl Vip {
     }
 
     fn end_drawing_process(&mut self, video_driver: &mut VideoDriver) {
-        let mut left_buffer = vec![0; RESOLUTION_X * RESOLUTION_Y];
-        let mut right_buffer = vec![0; RESOLUTION_X * RESOLUTION_Y];
-
         let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
         let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
         let mut brightness_3 = ((self.reg_led_brightness_1 as u32) + (self.reg_led_brightness_2 as u32) + (self.reg_led_brightness_3 as u32)) * 2;
@@ -745,6 +736,15 @@ impl Vip {
         if brightness_3 > 255 {
             brightness_3 = 255;
         }
+
+        let clear_brightness = match self.reg_clear_color {
+            0 => 0,
+            1 => brightness_1,
+            2 => brightness_2,
+            _ => brightness_3
+        } as u8;
+        let mut left_buffer = vec![clear_brightness; RESOLUTION_X * RESOLUTION_Y];
+        let mut right_buffer = vec![clear_brightness; RESOLUTION_X * RESOLUTION_Y];
 
         const WINDOW_ENTRY_LENGTH: u32 = 32;
         let mut window_offset = WINDOW_ATTRIBS_END + 1 - WINDOW_ENTRY_LENGTH;
