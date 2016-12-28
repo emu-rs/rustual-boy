@@ -891,13 +891,15 @@ impl Vip {
                             };
 
                             for pixel_x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
-                                let window_x = {
-                                    let value = pixel_x.wrapping_sub(x as u32).wrapping_add(line_shift);
+                                let x = {
+                                    let value = (x as u32).wrapping_add(line_shift);
                                     match eye {
                                         Eye::Left => value.wrapping_sub(parallax as u32),
                                         Eye::Right => value.wrapping_add(parallax as u32),
                                     }
                                 };
+
+                                let window_x = pixel_x.wrapping_sub(x as u32);
                                 let window_y = pixel_y.wrapping_sub(y as u32);
 
                                 if window_x >= width || window_y >= height {
