@@ -16,8 +16,10 @@ const FRAME_CLOCK_PERIOD_NS: u64 = FRAME_CLOCK_PERIOD_MS * MS_TO_NS;
 const DRAWING_PERIOD_MS: u64 = 10;
 const DRAWING_PERIOD_NS: u64 = DRAWING_PERIOD_MS * MS_TO_NS;
 
-const RESOLUTION_X: usize = 384;
-const RESOLUTION_Y: usize = 224;
+const FRAMEBUFFER_RESOLUTION_X: usize = 384;
+const FRAMEBUFFER_RESOLUTION_Y: usize = 256;
+const DISPLAY_RESOLUTION_X: usize = 384;
+const DISPLAY_RESOLUTION_Y: usize = 224;
 
 enum DisplayState {
     Idle,
@@ -724,27 +726,8 @@ impl Vip {
     }
 
     fn end_drawing_process(&mut self, video_driver: &mut VideoDriver) {
-        let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
-        let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
-        let mut brightness_3 = ((self.reg_led_brightness_1 as u32) + (self.reg_led_brightness_2 as u32) + (self.reg_led_brightness_3 as u32)) * 2;
-        if brightness_1 > 255 {
-            brightness_1 = 255;
-        }
-        if brightness_2 > 255 {
-            brightness_2 = 255;
-        }
-        if brightness_3 > 255 {
-            brightness_3 = 255;
-        }
-
-        let clear_brightness = match self.reg_clear_color {
-            0 => 0,
-            1 => brightness_1,
-            2 => brightness_2,
-            _ => brightness_3
-        } as u8;
-        let mut left_buffer = vec![clear_brightness; RESOLUTION_X * RESOLUTION_Y];
-        let mut right_buffer = vec![clear_brightness; RESOLUTION_X * RESOLUTION_Y];
+        let mut left_framebuffer = vec![self.reg_clear_color; FRAMEBUFFER_RESOLUTION_X * FRAMEBUFFER_RESOLUTION_Y];
+        let mut right_framebuffer = vec![self.reg_clear_color; FRAMEBUFFER_RESOLUTION_X * FRAMEBUFFER_RESOLUTION_Y];
 
         const WINDOW_ENTRY_LENGTH: u32 = 32;
         let mut window_offset = WINDOW_ATTRIBS_END + 1 - WINDOW_ENTRY_LENGTH;
@@ -825,9 +808,9 @@ impl Vip {
                     }
                 }
 
-                let buffer = match eye {
-                    Eye::Left => &mut left_buffer,
-                    Eye::Right => &mut right_buffer,
+                let framebuffer = match eye {
+                    Eye::Left => &mut left_framebuffer,
+                    Eye::Right => &mut right_framebuffer,
                 };
 
                 match mode {
@@ -835,7 +818,7 @@ impl Vip {
                         // TODO
                     }
                     _ => {
-                        for pixel_y in 0..RESOLUTION_Y as u32 {
+                        for pixel_y in 0..FRAMEBUFFER_RESOLUTION_Y as u32 {
                             let line_shift = match mode {
                                 WindowMode::LineShift => {
                                     let line_offset = param_offset + pixel_y * 4;
@@ -848,7 +831,7 @@ impl Vip {
                                 _ => 0
                             };
 
-                            for pixel_x in 0..RESOLUTION_X as u32 {
+                            for pixel_x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
                                 let window_x = {
                                     let value = pixel_x.wrapping_sub(x as u32).wrapping_add(line_shift);
                                     match eye {
@@ -914,14 +897,8 @@ impl Vip {
                                 };
 
                                 let color = (palette >> (palette_index * 2)) & 0x03;
-                                let brightness = match color {
-                                    0 => 0,
-                                    1 => brightness_1,
-                                    2 => brightness_2,
-                                    _ => brightness_3
-                                };
 
-                                buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = brightness as u8;
+                                framebuffer[(pixel_x as usize) * FRAMEBUFFER_RESOLUTION_Y + (pixel_y as usize)] = color;
                             }
                         }
                     }
@@ -930,6 +907,44 @@ impl Vip {
 
             window_offset -= WINDOW_ENTRY_LENGTH;
             window_index -= 1;
+        }
+
+        let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
+        let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
+        let mut brightness_3 = ((self.reg_led_brightness_1 as u32) + (self.reg_led_brightness_2 as u32) + (self.reg_led_brightness_3 as u32)) * 2;
+        if brightness_1 > 255 {
+            brightness_1 = 255;
+        }
+        if brightness_2 > 255 {
+            brightness_2 = 255;
+        }
+        if brightness_3 > 255 {
+            brightness_3 = 255;
+        }
+
+        let mut left_buffer = vec![0; DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y];
+        let mut right_buffer = vec![0; DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y];
+        for pixel_x in 0..DISPLAY_RESOLUTION_X as usize {
+            for pixel_y in 0..DISPLAY_RESOLUTION_Y as usize {
+                let framebuffer_index = pixel_x * FRAMEBUFFER_RESOLUTION_Y + pixel_y;
+                let left_color = left_framebuffer[framebuffer_index];
+                let right_color = right_framebuffer[framebuffer_index];
+                let left_brightness = match left_color {
+                    0 => 0,
+                    1 => brightness_1,
+                    2 => brightness_2,
+                    _ => brightness_3
+                } as u8;
+                let right_brightness = match right_color {
+                    0 => 0,
+                    1 => brightness_1,
+                    2 => brightness_2,
+                    _ => brightness_3
+                } as u8;
+                let buffer_index = pixel_y * DISPLAY_RESOLUTION_X + pixel_x;
+                left_buffer[buffer_index] = left_brightness;
+                right_buffer[buffer_index] = right_brightness;
+            }
         }
 
         video_driver.output_frame((left_buffer.into_boxed_slice(), right_buffer.into_boxed_slice()));
