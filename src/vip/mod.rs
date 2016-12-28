@@ -726,9 +726,14 @@ impl Vip {
     }
 
     fn end_drawing_process(&mut self, video_driver: &mut VideoDriver) {
+        let left_framebuffer_offset = 0;
+        let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
+
         let clear_pixels = (self.reg_clear_color << 6) | (self.reg_clear_color << 4) | (self.reg_clear_color << 2) | self.reg_clear_color;
-        let mut left_framebuffer = vec![clear_pixels; FRAMEBUFFER_RESOLUTION_X * FRAMEBUFFER_RESOLUTION_Y / 4];
-        let mut right_framebuffer = vec![clear_pixels; FRAMEBUFFER_RESOLUTION_X * FRAMEBUFFER_RESOLUTION_Y / 4];
+        for i in 0..FRAMEBUFFER_RESOLUTION_X * FRAMEBUFFER_RESOLUTION_Y / 4 {
+            self.vram[left_framebuffer_offset + i] = clear_pixels;
+            self.vram[right_framebuffer_offset + i] = clear_pixels;
+        }
 
         const WINDOW_ENTRY_LENGTH: u32 = 32;
         let mut window_offset = WINDOW_ATTRIBS_END + 1 - WINDOW_ENTRY_LENGTH;
@@ -809,9 +814,9 @@ impl Vip {
                     }
                 }
 
-                let framebuffer = match eye {
-                    Eye::Left => &mut left_framebuffer,
-                    Eye::Right => &mut right_framebuffer,
+                let framebuffer_offset = match eye {
+                    Eye::Left => left_framebuffer_offset,
+                    Eye::Right => right_framebuffer_offset,
                 };
 
                 match mode {
@@ -902,9 +907,9 @@ impl Vip {
                                 let framebuffer_byte_index = ((pixel_x as usize) * FRAMEBUFFER_RESOLUTION_Y + (pixel_y as usize)) / 4;
                                 let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
                                 let framebuffer_byte_mask = 0x03 << framebuffer_byte_shift;
-                                let mut framebuffer_byte = framebuffer[framebuffer_byte_index];
+                                let mut framebuffer_byte = self.vram[framebuffer_offset + framebuffer_byte_index];
                                 framebuffer_byte = (framebuffer_byte & !framebuffer_byte_mask) | (color << framebuffer_byte_shift);
-                                framebuffer[framebuffer_byte_index] = framebuffer_byte;
+                                self.vram[framebuffer_offset + framebuffer_byte_index] = framebuffer_byte;
                             }
                         }
                     }
@@ -934,8 +939,8 @@ impl Vip {
             for pixel_y in 0..DISPLAY_RESOLUTION_Y as usize {
                 let framebuffer_byte_index = (pixel_x * FRAMEBUFFER_RESOLUTION_Y + pixel_y) / 4;
                 let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
-                let left_color = (left_framebuffer[framebuffer_byte_index] >> framebuffer_byte_shift) & 0x03;
-                let right_color = (right_framebuffer[framebuffer_byte_index] >> framebuffer_byte_shift) & 0x03;
+                let left_color = (self.vram[left_framebuffer_offset + framebuffer_byte_index] >> framebuffer_byte_shift) & 0x03;
+                let right_color = (self.vram[right_framebuffer_offset + framebuffer_byte_index] >> framebuffer_byte_shift) & 0x03;
                 let left_brightness = match left_color {
                     0 => 0,
                     1 => brightness_1,
