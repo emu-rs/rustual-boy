@@ -717,7 +717,8 @@ impl Vip {
         const RESOLUTION_X: usize = 384;
         const RESOLUTION_Y: usize = 224;
 
-        let mut buffer = vec![0; RESOLUTION_X * RESOLUTION_Y];
+        let mut left_buffer = vec![0; RESOLUTION_X * RESOLUTION_Y];
+        let mut right_buffer = vec![0; RESOLUTION_X * RESOLUTION_Y];
 
         let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
         let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
@@ -846,7 +847,12 @@ impl Vip {
                             2 => brightness_2,
                             _ => brightness_3
                         };
-                        buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = brightness << 16;
+                        if left_on {
+                            left_buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = brightness as u8;
+                        }
+                        if right_on {
+                            right_buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = brightness as u8;
+                        }
                     }
                 }
             }
@@ -855,7 +861,7 @@ impl Vip {
             window_index -= 1;
         }
 
-        video_driver.output_frame(buffer.into_boxed_slice());
+        video_driver.output_frame((left_buffer.into_boxed_slice(), right_buffer.into_boxed_slice()));
 
         println!("End drawing process");
         self.drawing_state = DrawingState::Idle;

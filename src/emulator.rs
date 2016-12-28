@@ -16,11 +16,11 @@ use std::sync::mpsc::{channel, Receiver};
 const NS_TO_MS: u32 = 1000000;
 
 struct SimpleVideoDriver {
-    next: Option<Box<[u32]>>,
+    next: Option<(Box<[u8]>, Box<[u8]>)>,
 }
 
 impl VideoDriver for SimpleVideoDriver {
-    fn output_frame(&mut self, frame: Box<[u32]>) {
+    fn output_frame(&mut self, frame: (Box<[u8]>, Box<[u8]>)) {
         self.next = Some(frame);
     }
 }
@@ -97,7 +97,15 @@ impl Emulator {
             }
 
             match video_driver.next {
-                Some(buffer) => self.window.update_with_buffer(&buffer),
+                Some((left_buffer, right_buffer)) => {
+                    let mut buffer = vec![0; 384 * 224];
+                    for i in 0..384 * 224 {
+                        let left = left_buffer[i] as u32;
+                        let right = right_buffer[i] as u32;
+                        buffer[i] = (left << 16) | (right << 8) | right;
+                    }
+                    self.window.update_with_buffer(&buffer);
+                }
                 _ => self.window.update()
             }
 
