@@ -35,6 +35,7 @@ enum Eye {
     Right,
 }
 
+#[derive(PartialEq, Eq)]
 enum WindowMode {
     Normal,
     LineShift,
@@ -829,93 +830,100 @@ impl Vip {
                     Eye::Right => &mut right_buffer,
                 };
 
-                for pixel_y in 0..RESOLUTION_Y as u32 {
-                    let line_shift = match mode {
-                        WindowMode::LineShift => {
-                            let line_offset = param_offset + pixel_y * 4;
-                            let eye_offset = line_offset + match eye {
-                                Eye::Left => 0,
-                                Eye::Right => 2,
+                match mode {
+                    WindowMode::Obj => {
+                        // TODO
+                    }
+                    _ => {
+                        for pixel_y in 0..RESOLUTION_Y as u32 {
+                            let line_shift = match mode {
+                                WindowMode::LineShift => {
+                                    let line_offset = param_offset + pixel_y * 4;
+                                    let eye_offset = line_offset + match eye {
+                                        Eye::Left => 0,
+                                        Eye::Right => 2,
+                                    };
+                                    (self.read_vram_halfword(eye_offset) as i16) as u32
+                                }
+                                _ => 0
                             };
-                            (self.read_vram_halfword(eye_offset) as i16) as u32
-                        }
-                        _ => 0
-                    };
 
-                    for pixel_x in 0..RESOLUTION_X as u32 {
-                        let window_x = {
-                            let value = pixel_x.wrapping_sub(x as u32).wrapping_add(line_shift);
-                            match eye {
-                                Eye::Left => value.wrapping_sub(parallax as u32),
-                                Eye::Right => value.wrapping_add(parallax as u32),
+                            for pixel_x in 0..RESOLUTION_X as u32 {
+                                let window_x = {
+                                    let value = pixel_x.wrapping_sub(x as u32).wrapping_add(line_shift);
+                                    match eye {
+                                        Eye::Left => value.wrapping_sub(parallax as u32),
+                                        Eye::Right => value.wrapping_add(parallax as u32),
+                                    }
+                                };
+                                let window_y = pixel_y.wrapping_sub(y as u32);
+
+                                if window_x >= width || window_y >= height {
+                                    continue;
+                                }
+
+                                let background_x = {
+                                    let value = window_x.wrapping_add(bg_x as u32);
+                                    match eye {
+                                        Eye::Left => value.wrapping_sub(bg_parallax as u32),
+                                        Eye::Right => value.wrapping_add(bg_parallax as u32),
+                                    }
+                                };
+                                let background_y = window_y.wrapping_add(bg_y as u32);
+
+                                let segment_x = (background_x >> 3) & 0x3f;
+                                let segment_y = (background_y >> 3) & 0x3f;
+                                let mut offset_x = background_x & 0x07;
+                                let mut offset_y = background_y & 0x07;
+                                let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
+                                let entry = self.read_vram_halfword(segment_addr as _);
+                                let pal = (entry >> 14) & 0x03;
+                                let horizontal_flip = (entry & 0x2000) != 0;
+                                let vertical_flip = (entry & 0x1000) != 0;
+                                if horizontal_flip {
+                                    offset_x = 7 - offset_x;
+                                }
+                                if vertical_flip {
+                                    offset_y = 7 - offset_y;
+                                }
+                                let char_index = (entry & 0x07ff) as u32;
+
+                                let char_offset = if char_index < 0x0200 {
+                                    0x00006000 + char_index * 16
+                                } else if char_index < 0x0400 {
+                                    0x0000e000 + (char_index - 0x0200) * 16
+                                } else if char_index < 0x0600 {
+                                    0x00016000 + (char_index - 0x0400) * 16
+                                } else {
+                                    0x0001e000 + (char_index - 0x0600) * 16
+                                };
+
+                                let char_row_offset = char_offset + offset_y * 2;
+                                let char_row_data = self.read_vram_halfword(char_row_offset as _);
+                                let palette_index = ((char_row_data as u32) >> (offset_x * 2)) & 0x03;
+
+                                if palette_index == 0 {
+                                    continue;
+                                }
+
+                                let palette = match pal {
+                                    0 => self.reg_bg_palette_0,
+                                    1 => self.reg_bg_palette_1,
+                                    2 => self.reg_bg_palette_2,
+                                    _ => self.reg_bg_palette_3
+                                };
+
+                                let color = (palette >> (palette_index * 2)) & 0x03;
+                                let brightness = match color {
+                                    0 => 0,
+                                    1 => brightness_1,
+                                    2 => brightness_2,
+                                    _ => brightness_3
+                                };
+
+                                buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = brightness as u8;
                             }
-                        };
-                        let window_y = pixel_y.wrapping_sub(y as u32);
-
-                        if window_x >= width || window_y >= height {
-                            continue;
                         }
-
-                        let background_x = {
-                            let value = window_x.wrapping_add(bg_x as u32);
-                            match eye {
-                                Eye::Left => value.wrapping_sub(bg_parallax as u32),
-                                Eye::Right => value.wrapping_add(bg_parallax as u32),
-                            }
-                        };
-                        let background_y = window_y.wrapping_add(bg_y as u32);
-
-                        let segment_x = (background_x >> 3) & 0x3f;
-                        let segment_y = (background_y >> 3) & 0x3f;
-                        let mut offset_x = background_x & 0x07;
-                        let mut offset_y = background_y & 0x07;
-                        let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
-                        let entry = self.read_vram_halfword(segment_addr as _);
-                        let pal = (entry >> 14) & 0x03;
-                        let horizontal_flip = (entry & 0x2000) != 0;
-                        let vertical_flip = (entry & 0x1000) != 0;
-                        if horizontal_flip {
-                            offset_x = 7 - offset_x;
-                        }
-                        if vertical_flip {
-                            offset_y = 7 - offset_y;
-                        }
-                        let char_index = (entry & 0x07ff) as u32;
-
-                        let char_offset = if char_index < 0x0200 {
-                            0x00006000 + char_index * 16
-                        } else if char_index < 0x0400 {
-                            0x0000e000 + (char_index - 0x0200) * 16
-                        } else if char_index < 0x0600 {
-                            0x00016000 + (char_index - 0x0400) * 16
-                        } else {
-                            0x0001e000 + (char_index - 0x0600) * 16
-                        };
-
-                        let char_row_offset = char_offset + offset_y * 2;
-                        let char_row_data = self.read_vram_halfword(char_row_offset as _);
-                        let palette_index = ((char_row_data as u32) >> (offset_x * 2)) & 0x03;
-
-                        if palette_index == 0 {
-                            continue;
-                        }
-
-                        let palette = match pal {
-                            0 => self.reg_bg_palette_0,
-                            1 => self.reg_bg_palette_1,
-                            2 => self.reg_bg_palette_2,
-                            _ => self.reg_bg_palette_3
-                        };
-
-                        let color = (palette >> (palette_index * 2)) & 0x03;
-                        let brightness = match color {
-                            0 => 0,
-                            1 => brightness_1,
-                            2 => brightness_2,
-                            _ => brightness_3
-                        };
-
-                        buffer[(pixel_y as usize) * RESOLUTION_X + (pixel_x as usize)] = brightness as u8;
                     }
                 }
             }
