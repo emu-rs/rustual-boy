@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 mod mem_map;
 
 use video_driver::*;
@@ -12,6 +10,11 @@ const CPU_CYCLE_PERIOD_NS: u64 = 50;
 const FRAME_CLOCK_PERIOD_MS: u64 = 20;
 const FRAME_CLOCK_PERIOD_NS: u64 = FRAME_CLOCK_PERIOD_MS * MS_TO_NS;
 
+const DISPLAY_PROCESSING_DELAY_PERIOD_MS: u64 = 10;
+const DISPLAY_PROCESSING_DELAY_PERIOD_NS: u64 = DISPLAY_PROCESSING_DELAY_PERIOD_MS * MS_TO_NS;
+const DISPLAY_PROCESSING_BUFFER_PERIOD_MS: u64 = 5;
+const DISPLAY_PROCESSING_BUFFER_PERIOD_NS: u64 = DISPLAY_PROCESSING_BUFFER_PERIOD_MS * MS_TO_NS;
+
 // Hardcoded drawing period for now
 const DRAWING_PERIOD_MS: u64 = 10;
 const DRAWING_PERIOD_NS: u64 = DRAWING_PERIOD_MS * MS_TO_NS;
@@ -23,8 +26,8 @@ const DISPLAY_RESOLUTION_Y: usize = 224;
 
 enum DisplayState {
     Idle,
-    LeftFramebufferDisplayProcessing,
-    RightFramebufferDisplayProcessing,
+    LeftFramebuffer,
+    RightFramebuffer,
 }
 
 enum DrawingState {
@@ -86,6 +89,9 @@ pub struct Vip {
     game_frame_clock_counter: usize,
 
     drawing_counter: u64,
+    display_counter: u64,
+
+    display_first_framebuffers: bool,
 }
 
 impl Vip {
@@ -131,6 +137,9 @@ impl Vip {
             game_frame_clock_counter: 0,
 
             drawing_counter: 0,
+            display_counter: 0,
+
+            display_first_framebuffers: false,
         }
     }
 
@@ -292,17 +301,20 @@ impl Vip {
                 0
             }
             MappedAddress::DisplayControlReadReg => {
-                println!("WARNING: Read halfword from Display Control Read Reg not fully implemented");
                 let scan_ready = true; // TODO
-                let frame_clock = false; // TODO
+                // TODO: Not entirely sure this is correct
+                let frame_clock = match self.display_state {
+                    DisplayState::Idle => true,
+                    _ => false
+                };
                 let mem_refresh = false; // TODO
                 let column_table_addr_lock = false; // TODO
 
                 (if self.reg_display_control_display_enable { 1 } else { 0 } << 1) |
                 (match self.display_state {
                     DisplayState::Idle => 0b0000,
-                    DisplayState::LeftFramebufferDisplayProcessing => 0b0001, // TODO: Incorporate current framebuffer index
-                    DisplayState::RightFramebufferDisplayProcessing => 0b0010, // TODO: Incorporate current framebuffer index
+                    DisplayState::LeftFramebuffer => if self.display_first_framebuffers { 0b0001 } else { 0b0100 },
+                    DisplayState::RightFramebuffer => if self.display_first_framebuffers { 0b0010 } else { 0b1000 },
                 } << 2) |
                 (if scan_ready { 1 } else { 0 } << 6) |
                 (if frame_clock { 1 } else { 0 } << 7) |
@@ -325,11 +337,21 @@ impl Vip {
                 (self.reg_game_frame_control - 1) as u16
             }
             MappedAddress::DrawingControlReadReg => {
-                println!("WARNING: Read halfword from Drawing Control Read Reg not fully implemented");
-                match self.drawing_state {
-                    DrawingState::Idle => 0,
-                    DrawingState::Drawing => 0x000c,
-                }
+                let drawing_to_frame_buffer_0 = match self.drawing_state {
+                    DrawingState::Idle => false,
+                    DrawingState::Drawing => true,
+                };
+                let drawing_to_frame_buffer_1 = drawing_to_frame_buffer_0; // TODO
+                let drawing_exceeds_frame_period = false;
+                let current_y_position = 0; // TODO
+                let drawing_at_y_position = false;
+
+                (if self.reg_drawing_control_drawing_enable { 1 } else { 0 } << 1) |
+                (if drawing_to_frame_buffer_1 { 1 } else { 0 } << 2) |
+                (if drawing_to_frame_buffer_0 { 1 } else { 0 } << 3) |
+                (if drawing_exceeds_frame_period { 1 } else { 0 } << 4) |
+                (current_y_position << 8) |
+                (if drawing_at_y_position { 1 } else { 0 } << 15)
             }
             MappedAddress::DrawingControlWriteReg => {
                 println!("WARNING: Attempted read halfword from Drawing Control Write Reg");
@@ -680,10 +702,32 @@ impl Vip {
             if let DrawingState::Drawing = self.drawing_state {
                 self.drawing_counter += CPU_CYCLE_PERIOD_NS;
                 if self.drawing_counter >= DRAWING_PERIOD_NS {
-                    self.end_drawing_process(video_driver);
+                    self.end_drawing_process();
                     self.reg_interrupt_pending_drawing_finished = true;
                     if self.reg_interrupt_enable_drawing_finished {
                         raise_interrupt = true;
+                    }
+                }
+            }
+
+            self.display_counter += CPU_CYCLE_PERIOD_NS;
+            match self.display_state {
+                DisplayState::Idle => {
+                    if self.display_counter >= DISPLAY_PROCESSING_DELAY_PERIOD_NS {
+                        self.display_counter -= DISPLAY_PROCESSING_DELAY_PERIOD_NS;
+                        self.start_left_framebuffer_display_process();
+                    }
+                }
+                DisplayState::LeftFramebuffer => {
+                    if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
+                        self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
+                        self.start_right_framebuffer_display_process();
+                    }
+                }
+                DisplayState::RightFramebuffer => {
+                    if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
+                        self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
+                        self.end_display_processing(video_driver);
                     }
                 }
             }
@@ -710,6 +754,8 @@ impl Vip {
     fn game_clock(&mut self, raise_interrupt: &mut bool) {
         println!("Game clock rising edge");
 
+        self.display_first_framebuffers = !self.display_first_framebuffers;
+
         if self.reg_drawing_control_drawing_enable {
             self.begin_drawing_process();
             self.reg_interrupt_pending_drawing_started = true;
@@ -725,8 +771,9 @@ impl Vip {
         self.drawing_counter = 0;
     }
 
-    fn end_drawing_process(&mut self, video_driver: &mut VideoDriver) {
-        let left_framebuffer_offset = 0;
+    fn end_drawing_process(&mut self) {
+        let draw_to_first_framebuffers = !self.display_first_framebuffers;
+        let left_framebuffer_offset = if draw_to_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
         let clear_pixels = (self.reg_clear_color << 6) | (self.reg_clear_color << 4) | (self.reg_clear_color << 2) | self.reg_clear_color;
@@ -920,6 +967,24 @@ impl Vip {
             window_index -= 1;
         }
 
+        println!("End drawing process");
+        self.drawing_state = DrawingState::Idle;
+    }
+
+    fn start_left_framebuffer_display_process(&mut self) {
+        println!("Start left framebuffer display process");
+        self.display_state = DisplayState::LeftFramebuffer;
+    }
+
+    fn start_right_framebuffer_display_process(&mut self) {
+        println!("Start right framebuffer display process");
+        self.display_state = DisplayState::RightFramebuffer;
+    }
+
+    fn end_display_processing(&mut self, video_driver: &mut VideoDriver) {
+        let left_framebuffer_offset = if self.display_first_framebuffers { 0x00000000 } else { 0x00008000 };
+        let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
+
         let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
         let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
         let mut brightness_3 = ((self.reg_led_brightness_1 as u32) + (self.reg_led_brightness_2 as u32) + (self.reg_led_brightness_3 as u32)) * 2;
@@ -961,7 +1026,7 @@ impl Vip {
 
         video_driver.output_frame((left_buffer.into_boxed_slice(), right_buffer.into_boxed_slice()));
 
-        println!("End drawing process");
-        self.drawing_state = DrawingState::Idle;
+        println!("End display process");
+        self.display_state = DisplayState::Idle;
     }
 }
