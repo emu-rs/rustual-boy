@@ -920,7 +920,7 @@ impl Vip {
 
                             for pixel_x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
                                 let x = {
-                                    let value = (x as u32).wrapping_add(line_shift);
+                                    let value = x as u32;
                                     match eye {
                                         Eye::Left => value.wrapping_sub(parallax as u32),
                                         Eye::Right => value.wrapping_add(parallax as u32),
@@ -935,7 +935,7 @@ impl Vip {
                                 }
 
                                 let background_x = {
-                                    let value = window_x.wrapping_add(bg_x as u32);
+                                    let value = window_x.wrapping_add(bg_x as u32).wrapping_add(line_shift);
                                     match eye {
                                         Eye::Left => value.wrapping_sub(bg_parallax as u32),
                                         Eye::Right => value.wrapping_add(bg_parallax as u32),
