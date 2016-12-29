@@ -48,7 +48,7 @@ enum WindowMode {
     Obj,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum ObjGroup {
     Group0,
     Group1,
@@ -604,6 +604,53 @@ impl Vip {
                 match mode {
                     WindowMode::Obj => {
                         println!("Current obj group: {:?}", current_obj_group);
+
+                        match current_obj_group {
+                            Some(obj_group) => {
+                                let starting_obj_index = match obj_group {
+                                    ObjGroup::Group0 => self.reg_obj_group_0_ptr,
+                                    ObjGroup::Group1 => self.reg_obj_group_1_ptr,
+                                    ObjGroup::Group2 => self.reg_obj_group_2_ptr,
+                                    ObjGroup::Group3 => self.reg_obj_group_3_ptr,
+                                };
+                                let mut ending_obj_index = match obj_group {
+                                    ObjGroup::Group0 => 0,
+                                    ObjGroup::Group1 => self.reg_obj_group_0_ptr + 1,
+                                    ObjGroup::Group2 => self.reg_obj_group_1_ptr + 1,
+                                    ObjGroup::Group3 => self.reg_obj_group_2_ptr + 1,
+                                };
+                                if ending_obj_index >= starting_obj_index {
+                                    ending_obj_index = 0;
+                                }
+                                for i in (ending_obj_index..starting_obj_index + 1).rev() {
+                                    println!("Current obj: {}", i);
+
+                                    let obj_offset = 0x0003e000 + (i as u32) * 8;
+
+                                    let x = self.read_vram_halfword(obj_offset) as i16;
+                                    let l_r_parallax = self.read_vram_halfword(obj_offset + 2);
+                                    let l = (l_r_parallax & 0x8000) != 0;
+                                    let r = (l_r_parallax & 0x4000) != 0;
+                                    let parallax = ((l_r_parallax << 2) as i16) >> 2;
+                                    let y = self.read_vram_halfword(obj_offset + 4) as i16;
+                                    let pal_hf_vf_char = self.read_vram_halfword(obj_offset + 6);
+                                    let pal = pal_hf_vf_char >> 14;
+                                    let hf = (pal_hf_vf_char & 0x2000) != 0;
+                                    let vf = (pal_hf_vf_char & 0x1000) != 0;
+                                    let char_index = pal_hf_vf_char & 0x07ff;
+                                    println!(" X: {}", x);
+                                    println!(" L: {}", l);
+                                    println!(" R: {}", r);
+                                    println!(" Parallax: {}", parallax);
+                                    println!(" Y: {}", y);
+                                    println!(" Pal: {}", pal);
+                                    println!(" Hf: {}", hf);
+                                    println!(" Vf: {}", vf);
+                                    println!(" Char index: {}", char_index);
+                                }
+                            }
+                            _ => println!("WARNING: Extra obj window found; all obj groups already drawn")
+                        }
                     }
                     _ => {
                         for pixel_y in 0..FRAMEBUFFER_RESOLUTION_Y as u32 {
