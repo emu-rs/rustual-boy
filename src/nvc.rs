@@ -274,6 +274,29 @@ impl Nvc {
                 let rhs = sign_extend_imm5(imm5);
                 self.add(lhs, rhs, reg2);
             }, first_halfword),
+            Opcode::Setf => format_ii(|imm5, reg2| {
+                let condition = opcode.condition(imm5);
+                // TODO: See if we can unify with branch code
+                let set = match condition {
+                    Condition::V => self.psw_overflow,
+                    Condition::C => self.psw_carry,
+                    Condition::Z => self.psw_zero,
+                    Condition::Nh => self.psw_carry | self.psw_zero,
+                    Condition::N => self.psw_sign,
+                    Condition::T => true,
+                    Condition::Lt => self.psw_sign ^ self.psw_overflow,
+                    Condition::Le => (self.psw_sign ^ self.psw_overflow) != self.psw_zero,
+                    Condition::Nv => !self.psw_overflow,
+                    Condition::Nc => !self.psw_carry,
+                    Condition::Nz => !self.psw_zero,
+                    Condition::H => !(self.psw_carry || self.psw_zero),
+                    Condition::P => !self.psw_sign,
+                    Condition::F => false,
+                    Condition::Ge => !(self.psw_sign != self.psw_overflow),
+                    Condition::Gt => !((self.psw_sign != self.psw_overflow) || self.psw_zero),
+                };
+                self.set_reg_gpr(reg2, if set { 1 } else { 0 });
+            }, first_halfword),
             Opcode::CmpImm => format_ii(|imm5, reg2| {
                 let lhs = self.reg_gpr(reg2);
                 let rhs = sign_extend_imm5(imm5);

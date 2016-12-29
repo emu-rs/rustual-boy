@@ -20,6 +20,7 @@ pub enum Opcode {
     Not,
     MovImm,
     AddImm5,
+    Setf,
     CmpImm,
     ShlImm,
     ShrImm,
@@ -111,6 +112,7 @@ impl Opcode {
                 0b001111 => Opcode::Not,
                 0b010000 => Opcode::MovImm,
                 0b010001 => Opcode::AddImm5,
+                0b010010 => Opcode::Setf,
                 0b010011 => Opcode::CmpImm,
                 0b010100 => Opcode::ShlImm,
                 0b010101 => Opcode::ShrImm,
@@ -165,6 +167,7 @@ impl Opcode {
             &Opcode::Not => InstructionFormat::I,
             &Opcode::MovImm => InstructionFormat::II,
             &Opcode::AddImm5 => InstructionFormat::II,
+            &Opcode::Setf => InstructionFormat::II,
             &Opcode::CmpImm => InstructionFormat::II,
             &Opcode::ShlImm => InstructionFormat::II,
             &Opcode::ShrImm => InstructionFormat::II,
@@ -226,6 +229,28 @@ impl Opcode {
         }
     }
 
+    pub fn condition(&self, imm5: usize) -> Condition {
+        match imm5 {
+            0x00 => Condition::V,
+            0x01 => Condition::C,
+            0x02 => Condition::Z,
+            0x03 => Condition::Nh,
+            0x04 => Condition::N,
+            0x05 => Condition::T,
+            0x06 => Condition::Lt,
+            0x07 => Condition::Le,
+            0x08 => Condition::Nv,
+            0x09 => Condition::Nc,
+            0x0a => Condition::Nz,
+            0x0b => Condition::H,
+            0x0c => Condition::P,
+            0x0d => Condition::F,
+            0x0e => Condition::Ge,
+            0x0f => Condition::Gt,
+            _ => panic!("Unrecognized condition: {}", imm5),
+        }
+    }
+
     pub fn num_cycles(&self, branch_taken: bool) -> usize {
         match self {
             &Opcode::MovReg => 1,
@@ -246,6 +271,7 @@ impl Opcode {
             &Opcode::Not => 1,
             &Opcode::MovImm => 1,
             &Opcode::AddImm5 => 1,
+            &Opcode::Setf => 1,
             &Opcode::CmpImm => 1,
             &Opcode::ShlImm => 1,
             &Opcode::ShrImm => 1,
@@ -314,6 +340,7 @@ impl fmt::Display for Opcode {
             &Opcode::And => "and",
             &Opcode::Xor => "xor",
             &Opcode::Not => "not",
+            &Opcode::Setf => "setf",
             &Opcode::Cli => "cli",
             &Opcode::Reti => "reti",
             &Opcode::Ldsr => "ldsr",
@@ -402,6 +429,49 @@ impl fmt::Display for SystemRegister {
             &SystemRegister::Ecr => "ecr",
             &SystemRegister::Psw => "psw",
             &SystemRegister::Chcw => "chcw",
+        };
+        write!(f, "{}", mnemonic)
+    }
+}
+
+pub enum Condition {
+    V,
+    C,
+    Z,
+    Nh,
+    N,
+    T,
+    Lt,
+    Le,
+    Nv,
+    Nc,
+    Nz,
+    H,
+    P,
+    F,
+    Ge,
+    Gt,
+}
+
+impl fmt::Display for Condition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mnemonic = match self {
+            &Condition::V => "v",
+            &Condition::C => "c",
+            &Condition::Z => "z",
+            &Condition::Nh => "nh",
+            &Condition::N => "n",
+            &Condition::T => "t",
+            &Condition::Lt => "lt",
+            &Condition::Le => "le",
+            &Condition::Nv => "nv",
+            &Condition::Nc => "nc",
+            &Condition::Nz => "nz",
+            &Condition::H => "h",
+            &Condition::P => "p",
+            &Condition::F => "f",
+            &Condition::Ge => "ge",
+            &Condition::Gt => "gt",
         };
         write!(f, "{}", mnemonic)
     }
