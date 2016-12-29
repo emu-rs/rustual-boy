@@ -1,14 +1,16 @@
 # vb-rs
 
-![rustendo64](screenshot.png)
+![screenie](screenshot.png)
+![screenie](screenshot2.png)
+![screenie](screenshot3.png)
 
 A WIP Virtual Boy emulator in Rust.
 
 ## Status
 
-This emulator is in its early stages (including the title, which will probably change) and covers much of the CPU + memory mapping and some of the video hardware. It also contains (and, on startup, drops into) a basic command-line debugger supporting disassembly, mem dump, breakpoints, etc. Many ROM's are "compatible" so far, but considering timer and inputs aren't covered yet, that's not saying much :)
+This emulator is in its early stages (including the title, which will probably change) and covers much of the CPU, memory mapping, and video hardware. It also contains a basic command-line debugger supporting disassembly, mem dump, breakpoints, etc. Many ROM's are "compatible" so far (a few are even playable), but there's still some fundamental things that aren't yet implemented, such as floating point op's and affine drawing.
 
-A more detailed status section will be written when the emu is complete enough for it to be relevant.
+A more detailed status section/compatibility will be written when the emu is complete enough for it to be relevant.
 
 ## License
 
