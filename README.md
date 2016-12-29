@@ -3,6 +3,7 @@
 ![screenie](screenshot.png)
 ![screenie](screenshot2.png)
 ![screenie](screenshot3.png)
+![screenie](screenshot4.png)
 
 A WIP Virtual Boy emulator in Rust.
 
