@@ -749,7 +749,7 @@ impl Vip {
                         self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
                         self.start_right_framebuffer_display_process();
                         self.reg_interrupt_pending_left_display_finished = true;
-                        if self.reg_interrupt_pending_left_display_finished {
+                        if self.reg_interrupt_enable_left_display_finished {
                             raise_interrupt = true;
                         }
                     }
@@ -759,7 +759,7 @@ impl Vip {
                         self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
                         self.end_display_processing(video_driver);
                         self.reg_interrupt_pending_right_display_finished = true;
-                        if self.reg_interrupt_pending_right_display_finished {
+                        if self.reg_interrupt_enable_right_display_finished {
                             raise_interrupt = true;
                         }
                     }
