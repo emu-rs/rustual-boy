@@ -623,7 +623,7 @@ impl Vip {
                                     ending_obj_index = 0;
                                 }
                                 for i in (ending_obj_index..starting_obj_index + 1).rev() {
-                                    println!("Current obj: {}", i);
+                                    //println!("Current obj: {}", i);
 
                                     let obj_offset = 0x0003e000 + (i as u32) * 8;
 
@@ -637,8 +637,8 @@ impl Vip {
                                     let pal = pal_hf_vf_char >> 14;
                                     let hf = (pal_hf_vf_char & 0x2000) != 0;
                                     let vf = (pal_hf_vf_char & 0x1000) != 0;
-                                    let char_index = pal_hf_vf_char & 0x07ff;
-                                    println!(" X: {}", x);
+                                    let char_index = (pal_hf_vf_char & 0x07ff) as u32;
+                                    /*println!(" X: {}", x);
                                     println!(" L: {}", l);
                                     println!(" R: {}", r);
                                     println!(" Parallax: {}", parallax);
@@ -646,7 +646,75 @@ impl Vip {
                                     println!(" Pal: {}", pal);
                                     println!(" Hf: {}", hf);
                                     println!(" Vf: {}", vf);
-                                    println!(" Char index: {}", char_index);
+                                    println!(" Char index: {}", char_index);*/
+
+                                    match eye {
+                                        Eye::Left => {
+                                            if !l {
+                                                continue;
+                                            }
+                                        }
+                                        Eye::Right => {
+                                            if !r {
+                                                continue;
+                                            }
+                                        }
+                                    }
+
+                                    let char_offset = if char_index < 0x0200 {
+                                        0x00006000 + char_index * 16
+                                    } else if char_index < 0x0400 {
+                                        0x0000e000 + (char_index - 0x0200) * 16
+                                    } else if char_index < 0x0600 {
+                                        0x00016000 + (char_index - 0x0400) * 16
+                                    } else {
+                                        0x0001e000 + (char_index - 0x0600) * 16
+                                    };
+
+                                    for offset_y in 0..8 {
+                                        let pixel_y = (y as u32).wrapping_add(offset_y);
+                                        if pixel_y >= FRAMEBUFFER_RESOLUTION_Y as u32 {
+                                            continue;
+                                        }
+                                        let offset_y = if vf { 7 - offset_y } else { offset_y };
+                                        for offset_x in 0..8 {
+                                            let pixel_x = {
+                                                let value = (x as u32).wrapping_add(offset_x);
+                                                match eye {
+                                                    Eye::Left => value.wrapping_sub(parallax as u32),
+                                                    Eye::Right => value.wrapping_add(parallax as u32),
+                                                }
+                                            };
+                                            if pixel_x >= FRAMEBUFFER_RESOLUTION_X as u32 {
+                                                continue;
+                                            }
+                                            let offset_x = if hf { 7 - offset_x } else { offset_x };
+
+                                            let char_row_offset = char_offset + offset_y * 2;
+                                            let char_row_data = self.read_vram_halfword(char_row_offset as _);
+                                            let palette_index = ((char_row_data as u32) >> (offset_x * 2)) & 0x03;
+
+                                            if palette_index == 0 {
+                                                continue;
+                                            }
+
+                                            let palette = match pal {
+                                                0 => self.reg_obj_palette_0,
+                                                1 => self.reg_obj_palette_1,
+                                                2 => self.reg_obj_palette_2,
+                                                _ => self.reg_obj_palette_3
+                                            };
+
+                                            let color = (palette >> (palette_index * 2)) & 0x03;
+
+                                            let framebuffer_byte_index = ((pixel_x as usize) * FRAMEBUFFER_RESOLUTION_Y + (pixel_y as usize)) / 4;
+                                            let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
+                                            let framebuffer_byte_mask = 0x03 << framebuffer_byte_shift;
+                                            let mut framebuffer_byte = self.vram[framebuffer_offset + framebuffer_byte_index];
+                                            framebuffer_byte = (framebuffer_byte & !framebuffer_byte_mask) | (color << framebuffer_byte_shift);
+                                            self.vram[framebuffer_offset + framebuffer_byte_index] = framebuffer_byte;
+                                        }
+                                    }
                                 }
                             }
                             _ => println!("WARNING: Extra obj window found; all obj groups already drawn")
