@@ -171,70 +171,6 @@ impl Vip {
 
     pub fn read_byte(&self, addr: u32) -> u8 {
         match map_address(addr) {
-            MappedAddress::InterruptPendingReg => {
-                println!("WARNING: Attempted read byte from Interrupt Pending Reg");
-                0
-            }
-            MappedAddress::InterruptEnableReg => {
-                println!("WARNING: Attempted read byte from Interrupt Enable Reg");
-                0
-            }
-            MappedAddress::InterruptClearReg => {
-                println!("WARNING: Attempted read byte from Interrupt Clear Reg");
-                0
-            }
-            MappedAddress::DisplayControlReadReg => {
-                println!("WARNING: Attempted read byte from Display Control Read Reg");
-                0
-            }
-            MappedAddress::DisplayControlWriteReg => {
-                println!("WARNING: Attempted read byte from Display Control Write Reg");
-                0
-            }
-            MappedAddress::LedBrightness1Reg => self.reg_led_brightness_1,
-            MappedAddress::LedBrightness2Reg => self.reg_led_brightness_2,
-            MappedAddress::LedBrightness3Reg => self.reg_led_brightness_3,
-            MappedAddress::LedBrightnessIdleReg => {
-                println!("WARNING: Attempted read byte from LED Brightness Idle Reg");
-                0
-            }
-            MappedAddress::GameFrameControlReg => {
-                println!("WARNING: Attempted read byte from Game Frame Control Reg");
-                0
-            }
-            MappedAddress::DrawingControlReadReg => {
-                println!("WARNING: Attempted read byte from Drawing Control Read Reg");
-                0
-            }
-            MappedAddress::DrawingControlWriteReg => {
-                println!("WARNING: Attempted read byte from Drawing Control Write Reg");
-                0
-            }
-            MappedAddress::ObjGroup0PointerReg => {
-                println!("WARNING: Attempted read byte from OBJ Group 0 Pointer Reg");
-                0
-            }
-            MappedAddress::ObjGroup1PointerReg => {
-                println!("WARNING: Attempted read byte from OBJ Group 1 Pointer Reg");
-                0
-            }
-            MappedAddress::ObjGroup2PointerReg => {
-                println!("WARNING: Attempted read byte from OBJ Group 2 Pointer Reg");
-                0
-            }
-            MappedAddress::ObjGroup3PointerReg => {
-                println!("WARNING: Attempted read byte from OBJ Group 3 Pointer Reg");
-                0
-            }
-            MappedAddress::BgPalette0Reg => self.reg_bg_palette_0,
-            MappedAddress::BgPalette1Reg => self.reg_bg_palette_1,
-            MappedAddress::BgPalette2Reg => self.reg_bg_palette_2,
-            MappedAddress::BgPalette3Reg => self.reg_bg_palette_3,
-            MappedAddress::ObjPalette0Reg => self.reg_obj_palette_0,
-            MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1,
-            MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2,
-            MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3,
-            MappedAddress::ClearColorReg => self.reg_clear_color,
             MappedAddress::Vram(addr) => {
                 self.vram[addr as usize]
             }
@@ -242,67 +178,32 @@ impl Vip {
                 println!("WARNING: Attempted read byte from unrecognized VIP address (addr: 0x{:08x})", addr);
                 0
             }
+            _ => {
+                let halfword = self.read_halfword(addr & 0xfffffffe);
+                if (addr & 0x01) == 0 {
+                    halfword as _
+                } else {
+                    (halfword >> 8) as _
+                }
+            }
         }
     }
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         match map_address(addr) {
-            MappedAddress::InterruptPendingReg => {
-                println!("WARNING: Attempted write byte to Interrupt Pending Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::InterruptEnableReg => {
-                println!("WARNING: Attempted write byte to Interrupt Enable Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::InterruptClearReg => {
-                println!("WARNING: Attempted write byte to Interrupt Clear Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::DisplayControlReadReg => {
-                println!("WARNING: Attempted write byte to Display Control Read Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::DisplayControlWriteReg => {
-                println!("WARNING: Attempted write byte to Display Control Write Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::LedBrightness1Reg => self.reg_led_brightness_1 = value,
-            MappedAddress::LedBrightness2Reg => self.reg_led_brightness_2 = value,
-            MappedAddress::LedBrightness3Reg => self.reg_led_brightness_3 = value,
-            MappedAddress::LedBrightnessIdleReg => {
-                println!("WARNING: Attempted write byte to LED Brightness Idle Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::GameFrameControlReg => {
-                println!("WARNING: Attempted write byte to Game Frame Control Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::DrawingControlReadReg => {
-                println!("WARNING: Attempted write byte to Drawing Control Read Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::DrawingControlWriteReg => {
-                println!("WARNING: Attempted write byte to Drawing Control Write Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::ObjGroup0PointerReg => {
-                println!("WARNING: Attempted write byte to OBJ Group 0 Pointer Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::ObjGroup1PointerReg => {
-                println!("WARNING: Attempted write byte to OBJ Group 1 Pointer Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::ObjGroup2PointerReg => {
-                println!("WARNING: Attempted write byte to OBJ Group 2 Pointer Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::ObjGroup3PointerReg => {
-                println!("WARNING: Attempted write byte to OBJ Group 3 Pointer Reg (value: 0x{:02x})", value);
-            }
-            MappedAddress::BgPalette0Reg => self.reg_bg_palette_0 = value,
-            MappedAddress::BgPalette1Reg => self.reg_bg_palette_1 = value,
-            MappedAddress::BgPalette2Reg => self.reg_bg_palette_2 = value,
-            MappedAddress::BgPalette3Reg => self.reg_bg_palette_3 = value,
-            MappedAddress::ObjPalette0Reg => self.reg_obj_palette_0 = value,
-            MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1 = value,
-            MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2 = value,
-            MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3 = value,
-            MappedAddress::ClearColorReg => self.reg_clear_color = value & 0x03,
             MappedAddress::Vram(addr) => {
                 self.vram[addr as usize] = value;
             }
             MappedAddress::Unrecognized(addr) => {
                 println!("WARNING: Attempted write byte to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:02x})", addr, value);
+            }
+            _ => {
+                let halfword = if (addr & 0x01) == 0 {
+                    value as _
+                } else {
+                    (value as u16) << 8
+                };
+                self.write_halfword(addr & 0xfffffffe, halfword);
             }
         }
     }
@@ -498,212 +399,6 @@ impl Vip {
             }
             MappedAddress::Unrecognized(addr) => {
                 println!("WARNING: Attempted write halfword to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
-            }
-        }
-    }
-
-    pub fn read_word(&self, addr: u32) -> u32 {
-        let addr = addr & 0xfffffffc;
-        match map_address(addr) {
-            MappedAddress::InterruptPendingReg => {
-                println!("WARNING: Attempted read word from Interrupt Pending Reg");
-                0
-            }
-            MappedAddress::InterruptEnableReg => {
-                println!("WARNING: Attempted read word from Interrupt Enable Reg");
-                0
-            }
-            MappedAddress::InterruptClearReg => {
-                println!("WARNING: Attempted read word from Interrupt Clear Reg");
-                0
-            }
-            MappedAddress::DisplayControlReadReg => {
-                println!("WARNING: Attempted read word from Display Control Read Reg");
-                0
-            }
-            MappedAddress::DisplayControlWriteReg => {
-                println!("WARNING: Attempted read word from Display Control Write Reg");
-                0
-            }
-            MappedAddress::LedBrightness1Reg => {
-                println!("WARNING: Attempted read word from LED Brightness 1 Reg");
-                0
-            }
-            MappedAddress::LedBrightness2Reg => {
-                println!("WARNING: Attempted read word from LED Brightness 2 Reg");
-                0
-            }
-            MappedAddress::LedBrightness3Reg => {
-                println!("WARNING: Attempted read word from LED Brightness 3 Reg");
-                0
-            }
-            MappedAddress::LedBrightnessIdleReg => {
-                println!("WARNING: Attempted read word from LED Brightness Idle Reg");
-                0
-            }
-            MappedAddress::GameFrameControlReg => {
-                println!("WARNING: Attempted read word from Game Frame Control Reg");
-                0
-            }
-            MappedAddress::DrawingControlReadReg => {
-                println!("WARNING: Attempted read word from Drawing Control Read Reg");
-                0
-            }
-            MappedAddress::DrawingControlWriteReg => {
-                println!("WARNING: Attempted read word from Drawing Control Write Reg");
-                0
-            }
-            MappedAddress::ObjGroup0PointerReg => {
-                println!("WARNING: Attempted read word from OBJ Group 0 Pointer Reg");
-                0
-            }
-            MappedAddress::ObjGroup1PointerReg => {
-                println!("WARNING: Attempted read word from OBJ Group 1 Pointer Reg");
-                0
-            }
-            MappedAddress::ObjGroup2PointerReg => {
-                println!("WARNING: Attempted read word from OBJ Group 2 Pointer Reg");
-                0
-            }
-            MappedAddress::ObjGroup3PointerReg => {
-                println!("WARNING: Attempted read word from OBJ Group 3 Pointer Reg");
-                0
-            }
-            MappedAddress::BgPalette0Reg => {
-                println!("WARNING: Attempted read word from BG Palette 0 Reg");
-                0
-            }
-            MappedAddress::BgPalette1Reg => {
-                println!("WARNING: Attempted read word from BG Palette 1 Reg");
-                0
-            }
-            MappedAddress::BgPalette2Reg => {
-                println!("WARNING: Attempted read word from BG Palette 2 Reg");
-                0
-            }
-            MappedAddress::BgPalette3Reg => {
-                println!("WARNING: Attempted read word from BG Palette 3 Reg");
-                0
-            }
-            MappedAddress::ObjPalette0Reg => {
-                println!("WARNING: Attempted read word from OBJ Palette 0 Reg");
-                0
-            }
-            MappedAddress::ObjPalette1Reg => {
-                println!("WARNING: Attempted read word from OBJ Palette 1 Reg");
-                0
-            }
-            MappedAddress::ObjPalette2Reg => {
-                println!("WARNING: Attempted read word from OBJ Palette 2 Reg");
-                0
-            }
-            MappedAddress::ObjPalette3Reg => {
-                println!("WARNING: Attempted read word from OBJ Palette 3 Reg");
-                0
-            }
-            MappedAddress::ClearColorReg => {
-                println!("WARNING: Attempted read word from Clear Color Reg");
-                0
-            }
-            MappedAddress::Vram(addr) => {
-                (self.vram[addr as usize] as u32) |
-                ((self.vram[addr as usize + 1] as u32) << 8) |
-                ((self.vram[addr as usize + 2] as u32) << 16) |
-                ((self.vram[addr as usize + 3] as u32) << 24)
-            }
-            MappedAddress::Unrecognized(addr) => {
-                println!("WARNING: Attempted read word from unrecognized VIP address (addr: 0x{:08x})", addr);
-                0
-            }
-        }
-    }
-
-    pub fn write_word(&mut self, addr: u32, value: u32) {
-        let addr = addr & 0xfffffffc;
-        match map_address(addr) {
-            MappedAddress::InterruptPendingReg => {
-                println!("WARNING: Attempted write word to Interrupt Pending Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::InterruptEnableReg => {
-                println!("WARNING: Attempted write word to Interrupt Enable Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::InterruptClearReg => {
-                println!("WARNING: Attempted write word to Interrupt Clear Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::DisplayControlReadReg => {
-                println!("WARNING: Attempted write word to Display Control Read Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::DisplayControlWriteReg => {
-                println!("WARNING: Attempted write word to Display Control Write Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::LedBrightness1Reg => {
-                println!("WARNING: Attempted write word to LED Brightness 1 Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::LedBrightness2Reg => {
-                println!("WARNING: Attempted write word to LED Brightness 2 Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::LedBrightness3Reg => {
-                println!("WARNING: Attempted write word to LED Brightness 3 Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::LedBrightnessIdleReg => {
-                println!("WARNING: Attempted write word to LED Brightness Idle Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::GameFrameControlReg => {
-                println!("WARNING: Attempted write word to Game Frame Control Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::DrawingControlReadReg => {
-                println!("WARNING: Attempted write word to Drawing Control Read Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::DrawingControlWriteReg => {
-                println!("WARNING: Attempted write word to Drawing Control Write Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::ObjGroup0PointerReg => {
-                println!("WARNING: Attempted write word to OBJ Group 0 Pointer Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::ObjGroup1PointerReg => {
-                println!("WARNING: Attempted write word to OBJ Group 1 Pointer Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::ObjGroup2PointerReg => {
-                println!("WARNING: Attempted write word to OBJ Group 2 Pointer Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::ObjGroup3PointerReg => {
-                println!("WARNING: Attempted write word to OBJ Group 3 Pointer Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::BgPalette0Reg => {
-                println!("WARNING: Attempted write word to BG Palette 0 Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::BgPalette1Reg => {
-                println!("WARNING: Attempted write word to BG Palette 1 Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::BgPalette2Reg => {
-                println!("WARNING: Attempted write word to BG Palette 2 Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::BgPalette3Reg => {
-                println!("WARNING: Attempted write word to BG Palette 3 Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::ObjPalette0Reg => {
-                println!("WARNING: Attempted write word to OBJ Palette 0 Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::ObjPalette1Reg => {
-                println!("WARNING: Attempted write word to OBJ Palette 1 Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::ObjPalette2Reg => {
-                println!("WARNING: Attempted write word to OBJ Palette 2 Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::ObjPalette3Reg => {
-                println!("WARNING: Attempted write word to OBJ Palette 3 Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::ClearColorReg => {
-                println!("WARNING: Attempted write word to Clear Color Reg (value: 0x{:08x})", value);
-            }
-            MappedAddress::Vram(addr) => {
-                self.vram[addr as usize] = value as u8;
-                self.vram[addr as usize + 1] = (value >> 8) as u8;
-                self.vram[addr as usize + 2] = (value >> 16) as u8;
-                self.vram[addr as usize + 3] = (value >> 24) as u8;
-            }
-            MappedAddress::Unrecognized(addr) => {
-                println!("WARNING: Attempted write word to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:08x})", addr, value);
             }
         }
     }

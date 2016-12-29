@@ -108,7 +108,8 @@ impl Interconnect {
     pub fn read_word(&self, addr: u32) -> u32 {
         let addr = addr & 0xfffffffc;
         match map_address(addr) {
-            MappedAddress::Vip(addr) => self.vip.read_word(addr),
+            MappedAddress::Vip(addr) =>
+                (self.vip.read_halfword(addr) as u32) | ((self.vip.read_halfword(addr + 2) as u32) << 16),
             MappedAddress::Vsu(addr) => self.vsu.read_word(addr),
             MappedAddress::LinkControlReg => {
                 panic!("Read word from Link Control Register not yet implemented");
@@ -227,7 +228,10 @@ impl Interconnect {
     pub fn write_word(&mut self, addr: u32, value: u32) {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
-            MappedAddress::Vip(addr) => self.vip.write_word(addr, value),
+            MappedAddress::Vip(addr) => {
+                self.vip.write_halfword(addr, value as _);
+                self.vip.write_halfword(addr + 2, (value >> 16) as _);
+            }
             MappedAddress::Vsu(addr) => self.vsu.write_word(addr, value),
             MappedAddress::LinkControlReg => {
                 println!("WARNING: Write word to Link Control Register not yet implemented (value: 0x{:08x})", value);
