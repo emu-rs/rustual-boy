@@ -788,12 +788,18 @@ impl Vip {
     fn game_clock(&mut self, raise_interrupt: &mut bool) {
         println!("Game clock rising edge");
 
+        self.reg_interrupt_pending_drawing_started = true;
+        if self.reg_interrupt_enable_drawing_started {
+            *raise_interrupt = true;
+        }
+
         if self.reg_drawing_control_drawing_enable {
             self.display_first_framebuffers = !self.display_first_framebuffers;
 
             self.begin_drawing_process();
-            self.reg_interrupt_pending_drawing_started = true;
-            if self.reg_interrupt_enable_drawing_started {
+        } else {
+            self.reg_interrupt_pending_drawing_finished = true;
+            if self.reg_interrupt_enable_drawing_finished {
                 *raise_interrupt = true;
             }
         }
