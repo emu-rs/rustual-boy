@@ -55,10 +55,14 @@ pub struct Vip {
 
     drawing_state: DrawingState,
 
+    reg_interrupt_pending_left_display_finished: bool,
+    reg_interrupt_pending_right_display_finished: bool,
     reg_interrupt_pending_drawing_started: bool,
     reg_interrupt_pending_start_of_frame_processing: bool,
     reg_interrupt_pending_drawing_finished: bool,
 
+    reg_interrupt_enable_left_display_finished: bool,
+    reg_interrupt_enable_right_display_finished: bool,
     reg_interrupt_enable_drawing_started: bool,
     reg_interrupt_enable_start_of_frame_processing: bool,
     reg_interrupt_enable_drawing_finished: bool,
@@ -103,10 +107,14 @@ impl Vip {
 
             drawing_state: DrawingState::Idle,
 
+            reg_interrupt_pending_left_display_finished: false,
+            reg_interrupt_pending_right_display_finished: false,
             reg_interrupt_pending_drawing_started: false,
             reg_interrupt_pending_start_of_frame_processing: false,
             reg_interrupt_pending_drawing_finished: false,
 
+            reg_interrupt_enable_left_display_finished: false,
+            reg_interrupt_enable_right_display_finished: false,
             reg_interrupt_enable_drawing_started: false,
             reg_interrupt_enable_start_of_frame_processing: false,
             reg_interrupt_enable_drawing_finished: false,
@@ -286,12 +294,16 @@ impl Vip {
         match map_address(addr) {
             MappedAddress::InterruptPendingReg => {
                 println!("WARNING: Read halfword from Interrupt Pending Reg not fully implemented");
+                (if self.reg_interrupt_pending_left_display_finished { 1 } else { 0 } << 1) |
+                (if self.reg_interrupt_pending_right_display_finished { 1 } else { 0 } << 2) |
                 (if self.reg_interrupt_pending_drawing_started { 1 } else { 0 } << 3) |
                 (if self.reg_interrupt_pending_start_of_frame_processing { 1 } else { 0 } << 4) |
                 (if self.reg_interrupt_pending_drawing_finished { 1 } else { 0 } << 14)
             }
             MappedAddress::InterruptEnableReg => {
                 println!("WARNING: Read halfword from Interrupt Enable Reg not fully implemented");
+                (if self.reg_interrupt_enable_left_display_finished { 1 } else { 0 } << 1) |
+                (if self.reg_interrupt_enable_right_display_finished { 1 } else { 0 } << 2) |
                 (if self.reg_interrupt_enable_drawing_started { 1 } else { 0 } << 3) |
                 (if self.reg_interrupt_enable_start_of_frame_processing { 1 } else { 0 } << 4) |
                 (if self.reg_interrupt_enable_drawing_finished { 1 } else { 0 } << 14)
@@ -407,12 +419,20 @@ impl Vip {
             }
             MappedAddress::InterruptEnableReg => {
                 println!("WARNING: Write halfword to Interrupt Enable Reg not fully implemented (value: 0x{:04x})", value);
+                self.reg_interrupt_enable_left_display_finished = (value & 0x0002) != 0;
+                self.reg_interrupt_enable_right_display_finished = (value & 0x0004) != 0;
                 self.reg_interrupt_enable_drawing_started = (value & 0x0008) != 0;
                 self.reg_interrupt_enable_start_of_frame_processing = (value & 0x0010) != 0;
                 self.reg_interrupt_enable_drawing_finished = (value & 0x4000) != 0;
             }
             MappedAddress::InterruptClearReg => {
                 println!("WARNING: Write halfword to Interrupt Clear Reg not fully implemented (value: 0x{:04x})", value);
+                if (value & 0x0002) != 0 {
+                    self.reg_interrupt_pending_left_display_finished = false;
+                }
+                if (value & 0x0004) != 0 {
+                    self.reg_interrupt_pending_right_display_finished = false;
+                }
                 if (value & 0x0008) != 0 {
                     self.reg_interrupt_pending_drawing_started = false;
                 }
@@ -728,12 +748,20 @@ impl Vip {
                     if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
                         self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
                         self.start_right_framebuffer_display_process();
+                        self.reg_interrupt_pending_left_display_finished = true;
+                        if self.reg_interrupt_pending_left_display_finished {
+                            raise_interrupt = true;
+                        }
                     }
                 }
                 DisplayState::RightFramebuffer => {
                     if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
                         self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
                         self.end_display_processing(video_driver);
+                        self.reg_interrupt_pending_right_display_finished = true;
+                        if self.reg_interrupt_pending_right_display_finished {
+                            raise_interrupt = true;
+                        }
                     }
                 }
             }
