@@ -102,7 +102,7 @@ impl Emulator {
                     for i in 0..384 * 224 {
                         let left = left_buffer[i] as u32;
                         let right = right_buffer[i] as u32;
-                        buffer[i] = (left << 16) | (right << 8) | right;
+                        buffer[i] = (right << 16) | (left << 8) | left;
                     }
                     self.window.update_with_buffer(&buffer);
                 }
