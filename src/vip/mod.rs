@@ -48,6 +48,14 @@ enum WindowMode {
     Obj,
 }
 
+#[derive(Debug)]
+enum ObjGroup {
+    Group0,
+    Group1,
+    Group2,
+    Group3,
+}
+
 pub struct Vip {
     vram: Box<[u8]>,
 
@@ -812,6 +820,8 @@ impl Vip {
             self.vram[right_framebuffer_offset + i] = clear_pixels;
         }
 
+        let mut current_obj_group = Some(ObjGroup::Group3);
+
         const WINDOW_ENTRY_LENGTH: u32 = 32;
         let mut window_offset = WINDOW_ATTRIBS_END + 1 - WINDOW_ENTRY_LENGTH;
         let mut window_index = 31;
@@ -898,7 +908,7 @@ impl Vip {
 
                 match mode {
                     WindowMode::Obj => {
-                        // TODO
+                        println!("Current obj group: {:?}", current_obj_group);
                     }
                     _ => {
                         for pixel_y in 0..FRAMEBUFFER_RESOLUTION_Y as u32 {
@@ -993,6 +1003,15 @@ impl Vip {
                         }
                     }
                 }
+            }
+
+            if let WindowMode::Obj = mode {
+                current_obj_group = match current_obj_group {
+                    Some(ObjGroup::Group3) => Some(ObjGroup::Group2),
+                    Some(ObjGroup::Group2) => Some(ObjGroup::Group1),
+                    Some(ObjGroup::Group1) => Some(ObjGroup::Group0),
+                    _ => None
+                };
             }
 
             window_offset -= WINDOW_ENTRY_LENGTH;
