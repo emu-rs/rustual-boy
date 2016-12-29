@@ -293,7 +293,7 @@ impl Vip {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
             MappedAddress::InterruptPendingReg => {
-                println!("WARNING: Read halfword from Interrupt Pending Reg not fully implemented");
+                //println!("WARNING: Read halfword from Interrupt Pending Reg not fully implemented");
                 (if self.reg_interrupt_pending_left_display_finished { 1 } else { 0 } << 1) |
                 (if self.reg_interrupt_pending_right_display_finished { 1 } else { 0 } << 2) |
                 (if self.reg_interrupt_pending_drawing_started { 1 } else { 0 } << 3) |
