@@ -78,6 +78,11 @@ pub struct Vip {
     reg_led_brightness_2: u8,
     reg_led_brightness_3: u8,
 
+    reg_obj_group_0_ptr: u16,
+    reg_obj_group_1_ptr: u16,
+    reg_obj_group_2_ptr: u16,
+    reg_obj_group_3_ptr: u16,
+
     reg_bg_palette_0: u8,
     reg_bg_palette_1: u8,
     reg_bg_palette_2: u8,
@@ -129,6 +134,11 @@ impl Vip {
             reg_led_brightness_1: 0,
             reg_led_brightness_2: 0,
             reg_led_brightness_3: 0,
+
+            reg_obj_group_0_ptr: 0,
+            reg_obj_group_1_ptr: 0,
+            reg_obj_group_2_ptr: 0,
+            reg_obj_group_3_ptr: 0,
 
             reg_bg_palette_0: 0,
             reg_bg_palette_1: 0,
@@ -375,22 +385,10 @@ impl Vip {
                 println!("WARNING: Attempted read halfword from Drawing Control Write Reg");
                 0
             }
-            MappedAddress::ObjGroup0PointerReg => {
-                println!("WARNING: Read halfword from OBJ Group 0 Pointer Reg not yet implemented");
-                0
-            }
-            MappedAddress::ObjGroup1PointerReg => {
-                println!("WARNING: Read halfword from OBJ Group 1 Pointer Reg not yet implemented");
-                0
-            }
-            MappedAddress::ObjGroup2PointerReg => {
-                println!("WARNING: Read halfword from OBJ Group 2 Pointer Reg not yet implemented");
-                0
-            }
-            MappedAddress::ObjGroup3PointerReg => {
-                println!("WARNING: Read halfword from OBJ Group 3 Pointer Reg not yet implemented");
-                0
-            }
+            MappedAddress::ObjGroup0PointerReg => self.reg_obj_group_0_ptr,
+            MappedAddress::ObjGroup1PointerReg => self.reg_obj_group_1_ptr,
+            MappedAddress::ObjGroup2PointerReg => self.reg_obj_group_2_ptr,
+            MappedAddress::ObjGroup3PointerReg => self.reg_obj_group_3_ptr,
             MappedAddress::BgPalette0Reg => self.reg_bg_palette_0 as _,
             MappedAddress::BgPalette1Reg => self.reg_bg_palette_1 as _,
             MappedAddress::BgPalette2Reg => self.reg_bg_palette_2 as _,
@@ -473,18 +471,10 @@ impl Vip {
                 println!("WARNING: Write halfword to Drawing Control Write Reg not fully implemented (value: 0x{:04x})", value);
                 self.reg_drawing_control_drawing_enable = (value & 0x02) != 0;
             }
-            MappedAddress::ObjGroup0PointerReg => {
-                println!("WARNING: Write halfword to OBJ Group 0 Pointer Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::ObjGroup1PointerReg => {
-                println!("WARNING: Write halfword to OBJ Group 1 Pointer Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::ObjGroup2PointerReg => {
-                println!("WARNING: Write halfword to OBJ Group 2 Pointer Reg not yet implemented (value: 0x{:04x})", value);
-            }
-            MappedAddress::ObjGroup3PointerReg => {
-                println!("WARNING: Write halfword to OBJ Group 3 Pointer Reg not yet implemented (value: 0x{:04x})", value);
-            }
+            MappedAddress::ObjGroup0PointerReg => self.reg_obj_group_0_ptr = value & 0x03ff,
+            MappedAddress::ObjGroup1PointerReg => self.reg_obj_group_1_ptr = value & 0x03ff,
+            MappedAddress::ObjGroup2PointerReg => self.reg_obj_group_2_ptr = value & 0x03ff,
+            MappedAddress::ObjGroup3PointerReg => self.reg_obj_group_3_ptr = value & 0x03ff,
             MappedAddress::BgPalette0Reg => self.reg_bg_palette_0 = value as _,
             MappedAddress::BgPalette1Reg => self.reg_bg_palette_1 = value as _,
             MappedAddress::BgPalette2Reg => self.reg_bg_palette_2 = value as _,
