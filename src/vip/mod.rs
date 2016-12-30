@@ -551,8 +551,8 @@ impl Vip {
             let base = (header & 0x000f) as u32;
             let stop = (header & 0x0040) != 0;
             let out_of_bounds = (header & 0x0080) != 0;
-            let bg_height = ((header >> 8) & 0x03) as usize;
-            let bg_width = ((header >> 10) & 0x03) as usize;
+            let bg_height = ((header >> 8) & 0x03) as u32;
+            let bg_width = ((header >> 10) & 0x03) as u32;
             let mode = ((header >> 12) & 0x03) as usize;
             let right_on = (header & 0x4000) != 0;
             let left_on = (header & 0x8000) != 0;
@@ -591,7 +591,9 @@ impl Vip {
 
             let width = (width as u32) + 1;
             let height = (height as u32) + 1;
-            let segment_offset = 0x00020000 + base * 0x00002000;
+            let segment_base = 0x00020000 + base * 0x00002000;
+            let segments_x = 1 << bg_width;
+            let segments_y = 1 << bg_height;
             let param_offset = 0x00020000 + param_base * 2;
             let out_of_bounds_char_entry = self.read_vram_halfword(0x00020000 + (out_of_bounds_char as u32) * 2);
 
@@ -761,7 +763,7 @@ impl Vip {
                                 let background_x = (((affine_bg_x as i32) << 6) + ((affine_bg_x_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
                                 let background_y = (((affine_bg_y as i32) << 6) + ((affine_bg_y_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
 
-                                self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_offset, background_x, background_y, out_of_bounds, out_of_bounds_char_entry);
+                                self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_base, segments_x, segments_y, background_x, background_y, out_of_bounds, out_of_bounds_char_entry);
                             }
                         }
                     }
@@ -804,7 +806,7 @@ impl Vip {
                                 };
                                 let background_y = window_y.wrapping_add(bg_y as u32);
 
-                                self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_offset, background_x, background_y, out_of_bounds, out_of_bounds_char_entry);
+                                self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_base, segments_x, segments_y, background_x, background_y, out_of_bounds, out_of_bounds_char_entry);
                             }
                         }
                     }
@@ -825,31 +827,42 @@ impl Vip {
         }
     }
 
-    fn draw_background_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, segment_offset: u32, background_x: u32, background_y: u32, out_of_bounds: bool, out_of_bounds_char_entry: u16) {
-        let background_width = 512;
-        let background_height = 512;
+    fn draw_background_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, segment_base: u32, segments_x: u32, segments_y: u32, background_x: u32, background_y: u32, out_of_bounds: bool, out_of_bounds_char_entry: u16) {
+        let background_width = segments_x * 512;
+        let background_height = segments_y * 512;
 
         if out_of_bounds && (background_x >= background_width || background_y >= background_height) {
-            self.draw_char_entry_pixel(framebuffer_offset, pixel_x, pixel_y, background_x, background_y, out_of_bounds_char_entry);
+            let offset_x = background_x & 0x07;
+            let offset_y = background_y & 0x07;
+
+            self.draw_char_entry_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, out_of_bounds_char_entry);
         } else {
-            self.draw_segment_pixel(framebuffer_offset, pixel_x, pixel_y, segment_offset, background_x, background_y);
+            let x_segment = (background_x / 512) & (segments_x - 1);
+            let y_segment = (background_y / 512) & (segments_y - 1);
+
+            let segment_offset = segment_base + ((y_segment * segments_x) + x_segment) * 0x2000;
+
+            let segment_x = background_x & 0x01ff;
+            let segment_y = background_y & 0x01ff;
+
+            self.draw_segment_pixel(framebuffer_offset, pixel_x, pixel_y, segment_offset, segment_x, segment_y);
         }
     }
 
-    fn draw_segment_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, segment_offset: u32, background_x: u32, background_y: u32) {
-        let segment_x = (background_x >> 3) & 0x3f;
-        let segment_y = (background_y >> 3) & 0x3f;
-        let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
+    fn draw_segment_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, segment_offset: u32, segment_x: u32, segment_y: u32) {
+        let offset_x = segment_x & 0x07;
+        let offset_y = segment_y & 0x07;
+
+        let segment_char_x = segment_x / 8;
+        let segment_char_y = segment_y / 8;
+        let segment_addr = segment_offset + (segment_char_y * 64 + segment_char_x) * 2;
 
         let char_entry = self.read_vram_halfword(segment_addr as _);
 
-        self.draw_char_entry_pixel(framebuffer_offset, pixel_x, pixel_y, background_x, background_y, char_entry);
+        self.draw_char_entry_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_entry);
     }
 
-    fn draw_char_entry_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, background_x: u32, background_y: u32, char_entry: u16) {
-        let offset_x = background_x & 0x07;
-        let offset_y = background_y & 0x07;
-
+    fn draw_char_entry_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, offset_x: u32, offset_y: u32, char_entry: u16) {
         let pal = (char_entry >> 14) & 0x03;
         let horizontal_flip = (char_entry & 0x2000) != 0;
         let vertical_flip = (char_entry & 0x1000) != 0;
