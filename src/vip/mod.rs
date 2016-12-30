@@ -505,6 +505,30 @@ impl Vip {
     }
 
     fn end_drawing_process(&mut self) {
+        self.draw();
+
+        println!("End drawing process");
+        self.drawing_state = DrawingState::Idle;
+    }
+
+    fn start_left_framebuffer_display_process(&mut self) {
+        println!("Start left framebuffer display process");
+        self.display_state = DisplayState::LeftFramebuffer;
+    }
+
+    fn start_right_framebuffer_display_process(&mut self) {
+        println!("Start right framebuffer display process");
+        self.display_state = DisplayState::RightFramebuffer;
+    }
+
+    fn end_display_processing(&mut self, video_driver: &mut VideoDriver) {
+        self.display(video_driver);
+
+        println!("End display process");
+        self.display_state = DisplayState::Idle;
+    }
+
+    fn draw(&mut self) {
         let draw_to_first_framebuffers = !self.display_first_framebuffers;
         let left_framebuffer_offset = if draw_to_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
@@ -923,22 +947,9 @@ impl Vip {
             window_offset -= WINDOW_ENTRY_LENGTH;
             window_index -= 1;
         }
-
-        println!("End drawing process");
-        self.drawing_state = DrawingState::Idle;
     }
 
-    fn start_left_framebuffer_display_process(&mut self) {
-        println!("Start left framebuffer display process");
-        self.display_state = DisplayState::LeftFramebuffer;
-    }
-
-    fn start_right_framebuffer_display_process(&mut self) {
-        println!("Start right framebuffer display process");
-        self.display_state = DisplayState::RightFramebuffer;
-    }
-
-    fn end_display_processing(&mut self, video_driver: &mut VideoDriver) {
+    fn display(&self, video_driver: &mut VideoDriver) {
         let left_framebuffer_offset = if self.display_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
@@ -982,8 +993,5 @@ impl Vip {
         }
 
         video_driver.output_frame((left_buffer.into_boxed_slice(), right_buffer.into_boxed_slice()));
-
-        println!("End display process");
-        self.display_state = DisplayState::Idle;
     }
 }
