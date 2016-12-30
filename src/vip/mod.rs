@@ -760,25 +760,7 @@ impl Vip {
                                 let background_x = (((affine_bg_x as i32) << 6) + ((affine_bg_x_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
                                 let background_y = (((affine_bg_y as i32) << 6) + ((affine_bg_y_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
 
-                                let segment_x = (background_x >> 3) & 0x3f;
-                                let segment_y = (background_y >> 3) & 0x3f;
-                                let offset_x = background_x & 0x07;
-                                let offset_y = background_y & 0x07;
-                                let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
-                                let entry = self.read_vram_halfword(segment_addr as _);
-                                let pal = (entry >> 14) & 0x03;
-                                let horizontal_flip = (entry & 0x2000) != 0;
-                                let vertical_flip = (entry & 0x1000) != 0;
-                                let char_index = (entry & 0x07ff) as u32;
-
-                                let palette = match pal {
-                                    0 => self.reg_bg_palette_0,
-                                    1 => self.reg_bg_palette_1,
-                                    2 => self.reg_bg_palette_2,
-                                    _ => self.reg_bg_palette_3
-                                };
-
-                                self.draw_char_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_index, horizontal_flip, vertical_flip, palette);
+                                self.draw_segment_pixel(framebuffer_offset, pixel_x, pixel_y, segment_offset, background_x, background_y);
                             }
                         }
                     }
@@ -821,25 +803,7 @@ impl Vip {
                                 };
                                 let background_y = window_y.wrapping_add(bg_y as u32);
 
-                                let segment_x = (background_x >> 3) & 0x3f;
-                                let segment_y = (background_y >> 3) & 0x3f;
-                                let offset_x = background_x & 0x07;
-                                let offset_y = background_y & 0x07;
-                                let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
-                                let entry = self.read_vram_halfword(segment_addr as _);
-                                let pal = (entry >> 14) & 0x03;
-                                let horizontal_flip = (entry & 0x2000) != 0;
-                                let vertical_flip = (entry & 0x1000) != 0;
-                                let char_index = (entry & 0x07ff) as u32;
-
-                                let palette = match pal {
-                                    0 => self.reg_bg_palette_0,
-                                    1 => self.reg_bg_palette_1,
-                                    2 => self.reg_bg_palette_2,
-                                    _ => self.reg_bg_palette_3
-                                };
-
-                                self.draw_char_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_index, horizontal_flip, vertical_flip, palette);
+                                self.draw_segment_pixel(framebuffer_offset, pixel_x, pixel_y, segment_offset, background_x, background_y);
                             }
                         }
                     }
@@ -858,6 +822,28 @@ impl Vip {
             window_offset -= WINDOW_ENTRY_LENGTH;
             window_index -= 1;
         }
+    }
+
+    fn draw_segment_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, segment_offset: u32, background_x: u32, background_y: u32) {
+        let segment_x = (background_x >> 3) & 0x3f;
+        let segment_y = (background_y >> 3) & 0x3f;
+        let offset_x = background_x & 0x07;
+        let offset_y = background_y & 0x07;
+        let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
+        let entry = self.read_vram_halfword(segment_addr as _);
+        let pal = (entry >> 14) & 0x03;
+        let horizontal_flip = (entry & 0x2000) != 0;
+        let vertical_flip = (entry & 0x1000) != 0;
+        let char_index = (entry & 0x07ff) as u32;
+
+        let palette = match pal {
+            0 => self.reg_bg_palette_0,
+            1 => self.reg_bg_palette_1,
+            2 => self.reg_bg_palette_2,
+            _ => self.reg_bg_palette_3
+        };
+
+        self.draw_char_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_index, horizontal_flip, vertical_flip, palette);
     }
 
     fn draw_char_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, offset_x: u32, offset_y: u32, char_index: u32, horizontal_flip: bool, vertical_flip: bool, palette: u8) {
