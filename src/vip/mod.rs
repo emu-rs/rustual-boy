@@ -722,18 +722,6 @@ impl Vip {
                     }
                     _ => {
                         for pixel_y in 0..FRAMEBUFFER_RESOLUTION_Y as u32 {
-                            let line_shift = match mode {
-                                WindowMode::LineShift => {
-                                    let line_offset = param_offset + pixel_y * 4;
-                                    let eye_offset = line_offset + match eye {
-                                        Eye::Left => 0,
-                                        Eye::Right => 2,
-                                    };
-                                    (self.read_vram_halfword(eye_offset) as i16) as u32
-                                }
-                                _ => 0
-                            };
-
                             for pixel_x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
                                 let x = {
                                     let value = x as u32;
@@ -749,6 +737,18 @@ impl Vip {
                                 if window_x >= width || window_y >= height {
                                     continue;
                                 }
+
+                                let line_shift = match mode {
+                                    WindowMode::LineShift => {
+                                        let line_offset = param_offset + window_y * 4;
+                                        let eye_offset = line_offset + match eye {
+                                            Eye::Left => 0,
+                                            Eye::Right => 2,
+                                        };
+                                        (self.read_vram_halfword(eye_offset) as i16) as u32
+                                    }
+                                    _ => 0
+                                };
 
                                 let background_x = {
                                     let value = window_x.wrapping_add(bg_x as u32).wrapping_add(line_shift);
