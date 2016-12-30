@@ -659,8 +659,8 @@ impl Vip {
                                     let y = self.read_vram_halfword(obj_offset + 4) as i16;
                                     let pal_hf_vf_char = self.read_vram_halfword(obj_offset + 6);
                                     let pal = pal_hf_vf_char >> 14;
-                                    let hf = (pal_hf_vf_char & 0x2000) != 0;
-                                    let vf = (pal_hf_vf_char & 0x1000) != 0;
+                                    let horizontal_flip = (pal_hf_vf_char & 0x2000) != 0;
+                                    let vertical_flip = (pal_hf_vf_char & 0x1000) != 0;
                                     let char_index = (pal_hf_vf_char & 0x07ff) as u32;
                                     /*println!(" X: {}", x);
                                     println!(" L: {}", l);
@@ -668,8 +668,8 @@ impl Vip {
                                     println!(" Parallax: {}", parallax);
                                     println!(" Y: {}", y);
                                     println!(" Pal: {}", pal);
-                                    println!(" Hf: {}", hf);
-                                    println!(" Vf: {}", vf);
+                                    println!(" Horizontal flip: {}", horizontal_flip);
+                                    println!(" Vertical flip: {}", vertical_flip);
                                     println!(" Char index: {}", char_index);*/
 
                                     match eye {
@@ -685,14 +685,11 @@ impl Vip {
                                         }
                                     }
 
-                                    let char_offset = if char_index < 0x0200 {
-                                        0x00006000 + char_index * 16
-                                    } else if char_index < 0x0400 {
-                                        0x0000e000 + (char_index - 0x0200) * 16
-                                    } else if char_index < 0x0600 {
-                                        0x00016000 + (char_index - 0x0400) * 16
-                                    } else {
-                                        0x0001e000 + (char_index - 0x0600) * 16
+                                    let palette = match pal {
+                                        0 => self.reg_obj_palette_0,
+                                        1 => self.reg_obj_palette_1,
+                                        2 => self.reg_obj_palette_2,
+                                        _ => self.reg_obj_palette_3
                                     };
 
                                     for offset_y in 0..8 {
@@ -700,7 +697,6 @@ impl Vip {
                                         if pixel_y >= FRAMEBUFFER_RESOLUTION_Y as u32 {
                                             continue;
                                         }
-                                        let offset_y = if vf { 7 - offset_y } else { offset_y };
                                         for offset_x in 0..8 {
                                             let pixel_x = {
                                                 let value = (x as u32).wrapping_add(offset_x);
@@ -712,24 +708,8 @@ impl Vip {
                                             if pixel_x >= FRAMEBUFFER_RESOLUTION_X as u32 {
                                                 continue;
                                             }
-                                            let offset_x = if hf { 7 - offset_x } else { offset_x };
 
-                                            let char_row_offset = char_offset + offset_y * 2;
-                                            let char_row_data = self.read_vram_halfword(char_row_offset as _);
-                                            let palette_index = ((char_row_data as u32) >> (offset_x * 2)) & 0x03;
-
-                                            if palette_index == 0 {
-                                                continue;
-                                            }
-
-                                            let palette = match pal {
-                                                0 => self.reg_obj_palette_0,
-                                                1 => self.reg_obj_palette_1,
-                                                2 => self.reg_obj_palette_2,
-                                                _ => self.reg_obj_palette_3
-                                            };
-
-                                            self.draw_pixel(framebuffer_offset, pixel_x, pixel_y, palette, palette_index);
+                                            self.draw_char_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_index, horizontal_flip, vertical_flip, palette);
                                         }
                                     }
                                 }
@@ -782,38 +762,14 @@ impl Vip {
 
                                 let segment_x = (background_x >> 3) & 0x3f;
                                 let segment_y = (background_y >> 3) & 0x3f;
-                                let mut offset_x = background_x & 0x07;
-                                let mut offset_y = background_y & 0x07;
+                                let offset_x = background_x & 0x07;
+                                let offset_y = background_y & 0x07;
                                 let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
                                 let entry = self.read_vram_halfword(segment_addr as _);
                                 let pal = (entry >> 14) & 0x03;
                                 let horizontal_flip = (entry & 0x2000) != 0;
                                 let vertical_flip = (entry & 0x1000) != 0;
-                                if horizontal_flip {
-                                    offset_x = 7 - offset_x;
-                                }
-                                if vertical_flip {
-                                    offset_y = 7 - offset_y;
-                                }
                                 let char_index = (entry & 0x07ff) as u32;
-
-                                let char_offset = if char_index < 0x0200 {
-                                    0x00006000 + char_index * 16
-                                } else if char_index < 0x0400 {
-                                    0x0000e000 + (char_index - 0x0200) * 16
-                                } else if char_index < 0x0600 {
-                                    0x00016000 + (char_index - 0x0400) * 16
-                                } else {
-                                    0x0001e000 + (char_index - 0x0600) * 16
-                                };
-
-                                let char_row_offset = char_offset + offset_y * 2;
-                                let char_row_data = self.read_vram_halfword(char_row_offset as _);
-                                let palette_index = ((char_row_data as u32) >> (offset_x * 2)) & 0x03;
-
-                                if palette_index == 0 {
-                                    continue;
-                                }
 
                                 let palette = match pal {
                                     0 => self.reg_bg_palette_0,
@@ -822,7 +778,7 @@ impl Vip {
                                     _ => self.reg_bg_palette_3
                                 };
 
-                                self.draw_pixel(framebuffer_offset, pixel_x, pixel_y, palette, palette_index);
+                                self.draw_char_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_index, horizontal_flip, vertical_flip, palette);
                             }
                         }
                     }
@@ -867,38 +823,14 @@ impl Vip {
 
                                 let segment_x = (background_x >> 3) & 0x3f;
                                 let segment_y = (background_y >> 3) & 0x3f;
-                                let mut offset_x = background_x & 0x07;
-                                let mut offset_y = background_y & 0x07;
+                                let offset_x = background_x & 0x07;
+                                let offset_y = background_y & 0x07;
                                 let segment_addr = segment_offset + (segment_y * 64 + segment_x) * 2;
                                 let entry = self.read_vram_halfword(segment_addr as _);
                                 let pal = (entry >> 14) & 0x03;
                                 let horizontal_flip = (entry & 0x2000) != 0;
                                 let vertical_flip = (entry & 0x1000) != 0;
-                                if horizontal_flip {
-                                    offset_x = 7 - offset_x;
-                                }
-                                if vertical_flip {
-                                    offset_y = 7 - offset_y;
-                                }
                                 let char_index = (entry & 0x07ff) as u32;
-
-                                let char_offset = if char_index < 0x0200 {
-                                    0x00006000 + char_index * 16
-                                } else if char_index < 0x0400 {
-                                    0x0000e000 + (char_index - 0x0200) * 16
-                                } else if char_index < 0x0600 {
-                                    0x00016000 + (char_index - 0x0400) * 16
-                                } else {
-                                    0x0001e000 + (char_index - 0x0600) * 16
-                                };
-
-                                let char_row_offset = char_offset + offset_y * 2;
-                                let char_row_data = self.read_vram_halfword(char_row_offset as _);
-                                let palette_index = ((char_row_data as u32) >> (offset_x * 2)) & 0x03;
-
-                                if palette_index == 0 {
-                                    continue;
-                                }
 
                                 let palette = match pal {
                                     0 => self.reg_bg_palette_0,
@@ -907,7 +839,7 @@ impl Vip {
                                     _ => self.reg_bg_palette_3
                                 };
 
-                                self.draw_pixel(framebuffer_offset, pixel_x, pixel_y, palette, palette_index);
+                                self.draw_char_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_index, horizontal_flip, vertical_flip, palette);
                             }
                         }
                     }
@@ -928,7 +860,28 @@ impl Vip {
         }
     }
 
-    fn draw_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, palette: u8, palette_index: u32) {
+    fn draw_char_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, offset_x: u32, offset_y: u32, char_index: u32, horizontal_flip: bool, vertical_flip: bool, palette: u8) {
+        let offset_x = if horizontal_flip { 7 - offset_x } else { offset_x };
+        let offset_y = if vertical_flip { 7 - offset_y } else { offset_y };
+
+        let char_offset = if char_index < 0x0200 {
+            0x00006000 + char_index * 16
+        } else if char_index < 0x0400 {
+            0x0000e000 + (char_index - 0x0200) * 16
+        } else if char_index < 0x0600 {
+            0x00016000 + (char_index - 0x0400) * 16
+        } else {
+            0x0001e000 + (char_index - 0x0600) * 16
+        };
+
+        let char_row_offset = char_offset + offset_y * 2;
+        let char_row_data = self.read_vram_halfword(char_row_offset as _);
+        let palette_index = ((char_row_data as u32) >> (offset_x * 2)) & 0x03;
+
+        if palette_index == 0 {
+            return;
+        }
+
         let color = (palette >> (palette_index * 2)) & 0x03;
 
         let framebuffer_byte_index = ((pixel_x as usize) * FRAMEBUFFER_RESOLUTION_Y + (pixel_y as usize)) / 4;
