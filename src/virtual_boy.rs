@@ -18,7 +18,7 @@ impl VirtualBoy {
         }
     }
 
-    pub fn step(&mut self, video_driver: &mut VideoDriver) -> usize {
+    pub fn step(&mut self, video_driver: &mut VideoDriver) -> (usize, bool) {
         self.cpu.step(&mut self.interconnect, video_driver)
     }
 }

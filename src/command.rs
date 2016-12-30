@@ -17,6 +17,9 @@ pub enum Command {
     Breakpoint,
     AddBreakpoint(u32),
     RemoveBreakpoint(u32),
+    Watchpoint,
+    AddWatchpoint(u32),
+    RemoveWatchpoint(u32),
     Exit,
     Repeat,
 }
@@ -48,6 +51,9 @@ named!(
             breakpoint |
             add_breakpoint |
             remove_breakpoint |
+            watchpoint |
+            add_watchpoint |
+            remove_watchpoint |
             exit |
             show_regs |
             repeat),
@@ -157,6 +163,28 @@ named!(
         space ~
         addr: hex_u32_parser,
     || Command::RemoveBreakpoint(addr)));
+
+named!(
+    watchpoint<Command>,
+    map!(
+        alt_complete!(tag!("watchpoint") | tag!("w")),
+    |_| Command::Watchpoint));
+
+named!(
+    add_watchpoint<Command>,
+    chain!(
+        alt_complete!(tag!("addwatchpoint") | tag!("aw")) ~
+        space ~
+        addr: hex_u32_parser,
+    || Command::AddWatchpoint(addr)));
+
+named!(
+    remove_watchpoint<Command>,
+    chain!(
+        alt_complete!(tag!("removewatchpoint") | tag!("rw")) ~
+        space ~
+        addr: hex_u32_parser,
+    || Command::RemoveWatchpoint(addr)));
 
 named!(
     exit<Command>,

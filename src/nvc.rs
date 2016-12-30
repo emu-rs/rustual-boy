@@ -2,6 +2,8 @@ use video_driver::*;
 use instruction::*;
 use interconnect::*;
 
+use std::collections::HashSet;
+
 pub struct Nvc {
     reg_pc: u32,
     reg_gpr: [u32; 31],
@@ -25,6 +27,8 @@ pub struct Nvc {
     psw_exception_pending: bool,
     psw_nmi_pending: bool,
     psw_interrupt_mask_level: usize,
+
+    pub watchpoints: HashSet<u32>,
 }
 
 impl Nvc {
@@ -52,6 +56,8 @@ impl Nvc {
             psw_exception_pending: false,
             psw_nmi_pending: true,
             psw_interrupt_mask_level: 0,
+
+            watchpoints: HashSet::new(),
         }
     }
 
@@ -121,7 +127,7 @@ impl Nvc {
         self.psw_interrupt_mask_level = ((value as usize) >> 16) & 0x0f;
     }
 
-    pub fn step(&mut self, interconnect: &mut Interconnect, video_driver: &mut VideoDriver) -> usize {
+    pub fn step(&mut self, interconnect: &mut Interconnect, video_driver: &mut VideoDriver) -> (usize, bool) {
         let original_pc = self.reg_pc;
 
         let first_halfword = interconnect.read_halfword(original_pc);
@@ -137,6 +143,8 @@ impl Nvc {
         } else {
             0
         };
+
+        let mut trigger_watchpoint = false;
 
         // TODO: Not too convinced of this pattern, but we'll see what else we
         //  may have to special case moving forward
@@ -471,41 +479,49 @@ impl Nvc {
             }, first_halfword, second_halfword),
             Opcode::Ldb => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = (interconnect.read_byte(addr) as i8) as u32;
                 self.set_reg_gpr(reg2, value);
             }, first_halfword, second_halfword),
             Opcode::Ldh => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = (interconnect.read_halfword(addr) as i16) as u32;
                 self.set_reg_gpr(reg2, value);
             }, first_halfword, second_halfword),
             Opcode::Ldw | Opcode::Inw => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = interconnect.read_word(addr);
                 self.set_reg_gpr(reg2, value);
             }, first_halfword, second_halfword),
             Opcode::Stb | Opcode::Outb => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = self.reg_gpr(reg2) as u8;
                 interconnect.write_byte(addr, value);
             }, first_halfword, second_halfword),
             Opcode::Sth | Opcode::Outh => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = self.reg_gpr(reg2) as u16;
                 interconnect.write_halfword(addr, value);
             }, first_halfword, second_halfword),
             Opcode::Stw | Opcode::Outw => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = self.reg_gpr(reg2);
                 interconnect.write_word(addr, value);
             }, first_halfword, second_halfword),
             Opcode::Inb => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = interconnect.read_byte(addr) as u32;
                 self.set_reg_gpr(reg2, value);
             }, first_halfword, second_halfword),
             Opcode::Inh => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = interconnect.read_halfword(addr) as u32;
                 self.set_reg_gpr(reg2, value);
             }, first_halfword, second_halfword),
@@ -525,7 +541,11 @@ impl Nvc {
             self.request_exception(exception_code);
         }
 
-        num_cycles
+        (num_cycles, trigger_watchpoint)
+    }
+
+    fn check_watchpoints(&self, addr: u32) -> bool {
+        self.watchpoints.contains(&addr)
     }
 
     fn add(&mut self, lhs: u32, rhs: u32, reg2: usize) {

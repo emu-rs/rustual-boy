@@ -131,8 +131,9 @@ impl Emulator {
         self.read_input_keys();
 
         while self.frame_cycles < CPU_CYCLES_PER_FRAME {
-            self.frame_cycles += self.virtual_boy.step(video_driver);
-            if self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc()) {
+            let (num_cycles, trigger_watchpoint) = self.virtual_boy.step(video_driver);
+            self.frame_cycles += num_cycles;
+            if trigger_watchpoint || self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc()) {
                 start_debugger = true;
                 break;
             }
@@ -194,7 +195,8 @@ impl Emulator {
                     println!("ecr: 0x{:08x}", self.virtual_boy.cpu.reg_ecr());
                 }
                 Ok(Command::Step) => {
-                    self.frame_cycles += self.virtual_boy.step(video_driver);
+                    let (num_cycles, _) = self.virtual_boy.step(video_driver);
+                    self.frame_cycles += num_cycles;
                     if self.frame_cycles >= CPU_CYCLES_PER_FRAME {
                         self.frame_cycles -= CPU_CYCLES_PER_FRAME;
                     }
@@ -258,6 +260,19 @@ impl Emulator {
                 Ok(Command::RemoveBreakpoint(addr)) => {
                     if !self.breakpoints.remove(&addr) {
                         println!("Breakpoint at 0x{:08x} does not exist", addr);
+                    }
+                }
+                Ok(Command::Watchpoint) => {
+                    for addr in self.virtual_boy.cpu.watchpoints.iter() {
+                        println!("* 0x{:08x}", addr);
+                    }
+                }
+                Ok(Command::AddWatchpoint(addr)) => {
+                    self.virtual_boy.cpu.watchpoints.insert(addr);
+                }
+                Ok(Command::RemoveWatchpoint(addr)) => {
+                    if !self.virtual_boy.cpu.watchpoints.remove(&addr) {
+                        println!("Watchpoint at 0x{:08x} does not exist", addr);
                     }
                 }
                 Ok(Command::Exit) => {
