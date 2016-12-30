@@ -109,6 +109,7 @@ pub struct Vip {
     display_counter: u64,
 
     display_first_framebuffers: bool,
+    last_clear_color: u8,
 }
 
 impl Vip {
@@ -166,6 +167,7 @@ impl Vip {
             display_counter: 0,
 
             display_first_framebuffers: false,
+            last_clear_color: 0,
         }
     }
 
@@ -538,6 +540,15 @@ impl Vip {
             self.vram[left_framebuffer_offset + i] = clear_pixels;
             self.vram[right_framebuffer_offset + i] = clear_pixels;
         }
+        let last_clear_pixels = (self.last_clear_color << 6) | (self.last_clear_color << 4) | (self.last_clear_color << 2) | self.last_clear_color;
+        for x in 0..FRAMEBUFFER_RESOLUTION_X {
+            let x_offset = x * FRAMEBUFFER_RESOLUTION_Y / 4;
+            self.vram[left_framebuffer_offset + x_offset] = last_clear_pixels;
+            self.vram[left_framebuffer_offset + x_offset + 1] = last_clear_pixels;
+            self.vram[right_framebuffer_offset + x_offset] = last_clear_pixels;
+            self.vram[right_framebuffer_offset + x_offset + 1] = last_clear_pixels;
+        }
+        self.last_clear_color = self.reg_clear_color;
 
         let mut current_obj_group = Some(ObjGroup::Group3);
 
