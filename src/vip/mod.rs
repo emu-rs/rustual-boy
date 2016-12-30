@@ -729,14 +729,7 @@ impl Vip {
                                                 _ => self.reg_obj_palette_3
                                             };
 
-                                            let color = (palette >> (palette_index * 2)) & 0x03;
-
-                                            let framebuffer_byte_index = ((pixel_x as usize) * FRAMEBUFFER_RESOLUTION_Y + (pixel_y as usize)) / 4;
-                                            let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
-                                            let framebuffer_byte_mask = 0x03 << framebuffer_byte_shift;
-                                            let mut framebuffer_byte = self.vram[framebuffer_offset + framebuffer_byte_index];
-                                            framebuffer_byte = (framebuffer_byte & !framebuffer_byte_mask) | (color << framebuffer_byte_shift);
-                                            self.vram[framebuffer_offset + framebuffer_byte_index] = framebuffer_byte;
+                                            self.draw_pixel(framebuffer_offset, pixel_x, pixel_y, palette, palette_index);
                                         }
                                     }
                                 }
@@ -829,14 +822,7 @@ impl Vip {
                                     _ => self.reg_bg_palette_3
                                 };
 
-                                let color = (palette >> (palette_index * 2)) & 0x03;
-
-                                let framebuffer_byte_index = ((pixel_x as usize) * FRAMEBUFFER_RESOLUTION_Y + (pixel_y as usize)) / 4;
-                                let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
-                                let framebuffer_byte_mask = 0x03 << framebuffer_byte_shift;
-                                let mut framebuffer_byte = self.vram[framebuffer_offset + framebuffer_byte_index];
-                                framebuffer_byte = (framebuffer_byte & !framebuffer_byte_mask) | (color << framebuffer_byte_shift);
-                                self.vram[framebuffer_offset + framebuffer_byte_index] = framebuffer_byte;
+                                self.draw_pixel(framebuffer_offset, pixel_x, pixel_y, palette, palette_index);
                             }
                         }
                     }
@@ -921,14 +907,7 @@ impl Vip {
                                     _ => self.reg_bg_palette_3
                                 };
 
-                                let color = (palette >> (palette_index * 2)) & 0x03;
-
-                                let framebuffer_byte_index = ((pixel_x as usize) * FRAMEBUFFER_RESOLUTION_Y + (pixel_y as usize)) / 4;
-                                let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
-                                let framebuffer_byte_mask = 0x03 << framebuffer_byte_shift;
-                                let mut framebuffer_byte = self.vram[framebuffer_offset + framebuffer_byte_index];
-                                framebuffer_byte = (framebuffer_byte & !framebuffer_byte_mask) | (color << framebuffer_byte_shift);
-                                self.vram[framebuffer_offset + framebuffer_byte_index] = framebuffer_byte;
+                                self.draw_pixel(framebuffer_offset, pixel_x, pixel_y, palette, palette_index);
                             }
                         }
                     }
@@ -947,6 +926,17 @@ impl Vip {
             window_offset -= WINDOW_ENTRY_LENGTH;
             window_index -= 1;
         }
+    }
+
+    fn draw_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, palette: u8, palette_index: u32) {
+        let color = (palette >> (palette_index * 2)) & 0x03;
+
+        let framebuffer_byte_index = ((pixel_x as usize) * FRAMEBUFFER_RESOLUTION_Y + (pixel_y as usize)) / 4;
+        let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
+        let framebuffer_byte_mask = 0x03 << framebuffer_byte_shift;
+        let mut framebuffer_byte = self.vram[framebuffer_offset + framebuffer_byte_index];
+        framebuffer_byte = (framebuffer_byte & !framebuffer_byte_mask) | (color << framebuffer_byte_shift);
+        self.vram[framebuffer_offset + framebuffer_byte_index] = framebuffer_byte;
     }
 
     fn display(&self, video_driver: &mut VideoDriver) {
