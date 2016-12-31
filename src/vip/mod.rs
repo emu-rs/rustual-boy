@@ -559,278 +559,283 @@ impl Vip {
             println!("Window {}", window_index);
 
             let header = self.read_vram_halfword(window_offset);
-            let base = (header & 0x000f) as u32;
-            let stop = (header & 0x0040) != 0;
-            let out_of_bounds = (header & 0x0080) != 0;
-            let bg_height = ((header >> 8) & 0x03) as u32;
-            let bg_width = ((header >> 10) & 0x03) as u32;
-            let mode = ((header >> 12) & 0x03) as usize;
-            let right_on = (header & 0x4000) != 0;
-            let left_on = (header & 0x8000) != 0;
             println!(" Header: 0x{:04x}", header);
-            println!("  base: 0x{:02x}", base);
-            println!("  stop: {}", stop);
-            println!("  out of bounds: {}", out_of_bounds);
-            println!("  w, h: {}, {}", bg_width, bg_height);
-            println!("  mode: {}", mode);
-            println!("  l, r: {}, {}", left_on, right_on);
 
-            let x = self.read_vram_halfword(window_offset + 2) as i16;
-            let parallax = self.read_vram_halfword(window_offset + 4) as i16;
-            let y = self.read_vram_halfword(window_offset + 6) as i16;
-            let bg_x = self.read_vram_halfword(window_offset + 8) as i16;
-            let bg_parallax = self.read_vram_halfword(window_offset + 10) as i16;
-            let bg_y = self.read_vram_halfword(window_offset + 12) as i16;
-            let width = self.read_vram_halfword(window_offset + 14);
-            let height = self.read_vram_halfword(window_offset + 16);
-            let param_base = self.read_vram_halfword(window_offset + 18) as u32;
-            let out_of_bounds_char = self.read_vram_halfword(window_offset + 20);
-            println!(" X: {}", x);
-            println!(" Parallax: {}", parallax);
-            println!(" Y: {}", y);
-            println!(" BG X: {}", bg_x);
-            println!(" BG Parallax: {}", bg_parallax);
-            println!(" BG Y: {}", bg_y);
-            println!(" Width: {}", width);
-            println!(" Height: {}", height);
-            println!(" Param base: 0x{:04x}", param_base);
-            println!(" Out of bounds char: 0x{:04x}", out_of_bounds_char);
+            if header == 0 {
+                println!("  [Dummy world]");
+            } else {
+                let base = (header & 0x000f) as u32;
+                let stop = (header & 0x0040) != 0;
+                let out_of_bounds = (header & 0x0080) != 0;
+                let bg_height = ((header >> 8) & 0x03) as u32;
+                let bg_width = ((header >> 10) & 0x03) as u32;
+                let mode = ((header >> 12) & 0x03) as usize;
+                let right_on = (header & 0x4000) != 0;
+                let left_on = (header & 0x8000) != 0;
+                println!("  base: 0x{:02x}", base);
+                println!("  stop: {}", stop);
+                println!("  out of bounds: {}", out_of_bounds);
+                println!("  w, h: {}, {}", bg_width, bg_height);
+                println!("  mode: {}", mode);
+                println!("  l, r: {}, {}", left_on, right_on);
 
-            if stop {
-                break;
-            }
+                let x = self.read_vram_halfword(window_offset + 2) as i16;
+                let parallax = self.read_vram_halfword(window_offset + 4) as i16;
+                let y = self.read_vram_halfword(window_offset + 6) as i16;
+                let bg_x = self.read_vram_halfword(window_offset + 8) as i16;
+                let bg_parallax = self.read_vram_halfword(window_offset + 10) as i16;
+                let bg_y = self.read_vram_halfword(window_offset + 12) as i16;
+                let width = self.read_vram_halfword(window_offset + 14);
+                let height = self.read_vram_halfword(window_offset + 16);
+                let param_base = self.read_vram_halfword(window_offset + 18) as u32;
+                let out_of_bounds_char = self.read_vram_halfword(window_offset + 20);
+                println!(" X: {}", x);
+                println!(" Parallax: {}", parallax);
+                println!(" Y: {}", y);
+                println!(" BG X: {}", bg_x);
+                println!(" BG Parallax: {}", bg_parallax);
+                println!(" BG Y: {}", bg_y);
+                println!(" Width: {}", width);
+                println!(" Height: {}", height);
+                println!(" Param base: 0x{:04x}", param_base);
+                println!(" Out of bounds char: 0x{:04x}", out_of_bounds_char);
 
-            let width = (width as u32) + 1;
-            let height = (height as u32) + 1;
-            let segment_base = 0x00020000 + base * 0x00002000;
-            let segments_x = 1 << bg_width;
-            let segments_y = 1 << bg_height;
-            let param_offset = 0x00020000 + param_base * 2;
-            let out_of_bounds_char_entry = self.read_vram_halfword(0x00020000 + (out_of_bounds_char as u32) * 2);
-
-            let mode = match mode {
-                0 => WindowMode::Normal,
-                1 => WindowMode::LineShift,
-                2 => WindowMode::Affine,
-                _ => WindowMode::Obj
-            };
-
-            for i in 0..2 {
-                let eye = match i {
-                    0 => Eye::Left,
-                    _ => Eye::Right,
-                };
-
-                match eye {
-                    Eye::Left => {
-                        if !left_on {
-                            continue;
-                        }
-                    }
-                    Eye::Right => {
-                        if !right_on {
-                            continue;
-                        }
-                    }
+                if stop {
+                    break;
                 }
 
-                let framebuffer_offset = match eye {
-                    Eye::Left => left_framebuffer_offset,
-                    Eye::Right => right_framebuffer_offset,
+                let width = (width as u32) + 1;
+                let height = (height as u32) + 1;
+                let segment_base = 0x00020000 + base * 0x00002000;
+                let segments_x = 1 << bg_width;
+                let segments_y = 1 << bg_height;
+                let param_offset = 0x00020000 + param_base * 2;
+                let out_of_bounds_char_entry = self.read_vram_halfword(0x00020000 + (out_of_bounds_char as u32) * 2);
+
+                let mode = match mode {
+                    0 => WindowMode::Normal,
+                    1 => WindowMode::LineShift,
+                    2 => WindowMode::Affine,
+                    _ => WindowMode::Obj
                 };
 
-                match mode {
-                    WindowMode::Obj => {
-                        println!("Current obj group: {:?}", current_obj_group);
+                for i in 0..2 {
+                    let eye = match i {
+                        0 => Eye::Left,
+                        _ => Eye::Right,
+                    };
 
-                        match current_obj_group {
-                            Some(obj_group) => {
-                                let starting_obj_index = match obj_group {
-                                    ObjGroup::Group0 => self.reg_obj_group_0_ptr,
-                                    ObjGroup::Group1 => self.reg_obj_group_1_ptr,
-                                    ObjGroup::Group2 => self.reg_obj_group_2_ptr,
-                                    ObjGroup::Group3 => self.reg_obj_group_3_ptr,
-                                };
-                                let mut ending_obj_index = match obj_group {
-                                    ObjGroup::Group0 => 0,
-                                    ObjGroup::Group1 => self.reg_obj_group_0_ptr + 1,
-                                    ObjGroup::Group2 => self.reg_obj_group_1_ptr + 1,
-                                    ObjGroup::Group3 => self.reg_obj_group_2_ptr + 1,
-                                };
-                                if ending_obj_index >= starting_obj_index {
-                                    ending_obj_index = 0;
-                                }
-                                for i in (ending_obj_index..starting_obj_index + 1).rev() {
-                                    //println!("Current obj: {}", i);
+                    match eye {
+                        Eye::Left => {
+                            if !left_on {
+                                continue;
+                            }
+                        }
+                        Eye::Right => {
+                            if !right_on {
+                                continue;
+                            }
+                        }
+                    }
 
-                                    let obj_offset = 0x0003e000 + (i as u32) * 8;
+                    let framebuffer_offset = match eye {
+                        Eye::Left => left_framebuffer_offset,
+                        Eye::Right => right_framebuffer_offset,
+                    };
 
-                                    let x = self.read_vram_halfword(obj_offset) as i16;
-                                    let l_r_parallax = self.read_vram_halfword(obj_offset + 2);
-                                    let l = (l_r_parallax & 0x8000) != 0;
-                                    let r = (l_r_parallax & 0x4000) != 0;
-                                    let parallax = ((l_r_parallax << 2) as i16) >> 2;
-                                    let y = self.read_vram_halfword(obj_offset + 4) as i16;
-                                    let pal_hf_vf_char = self.read_vram_halfword(obj_offset + 6);
-                                    let pal = pal_hf_vf_char >> 14;
-                                    let horizontal_flip = (pal_hf_vf_char & 0x2000) != 0;
-                                    let vertical_flip = (pal_hf_vf_char & 0x1000) != 0;
-                                    let char_index = (pal_hf_vf_char & 0x07ff) as u32;
-                                    /*println!(" X: {}", x);
-                                    println!(" L: {}", l);
-                                    println!(" R: {}", r);
-                                    println!(" Parallax: {}", parallax);
-                                    println!(" Y: {}", y);
-                                    println!(" Pal: {}", pal);
-                                    println!(" Horizontal flip: {}", horizontal_flip);
-                                    println!(" Vertical flip: {}", vertical_flip);
-                                    println!(" Char index: {}", char_index);*/
+                    match mode {
+                        WindowMode::Obj => {
+                            println!("Current obj group: {:?}", current_obj_group);
 
-                                    match eye {
-                                        Eye::Left => {
-                                            if !l {
+                            match current_obj_group {
+                                Some(obj_group) => {
+                                    let starting_obj_index = match obj_group {
+                                        ObjGroup::Group0 => self.reg_obj_group_0_ptr,
+                                        ObjGroup::Group1 => self.reg_obj_group_1_ptr,
+                                        ObjGroup::Group2 => self.reg_obj_group_2_ptr,
+                                        ObjGroup::Group3 => self.reg_obj_group_3_ptr,
+                                    };
+                                    let mut ending_obj_index = match obj_group {
+                                        ObjGroup::Group0 => 0,
+                                        ObjGroup::Group1 => self.reg_obj_group_0_ptr + 1,
+                                        ObjGroup::Group2 => self.reg_obj_group_1_ptr + 1,
+                                        ObjGroup::Group3 => self.reg_obj_group_2_ptr + 1,
+                                    };
+                                    if ending_obj_index >= starting_obj_index {
+                                        ending_obj_index = 0;
+                                    }
+                                    for i in (ending_obj_index..starting_obj_index + 1).rev() {
+                                        //println!("Current obj: {}", i);
+
+                                        let obj_offset = 0x0003e000 + (i as u32) * 8;
+
+                                        let x = self.read_vram_halfword(obj_offset) as i16;
+                                        let l_r_parallax = self.read_vram_halfword(obj_offset + 2);
+                                        let l = (l_r_parallax & 0x8000) != 0;
+                                        let r = (l_r_parallax & 0x4000) != 0;
+                                        let parallax = ((l_r_parallax << 2) as i16) >> 2;
+                                        let y = self.read_vram_halfword(obj_offset + 4) as i16;
+                                        let pal_hf_vf_char = self.read_vram_halfword(obj_offset + 6);
+                                        let pal = pal_hf_vf_char >> 14;
+                                        let horizontal_flip = (pal_hf_vf_char & 0x2000) != 0;
+                                        let vertical_flip = (pal_hf_vf_char & 0x1000) != 0;
+                                        let char_index = (pal_hf_vf_char & 0x07ff) as u32;
+                                        /*println!(" X: {}", x);
+                                        println!(" L: {}", l);
+                                        println!(" R: {}", r);
+                                        println!(" Parallax: {}", parallax);
+                                        println!(" Y: {}", y);
+                                        println!(" Pal: {}", pal);
+                                        println!(" Horizontal flip: {}", horizontal_flip);
+                                        println!(" Vertical flip: {}", vertical_flip);
+                                        println!(" Char index: {}", char_index);*/
+
+                                        match eye {
+                                            Eye::Left => {
+                                                if !l {
+                                                    continue;
+                                                }
+                                            }
+                                            Eye::Right => {
+                                                if !r {
+                                                    continue;
+                                                }
+                                            }
+                                        }
+
+                                        let palette = match pal {
+                                            0 => self.reg_obj_palette_0,
+                                            1 => self.reg_obj_palette_1,
+                                            2 => self.reg_obj_palette_2,
+                                            _ => self.reg_obj_palette_3
+                                        };
+
+                                        for offset_y in 0..8 {
+                                            let pixel_y = (y as u32).wrapping_add(offset_y);
+                                            if pixel_y >= FRAMEBUFFER_RESOLUTION_Y as u32 {
                                                 continue;
+                                            }
+                                            for offset_x in 0..8 {
+                                                let pixel_x = {
+                                                    let value = (x as u32).wrapping_add(offset_x);
+                                                    match eye {
+                                                        Eye::Left => value.wrapping_sub(parallax as u32),
+                                                        Eye::Right => value.wrapping_add(parallax as u32),
+                                                    }
+                                                };
+                                                if pixel_x >= FRAMEBUFFER_RESOLUTION_X as u32 {
+                                                    continue;
+                                                }
+
+                                                self.draw_char_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_index, horizontal_flip, vertical_flip, palette);
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => println!("WARNING: Extra obj window found; all obj groups already drawn")
+                            }
+                        }
+                        WindowMode::Affine => {
+                            for pixel_y in 0..FRAMEBUFFER_RESOLUTION_Y as u32 {
+                                for pixel_x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
+                                    let x = {
+                                        let value = x as u32;
+                                        match eye {
+                                            Eye::Left => value.wrapping_sub(parallax as u32),
+                                            Eye::Right => value.wrapping_add(parallax as u32),
+                                        }
+                                    };
+
+                                    let window_x = pixel_x.wrapping_sub(x as u32);
+                                    let window_y = pixel_y.wrapping_sub(y as u32);
+
+                                    if window_x >= width || window_y >= height {
+                                        continue;
+                                    }
+
+                                    let affine_offset = param_offset + window_y * 16;
+                                    let affine_bg_x = self.read_vram_halfword(affine_offset) as i16;
+                                    let affine_bg_parallax = self.read_vram_halfword(affine_offset + 2) as i16; // TODO
+                                    let affine_bg_y = self.read_vram_halfword(affine_offset + 4) as i16;
+                                    let affine_bg_x_inc = self.read_vram_halfword(affine_offset + 6) as i16;
+                                    let affine_bg_y_inc = self.read_vram_halfword(affine_offset + 8) as i16;
+                                    let parallaxed_window_x = match eye {
+                                        Eye::Left => {
+                                            if affine_bg_parallax < 0 {
+                                                window_x.wrapping_sub(affine_bg_parallax as u32)
+                                            } else {
+                                                window_x
                                             }
                                         }
                                         Eye::Right => {
-                                            if !r {
-                                                continue;
+                                            if affine_bg_parallax > 0 {
+                                                window_x.wrapping_add(affine_bg_parallax as u32)
+                                            } else {
+                                                window_x
                                             }
                                         }
-                                    }
+                                    };
+                                    let background_x = (((affine_bg_x as i32) << 6) + ((affine_bg_x_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
+                                    let background_y = (((affine_bg_y as i32) << 6) + ((affine_bg_y_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
 
-                                    let palette = match pal {
-                                        0 => self.reg_obj_palette_0,
-                                        1 => self.reg_obj_palette_1,
-                                        2 => self.reg_obj_palette_2,
-                                        _ => self.reg_obj_palette_3
+                                    self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_base, segments_x, segments_y, background_x, background_y, out_of_bounds, out_of_bounds_char_entry);
+                                }
+                            }
+                        }
+                        _ => {
+                            for pixel_y in 0..FRAMEBUFFER_RESOLUTION_Y as u32 {
+                                for pixel_x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
+                                    let x = {
+                                        let value = x as u32;
+                                        match eye {
+                                            Eye::Left => value.wrapping_sub(parallax as u32),
+                                            Eye::Right => value.wrapping_add(parallax as u32),
+                                        }
                                     };
 
-                                    for offset_y in 0..8 {
-                                        let pixel_y = (y as u32).wrapping_add(offset_y);
-                                        if pixel_y >= FRAMEBUFFER_RESOLUTION_Y as u32 {
-                                            continue;
-                                        }
-                                        for offset_x in 0..8 {
-                                            let pixel_x = {
-                                                let value = (x as u32).wrapping_add(offset_x);
-                                                match eye {
-                                                    Eye::Left => value.wrapping_sub(parallax as u32),
-                                                    Eye::Right => value.wrapping_add(parallax as u32),
-                                                }
+                                    let window_x = pixel_x.wrapping_sub(x as u32);
+                                    let window_y = pixel_y.wrapping_sub(y as u32);
+
+                                    if window_x >= width || window_y >= height {
+                                        continue;
+                                    }
+
+                                    let line_shift = match mode {
+                                        WindowMode::LineShift => {
+                                            let line_offset = param_offset + window_y * 4;
+                                            let eye_offset = line_offset + match eye {
+                                                Eye::Left => 0,
+                                                Eye::Right => 2,
                                             };
-                                            if pixel_x >= FRAMEBUFFER_RESOLUTION_X as u32 {
-                                                continue;
-                                            }
-
-                                            self.draw_char_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_index, horizontal_flip, vertical_flip, palette);
+                                            (self.read_vram_halfword(eye_offset) as i16) as u32
                                         }
-                                    }
-                                }
-                            }
-                            _ => println!("WARNING: Extra obj window found; all obj groups already drawn")
-                        }
-                    }
-                    WindowMode::Affine => {
-                        for pixel_y in 0..FRAMEBUFFER_RESOLUTION_Y as u32 {
-                            for pixel_x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
-                                let x = {
-                                    let value = x as u32;
-                                    match eye {
-                                        Eye::Left => value.wrapping_sub(parallax as u32),
-                                        Eye::Right => value.wrapping_add(parallax as u32),
-                                    }
-                                };
+                                        _ => 0
+                                    };
 
-                                let window_x = pixel_x.wrapping_sub(x as u32);
-                                let window_y = pixel_y.wrapping_sub(y as u32);
-
-                                if window_x >= width || window_y >= height {
-                                    continue;
-                                }
-
-                                let affine_offset = param_offset + window_y * 16;
-                                let affine_bg_x = self.read_vram_halfword(affine_offset) as i16;
-                                let affine_bg_parallax = self.read_vram_halfword(affine_offset + 2) as i16; // TODO
-                                let affine_bg_y = self.read_vram_halfword(affine_offset + 4) as i16;
-                                let affine_bg_x_inc = self.read_vram_halfword(affine_offset + 6) as i16;
-                                let affine_bg_y_inc = self.read_vram_halfword(affine_offset + 8) as i16;
-                                let parallaxed_window_x = match eye {
-                                    Eye::Left => {
-                                        if affine_bg_parallax < 0 {
-                                            window_x.wrapping_sub(affine_bg_parallax as u32)
-                                        } else {
-                                            window_x
+                                    let background_x = {
+                                        let value = window_x.wrapping_add(bg_x as u32).wrapping_add(line_shift);
+                                        match eye {
+                                            Eye::Left => value.wrapping_sub(bg_parallax as u32),
+                                            Eye::Right => value.wrapping_add(bg_parallax as u32),
                                         }
-                                    }
-                                    Eye::Right => {
-                                        if affine_bg_parallax > 0 {
-                                            window_x.wrapping_add(affine_bg_parallax as u32)
-                                        } else {
-                                            window_x
-                                        }
-                                    }
-                                };
-                                let background_x = (((affine_bg_x as i32) << 6) + ((affine_bg_x_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
-                                let background_y = (((affine_bg_y as i32) << 6) + ((affine_bg_y_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
+                                    };
+                                    let background_y = window_y.wrapping_add(bg_y as u32);
 
-                                self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_base, segments_x, segments_y, background_x, background_y, out_of_bounds, out_of_bounds_char_entry);
-                            }
-                        }
-                    }
-                    _ => {
-                        for pixel_y in 0..FRAMEBUFFER_RESOLUTION_Y as u32 {
-                            for pixel_x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
-                                let x = {
-                                    let value = x as u32;
-                                    match eye {
-                                        Eye::Left => value.wrapping_sub(parallax as u32),
-                                        Eye::Right => value.wrapping_add(parallax as u32),
-                                    }
-                                };
-
-                                let window_x = pixel_x.wrapping_sub(x as u32);
-                                let window_y = pixel_y.wrapping_sub(y as u32);
-
-                                if window_x >= width || window_y >= height {
-                                    continue;
+                                    self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_base, segments_x, segments_y, background_x, background_y, out_of_bounds, out_of_bounds_char_entry);
                                 }
-
-                                let line_shift = match mode {
-                                    WindowMode::LineShift => {
-                                        let line_offset = param_offset + window_y * 4;
-                                        let eye_offset = line_offset + match eye {
-                                            Eye::Left => 0,
-                                            Eye::Right => 2,
-                                        };
-                                        (self.read_vram_halfword(eye_offset) as i16) as u32
-                                    }
-                                    _ => 0
-                                };
-
-                                let background_x = {
-                                    let value = window_x.wrapping_add(bg_x as u32).wrapping_add(line_shift);
-                                    match eye {
-                                        Eye::Left => value.wrapping_sub(bg_parallax as u32),
-                                        Eye::Right => value.wrapping_add(bg_parallax as u32),
-                                    }
-                                };
-                                let background_y = window_y.wrapping_add(bg_y as u32);
-
-                                self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_base, segments_x, segments_y, background_x, background_y, out_of_bounds, out_of_bounds_char_entry);
                             }
                         }
                     }
                 }
-            }
 
-            if let WindowMode::Obj = mode {
-                current_obj_group = match current_obj_group {
-                    Some(ObjGroup::Group3) => Some(ObjGroup::Group2),
-                    Some(ObjGroup::Group2) => Some(ObjGroup::Group1),
-                    Some(ObjGroup::Group1) => Some(ObjGroup::Group0),
-                    _ => None
-                };
+                if let WindowMode::Obj = mode {
+                    current_obj_group = match current_obj_group {
+                        Some(ObjGroup::Group3) => Some(ObjGroup::Group2),
+                        Some(ObjGroup::Group2) => Some(ObjGroup::Group1),
+                        Some(ObjGroup::Group1) => Some(ObjGroup::Group0),
+                        _ => None
+                    };
+                }
             }
 
             window_offset -= WINDOW_ENTRY_LENGTH;
