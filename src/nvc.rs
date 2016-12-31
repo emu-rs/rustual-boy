@@ -303,11 +303,11 @@ impl Nvc {
                     Condition::V => self.psw_overflow,
                     Condition::C => self.psw_carry,
                     Condition::Z => self.psw_zero,
-                    Condition::Nh => self.psw_carry | self.psw_zero,
+                    Condition::Nh => self.psw_carry || self.psw_zero,
                     Condition::N => self.psw_sign,
                     Condition::T => true,
-                    Condition::Lt => self.psw_sign ^ self.psw_overflow,
-                    Condition::Le => (self.psw_sign ^ self.psw_overflow) != self.psw_zero,
+                    Condition::Lt => self.psw_sign != self.psw_overflow,
+                    Condition::Le => (self.psw_sign != self.psw_overflow) || self.psw_zero,
                     Condition::Nv => !self.psw_overflow,
                     Condition::Nc => !self.psw_carry,
                     Condition::Nz => !self.psw_zero,
@@ -420,10 +420,10 @@ impl Nvc {
                 take_branch = true;
             },
             Opcode::Blt => {
-                take_branch = self.psw_sign ^ self.psw_overflow;
+                take_branch = self.psw_sign != self.psw_overflow;
             },
             Opcode::Ble => {
-                take_branch = (self.psw_sign ^ self.psw_overflow) != self.psw_zero;
+                take_branch = (self.psw_sign != self.psw_overflow) || self.psw_zero;
             },
             Opcode::Bnv => {
                 take_branch = !self.psw_overflow;
