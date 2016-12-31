@@ -568,7 +568,7 @@ impl Nvc {
                         self.psw_zero = value == 0.0;
                     }
                     SubOp::CvtSw => {
-                        let value = (self.reg_gpr_float(reg1) as i32) as u32;
+                        let value = (self.reg_gpr_float(reg1).round() as i32) as u32;
                         self.set_reg_gpr(reg2, value);
 
                         self.psw_overflow = false;
