@@ -2,6 +2,7 @@ use minifb::{WindowOptions, Window, Key, KeyRepeat};
 
 use video_driver::*;
 use rom::*;
+use sram::*;
 use instruction::*;
 use game_pad::*;
 use virtual_boy::*;
@@ -50,7 +51,7 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    pub fn new(rom: Rom) -> Emulator {
+    pub fn new(rom: Rom, sram: Sram) -> Emulator {
         let (stdin_sender, stdin_receiver) = channel();
         let stdin_thread = thread::spawn(move || {
             loop {
@@ -61,7 +62,7 @@ impl Emulator {
         Emulator {
             window: Window::new("vb-rs", 384, 224, WindowOptions::default()).unwrap(),
 
-            virtual_boy: VirtualBoy::new(rom),
+            virtual_boy: VirtualBoy::new(rom, sram),
             mode: Mode::Running,
 
             breakpoints: HashSet::new(),

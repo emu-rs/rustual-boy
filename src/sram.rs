@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io::{self, Read, Write, Error, ErrorKind};
 use std::fs::File;
 use std::path::Path;
 
@@ -16,6 +16,22 @@ impl Sram {
             bytes: vec![0xff; MAX_SRAM_SIZE].into_boxed_slice(),
             size: 0,
         }
+    }
+
+    pub fn load<P: AsRef<Path>>(file_name: P) -> io::Result<Sram> {
+        let mut file = File::open(file_name)?;
+        let mut vec = Vec::new();
+        file.read_to_end(&mut vec)?;
+
+        let size = vec.len();
+        if size < MIN_SRAM_SIZE || size > MAX_SRAM_SIZE || size.count_ones() != 1 {
+            return Err(Error::new(ErrorKind::InvalidData, "Invalid SRAM size"));
+        }
+
+        Ok(Sram {
+            bytes: vec.into_boxed_slice(),
+            size: size,
+        })
     }
 
     pub fn save<P: AsRef<Path>>(&self, file_name: P) -> io::Result<()> {

@@ -22,6 +22,7 @@ mod command;
 mod emulator;
 
 use rom::*;
+use sram::*;
 use emulator::*;
 
 use std::env;
@@ -46,12 +47,26 @@ fn main() {
     println!(" game code: \"{}\"", rom.game_code().unwrap());
     println!(" game version: 1.{:#02}", rom.game_version_byte());
 
-    let mut emulator = Emulator::new(rom);
+    let sram_file_name = rom_file_name.replace(".vb", ".srm");
+    println!("Attempting to load SRAM file: {}", sram_file_name);
+    let sram = match Sram::load(&sram_file_name) {
+        Ok(sram) => {
+            println!(" SRAM loaded successfully");
+
+            sram
+        }
+        Err(err) => {
+            println!(" Couldn't load SRAM file: {}", err);
+
+            Sram::new()
+        }
+    };
+
+    let mut emulator = Emulator::new(rom, sram);
     emulator.run();
 
     if emulator.virtual_boy.interconnect.sram.size() > 0 {
-        let sram_file_name = rom_file_name.replace(".vb", ".srm");
-        println!("SRAM used, saving .srm to {}", sram_file_name);
+        println!("SRAM used, saving to {}", sram_file_name);
         emulator.virtual_boy.interconnect.sram.save(sram_file_name).unwrap();
     }
 }

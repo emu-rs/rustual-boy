@@ -19,11 +19,11 @@ pub struct Interconnect {
 }
 
 impl Interconnect {
-    pub fn new(rom: Rom) -> Interconnect {
+    pub fn new(rom: Rom, sram: Sram) -> Interconnect {
         Interconnect {
             rom: rom,
             wram: Wram::new(),
-            sram: Sram::new(),
+            sram: sram,
             vip: Vip::new(),
             vsu: Vsu::new(),
             timer: Timer::new(),

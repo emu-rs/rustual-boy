@@ -1,5 +1,6 @@
 use video_driver::*;
 use rom::*;
+use sram::*;
 use interconnect::*;
 use nvc::*;
 
@@ -11,9 +12,9 @@ pub struct VirtualBoy {
 }
 
 impl VirtualBoy {
-    pub fn new(rom: Rom) -> VirtualBoy {
+    pub fn new(rom: Rom, sram: Sram) -> VirtualBoy {
         VirtualBoy {
-            interconnect: Interconnect::new(rom),
+            interconnect: Interconnect::new(rom, sram),
             cpu: Nvc::new(),
         }
     }
