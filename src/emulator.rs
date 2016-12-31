@@ -34,7 +34,7 @@ enum Mode {
 pub struct Emulator {
     window: Window,
 
-    virtual_boy: VirtualBoy,
+    pub virtual_boy: VirtualBoy,
     mode: Mode,
 
     breakpoints: HashSet<u32>,

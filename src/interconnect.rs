@@ -11,7 +11,7 @@ use mem_map::*;
 pub struct Interconnect {
     rom: Rom,
     wram: Wram,
-    sram: Sram,
+    pub sram: Sram,
     vip: Vip,
     vsu: Vsu,
     timer: Timer,
@@ -31,7 +31,7 @@ impl Interconnect {
         }
     }
 
-    pub fn read_byte(&self, addr: u32) -> u8 {
+    pub fn read_byte(&mut self, addr: u32) -> u8 {
         match map_address(addr) {
             MappedAddress::Vip(addr) => self.vip.read_byte(addr),
             MappedAddress::Vsu(addr) => self.vsu.read_byte(addr),
@@ -69,7 +69,7 @@ impl Interconnect {
         }
     }
 
-    pub fn read_halfword(&self, addr: u32) -> u16 {
+    pub fn read_halfword(&mut self, addr: u32) -> u16 {
         let addr = addr & 0xfffffffe;
         match map_address(addr) {
             MappedAddress::Vip(addr) => self.vip.read_halfword(addr),
@@ -105,7 +105,7 @@ impl Interconnect {
         }
     }
 
-    pub fn read_word(&self, addr: u32) -> u32 {
+    pub fn read_word(&mut self, addr: u32) -> u32 {
         let addr = addr & 0xfffffffc;
         match map_address(addr) {
             MappedAddress::Vip(addr) =>

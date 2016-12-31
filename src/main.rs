@@ -31,7 +31,7 @@ fn main() {
 
     println!("Loading ROM file {}", rom_file_name);
 
-    let rom = Rom::load(rom_file_name).unwrap();
+    let rom = Rom::load(&rom_file_name).unwrap();
 
     print!("ROM size: ");
     if rom.size() >= 1024 * 1024 {
@@ -48,4 +48,10 @@ fn main() {
 
     let mut emulator = Emulator::new(rom);
     emulator.run();
+
+    if emulator.virtual_boy.interconnect.sram.size() > 0 {
+        let sram_file_name = rom_file_name.replace(".vb", ".srm");
+        println!("SRAM used, saving .srm to {}", sram_file_name);
+        emulator.virtual_boy.interconnect.sram.save(sram_file_name).unwrap();
+    }
 }

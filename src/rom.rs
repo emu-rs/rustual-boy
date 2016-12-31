@@ -8,7 +8,7 @@ use std::path::Path;
 use std::borrow::Cow;
 use std::string::FromUtf8Error;
 
-pub const MIN_ROM_SIZE: usize = 512 * 1024;
+pub const MIN_ROM_SIZE: usize = 1024;
 pub const MAX_ROM_SIZE: usize = 16 * 1024 * 1024;
 
 pub struct Rom {
