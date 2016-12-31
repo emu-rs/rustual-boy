@@ -65,6 +65,7 @@ pub enum Opcode {
     Inw,
     Outb,
     Outh,
+    Extended,
     Outw,
 }
 
@@ -141,6 +142,7 @@ impl Opcode {
                 0b111011 => Opcode::Inw,
                 0b111100 => Opcode::Outb,
                 0b111101 => Opcode::Outh,
+                0b111110 => Opcode::Extended,
                 0b111111 => Opcode::Outw,
                 _ => panic!("Unrecognized opcode bits: {:06b} (halfword: 0b{:016b})", opcode_bits, halfword),
             }
@@ -212,7 +214,21 @@ impl Opcode {
             &Opcode::Inw => InstructionFormat::VI,
             &Opcode::Outb => InstructionFormat::VI,
             &Opcode::Outh => InstructionFormat::VI,
+            &Opcode::Extended => InstructionFormat::VII,
             &Opcode::Outw => InstructionFormat::VI,
+        }
+    }
+
+    pub fn subop(&self, subop: usize) -> SubOp {
+        match subop {
+            0b000000 => SubOp::CmpfS,
+            0b000010 => SubOp::CvtWs,
+            0b000011 => SubOp::CvtSw,
+            0b000100 => SubOp::AddfS,
+            0b000101 => SubOp::SubfS,
+            0b000110 => SubOp::MulfS,
+            0b000111 => SubOp::DivfS,
+            _ => panic!("Unrecognized subop bits: {:06b}", subop),
         }
     }
 
@@ -316,6 +332,7 @@ impl Opcode {
             &Opcode::Inw => 4,
             &Opcode::Outb => 4,
             &Opcode::Outh => 4,
+            &Opcode::Extended => unreachable!(), // TODO: Better pattern
             &Opcode::Outw => 4,
         }
     }
@@ -381,6 +398,7 @@ impl fmt::Display for Opcode {
             &Opcode::Inw => "in.w",
             &Opcode::Outb => "out.b",
             &Opcode::Outh => "out.h",
+            &Opcode::Extended => unreachable!(), // TODO: Better pattern
             &Opcode::Outw => "out.w",
         };
         write!(f, "{}", mnemonic)
@@ -394,6 +412,7 @@ pub enum InstructionFormat {
     IV,
     V,
     VI,
+    VII,
 }
 
 impl InstructionFormat {
@@ -405,7 +424,47 @@ impl InstructionFormat {
             &InstructionFormat::IV => true,
             &InstructionFormat::V => true,
             &InstructionFormat::VI => true,
+            &InstructionFormat::VII => true,
         }
+    }
+}
+
+pub enum SubOp {
+    CmpfS,
+    CvtWs,
+    CvtSw,
+    AddfS,
+    SubfS,
+    MulfS,
+    DivfS,
+}
+
+impl SubOp {
+    pub fn num_cycles(&self) -> usize {
+        match self {
+            &SubOp::CmpfS => 10,
+            &SubOp::CvtWs => 16,
+            &SubOp::CvtSw => 14,
+            &SubOp::AddfS => 28,
+            &SubOp::SubfS => 28,
+            &SubOp::MulfS => 30,
+            &SubOp::DivfS => 44,
+        }
+    }
+}
+
+impl fmt::Display for SubOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mnemonic = match self {
+            &SubOp::CmpfS => "cmpf.s",
+            &SubOp::CvtWs => "cvt.ws",
+            &SubOp::CvtSw => "cvt.sw",
+            &SubOp::AddfS => "addf.s",
+            &SubOp::SubfS => "subf.s",
+            &SubOp::MulfS => "mulf.s",
+            &SubOp::DivfS => "divf.s",
+        };
+        write!(f, "{}", mnemonic)
     }
 }
 

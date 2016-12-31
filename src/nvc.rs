@@ -79,6 +79,20 @@ impl Nvc {
         }
     }
 
+    // TODO: Come up with a more portable way to do this conversion
+    fn reg_gpr_float(&self, index: usize) -> f32 {
+        let value = self.reg_gpr(index);
+        let value_ptr = &value as *const _;
+        let value_float_ptr = value_ptr as *const f32;
+        unsafe { *value_float_ptr }
+    }
+
+    fn set_reg_gpr_float(&mut self, index: usize, value: f32) {
+        let value_ptr = &value as *const _;
+        let value_int_ptr = value_ptr as *const u32;
+        self.set_reg_gpr(index, unsafe { *value_int_ptr });
+    }
+
     pub fn reg_eipc(&self) -> u32 {
         self.reg_eipc
     }
@@ -525,6 +539,87 @@ impl Nvc {
                 let value = interconnect.read_halfword(addr) as u32;
                 self.set_reg_gpr(reg2, value);
             }, first_halfword, second_halfword),
+            Opcode::Extended => {
+                let reg1 = (first_halfword & 0x1f) as usize;
+                let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+
+                let subop_bits = second_halfword >> 10;
+
+                let subop = opcode.subop(subop_bits as _);
+
+                match subop {
+                    SubOp::CmpfS => {
+                        let lhs = self.reg_gpr_float(reg2);
+                        let rhs = self.reg_gpr_float(reg1);
+                        let value = lhs - rhs;
+
+                        self.psw_carry = false;
+                        self.psw_overflow = false;
+                        self.psw_sign = value < 0.0;
+                        self.psw_zero = value == 0.0;
+                    }
+                    SubOp::CvtWs => {
+                        let value = (self.reg_gpr(reg1) as i32) as f32;
+                        self.set_reg_gpr_float(reg2, value);
+
+                        self.psw_carry = false;
+                        self.psw_overflow = false;
+                        self.psw_sign = value < 0.0;
+                        self.psw_zero = value == 0.0;
+                    }
+                    SubOp::CvtSw => {
+                        let value = (self.reg_gpr_float(reg1) as i32) as u32;
+                        self.set_reg_gpr(reg2, value);
+
+                        self.psw_overflow = false;
+                        self.set_zero_sign_flags(value);
+                    }
+                    SubOp::AddfS => {
+                        let lhs = self.reg_gpr_float(reg2);
+                        let rhs = self.reg_gpr_float(reg1);
+                        let value = lhs + rhs;
+                        self.set_reg_gpr_float(reg2, value);
+
+                        self.psw_carry = false;
+                        self.psw_overflow = false;
+                        self.psw_sign = value < 0.0;
+                        self.psw_zero = value == 0.0;
+                    }
+                    SubOp::SubfS => {
+                        let lhs = self.reg_gpr_float(reg2);
+                        let rhs = self.reg_gpr_float(reg1);
+                        let value = lhs + rhs;
+                        self.set_reg_gpr_float(reg2, value);
+
+                        self.psw_carry = false;
+                        self.psw_overflow = false;
+                        self.psw_sign = value < 0.0;
+                        self.psw_zero = value == 0.0;
+                    }
+                    SubOp::MulfS => {
+                        let lhs = self.reg_gpr_float(reg2);
+                        let rhs = self.reg_gpr_float(reg1);
+                        let value = lhs * rhs;
+                        self.set_reg_gpr_float(reg2, value);
+
+                        self.psw_carry = false;
+                        self.psw_overflow = false;
+                        self.psw_sign = value < 0.0;
+                        self.psw_zero = value == 0.0;
+                    }
+                    SubOp::DivfS => {
+                        let lhs = self.reg_gpr_float(reg2);
+                        let rhs = self.reg_gpr_float(reg1);
+                        let value = lhs / rhs;
+                        self.set_reg_gpr_float(reg2, value);
+
+                        self.psw_carry = false;
+                        self.psw_overflow = false;
+                        self.psw_sign = value < 0.0;
+                        self.psw_zero = value == 0.0;
+                    }
+                }
+            }
         }
 
         if take_branch {
@@ -535,7 +630,16 @@ impl Nvc {
 
         self.reg_pc = next_pc;
 
-        let num_cycles = opcode.num_cycles(take_branch);
+        let num_cycles = match opcode.instruction_format() {
+            InstructionFormat::VII => {
+                let subop_bits = second_halfword >> 10;
+
+                let subop = opcode.subop(subop_bits as _);
+
+                subop.num_cycles()
+            }
+            _ => opcode.num_cycles(take_branch)
+        };
 
         if let Some(exception_code) = interconnect.cycles(num_cycles, video_driver) {
             self.request_exception(exception_code);

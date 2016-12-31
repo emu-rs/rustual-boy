@@ -374,6 +374,16 @@ impl Emulator {
 
                 println!("{} {}[r{}], r{}", opcode, disp16, reg1, reg2);
             }
+            InstructionFormat::VII => {
+                let reg1 = (first_halfword & 0x1f) as usize;
+                let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+
+                let subop_bits = second_halfword >> 10;
+
+                let subop = opcode.subop(subop_bits as _);
+
+                println!("{} r{}, r{}", subop, reg1, reg2);
+            }
         }
 
         next_cursor
