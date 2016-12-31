@@ -618,6 +618,11 @@ impl Nvc {
                         self.psw_sign = value < 0.0;
                         self.psw_zero = value == 0.0;
                     }
+                    SubOp::Xh => {
+                        let original = self.reg_gpr(reg2);
+                        let value = (original >> 16) | ((original & 0xffff) << 16);
+                        self.set_reg_gpr(reg2, value);
+                    }
                 }
             }
         }
