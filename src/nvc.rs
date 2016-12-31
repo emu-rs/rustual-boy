@@ -555,7 +555,7 @@ impl Nvc {
 
                         self.psw_carry = false;
                         self.psw_overflow = false;
-                        self.psw_sign = value < 0.0;
+                        self.psw_sign = value.is_sign_negative();
                         self.psw_zero = value == 0.0;
                     }
                     SubOp::CvtWs => {
@@ -564,7 +564,7 @@ impl Nvc {
 
                         self.psw_carry = false;
                         self.psw_overflow = false;
-                        self.psw_sign = value < 0.0;
+                        self.psw_sign = value.is_sign_negative();
                         self.psw_zero = value == 0.0;
                     }
                     SubOp::CvtSw => {
@@ -582,7 +582,7 @@ impl Nvc {
 
                         self.psw_carry = false;
                         self.psw_overflow = false;
-                        self.psw_sign = value < 0.0;
+                        self.psw_sign = value.is_sign_negative();
                         self.psw_zero = value == 0.0;
                     }
                     SubOp::SubfS => {
@@ -593,7 +593,7 @@ impl Nvc {
 
                         self.psw_carry = false;
                         self.psw_overflow = false;
-                        self.psw_sign = value < 0.0;
+                        self.psw_sign = value.is_sign_negative();
                         self.psw_zero = value == 0.0;
                     }
                     SubOp::MulfS => {
@@ -615,7 +615,7 @@ impl Nvc {
 
                         self.psw_carry = false;
                         self.psw_overflow = false;
-                        self.psw_sign = value < 0.0;
+                        self.psw_sign = value.is_sign_negative();
                         self.psw_zero = value == 0.0;
                     }
                     SubOp::Xb => {
