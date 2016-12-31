@@ -628,6 +628,12 @@ impl Nvc {
                         let value = (original >> 16) | ((original & 0xffff) << 16);
                         self.set_reg_gpr(reg2, value);
                     }
+                    SubOp::Mpyhw => {
+                        let lhs = (self.reg_gpr(reg2) as i16) as i32;
+                        let rhs = (self.reg_gpr(reg1) as i16) as i32;
+                        let value = (lhs * rhs) as u32;
+                        self.set_reg_gpr(reg2, value);
+                    }
                 }
             }
         }

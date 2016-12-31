@@ -230,6 +230,7 @@ impl Opcode {
             0b000111 => SubOp::DivfS,
             0b001000 => SubOp::Xb,
             0b001001 => SubOp::Xh,
+            0b001100 => SubOp::Mpyhw,
             _ => panic!("Unrecognized subop bits: {:06b}", subop),
         }
     }
@@ -441,6 +442,7 @@ pub enum SubOp {
     DivfS,
     Xb,
     Xh,
+    Mpyhw,
 }
 
 impl SubOp {
@@ -455,6 +457,7 @@ impl SubOp {
             &SubOp::DivfS => 44,
             &SubOp::Xb => 1,
             &SubOp::Xh => 1,
+            &SubOp::Mpyhw => 1,
         }
     }
 }
@@ -471,6 +474,7 @@ impl fmt::Display for SubOp {
             &SubOp::DivfS => "divf.s",
             &SubOp::Xb => "xb",
             &SubOp::Xh => "xh",
+            &SubOp::Mpyhw => "mpyhw",
         };
         write!(f, "{}", mnemonic)
     }
