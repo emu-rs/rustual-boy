@@ -588,7 +588,7 @@ impl Nvc {
                     SubOp::SubfS => {
                         let lhs = self.reg_gpr_float(reg2);
                         let rhs = self.reg_gpr_float(reg1);
-                        let value = lhs + rhs;
+                        let value = lhs - rhs;
                         self.set_reg_gpr_float(reg2, value);
 
                         self.psw_carry = false;
