@@ -10,7 +10,8 @@ impl Vsu {
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {
-        panic!("VSU read byte not yet implemented (addr: 0x{:08x})", addr);
+        println!("VSU read byte not yet implemented (addr: 0x{:08x})", addr);
+        0
     }
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
@@ -19,7 +20,8 @@ impl Vsu {
 
     pub fn read_halfword(&self, addr: u32) -> u16 {
         let addr = addr & 0xfffffffe;
-        panic!("VSU read halfword not yet implemented (addr: 0x{:08x})", addr);
+        println!("VSU read halfword not yet implemented (addr: 0x{:08x})", addr);
+        0
     }
 
     pub fn write_halfword(&mut self, addr: u32, value: u16) {
@@ -29,7 +31,8 @@ impl Vsu {
 
     pub fn read_word(&self, addr: u32) -> u32 {
         let addr = addr & 0xfffffffc;
-        panic!("VSU read word not yet implemented (addr: 0x{:08x})", addr);
+        println!("VSU read word not yet implemented (addr: 0x{:08x})", addr);
+        0
     }
 
     pub fn write_word(&mut self, addr: u32, value: u32) {
