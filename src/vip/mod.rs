@@ -372,7 +372,7 @@ impl Vip {
                     self.reg_interrupt_pending_start_of_display_frame = false;
                     self.reg_interrupt_pending_left_display_finished = false;
                     self.reg_interrupt_pending_right_display_finished = false;
-                } else if enable {
+                } else if enable && !self.reg_display_control_display_enable {
                     self.display_state = DisplayState::Finished;
                 }
 
