@@ -226,7 +226,7 @@ impl Interconnect {
     }
 
     pub fn write_word(&mut self, addr: u32, value: u32) {
-        let addr = addr & 0xfffffffe;
+        let addr = addr & 0xfffffffc;
         match map_address(addr) {
             MappedAddress::Vip(addr) => {
                 self.vip.write_halfword(addr, value as _);
