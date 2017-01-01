@@ -372,9 +372,7 @@ impl Vip {
                     self.reg_interrupt_pending_start_of_display_frame = false;
                     self.reg_interrupt_pending_left_display_finished = false;
                     self.reg_interrupt_pending_right_display_finished = false;
-                }
-
-                if enable && !self.reg_display_control_display_enable {
+                } else if enable {
                     self.display_state = DisplayState::Finished;
                 }
 
@@ -397,15 +395,13 @@ impl Vip {
                 println!("WARNING: Write halfword to Drawing Control Write Reg not fully implemented (value: 0x{:04x})", value);
 
                 let reset = (value & 0x01) != 0;
-                let enable = (value & 0x02) != 0;
+                self.reg_drawing_control_drawing_enable = (value & 0x02) != 0;
 
                 if reset {
                     self.drawing_state = DrawingState::Idle;
 
                     self.reg_interrupt_pending_drawing_finished = false;
                 }
-
-                self.reg_drawing_control_drawing_enable = enable;
             }
             MappedAddress::ObjGroup0PointerReg => self.reg_obj_group_0_ptr = value & 0x03ff,
             MappedAddress::ObjGroup1PointerReg => self.reg_obj_group_1_ptr = value & 0x03ff,
@@ -456,7 +452,7 @@ impl Vip {
                 }
             }
 
-            if self.reg_display_control_sync_enable {
+            if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
                 match self.display_state {
                     DisplayState::Idle => {
                         self.display_counter += CPU_CYCLE_PERIOD_NS;
