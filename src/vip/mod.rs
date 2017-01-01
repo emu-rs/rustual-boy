@@ -7,17 +7,8 @@ const MS_TO_NS: u64 = 1000000;
 
 const CPU_CYCLE_PERIOD_NS: u64 = 50;
 
-const FRAME_CLOCK_PERIOD_MS: u64 = 20;
-const FRAME_CLOCK_PERIOD_NS: u64 = FRAME_CLOCK_PERIOD_MS * MS_TO_NS;
-
-const DISPLAY_PROCESSING_DELAY_PERIOD_MS: u64 = 10;
-const DISPLAY_PROCESSING_DELAY_PERIOD_NS: u64 = DISPLAY_PROCESSING_DELAY_PERIOD_MS * MS_TO_NS;
-const DISPLAY_PROCESSING_BUFFER_PERIOD_MS: u64 = 5;
-const DISPLAY_PROCESSING_BUFFER_PERIOD_NS: u64 = DISPLAY_PROCESSING_BUFFER_PERIOD_MS * MS_TO_NS;
-
-// Hardcoded drawing period for now
-const DRAWING_PERIOD_MS: u64 = 10;
-const DRAWING_PERIOD_NS: u64 = DRAWING_PERIOD_MS * MS_TO_NS;
+const DISPLAY_FRAME_QUARTER_PERIOD_MS: u64 = 5;
+const DISPLAY_FRAME_QUARTER_PERIOD_NS: u64 = DISPLAY_FRAME_QUARTER_PERIOD_MS * MS_TO_NS;
 
 const FRAMEBUFFER_RESOLUTION_X: usize = 384;
 const FRAMEBUFFER_RESOLUTION_Y: usize = 256;
@@ -103,11 +94,10 @@ pub struct Vip {
 
     reg_clear_color: u8,
 
-    frame_clock_counter: u64,
-    game_frame_clock_counter: usize,
+    display_frame_quarter_clock_counter: u64,
+    display_frame_quarter_counter: usize,
 
-    drawing_counter: u64,
-    display_counter: u64,
+    game_frame_counter: usize,
 
     display_first_framebuffers: bool,
     last_clear_color: u8,
@@ -161,11 +151,10 @@ impl Vip {
 
             reg_clear_color: 0,
 
-            frame_clock_counter: 0,
-            game_frame_clock_counter: 0,
+            display_frame_quarter_clock_counter: 0,
+            display_frame_quarter_counter: 0,
 
-            drawing_counter: 0,
-            display_counter: 0,
+            game_frame_counter: 0,
 
             display_first_framebuffers: false,
             last_clear_color: 0,
@@ -435,52 +424,60 @@ impl Vip {
         let mut raise_interrupt = false;
 
         for _ in 0..cycles {
-            self.frame_clock_counter += CPU_CYCLE_PERIOD_NS;
-            if self.frame_clock_counter >= FRAME_CLOCK_PERIOD_NS {
-                self.frame_clock_counter -= FRAME_CLOCK_PERIOD_NS;
-                self.frame_clock(&mut raise_interrupt, video_driver);
-            }
+            self.display_frame_quarter_clock_counter += CPU_CYCLE_PERIOD_NS;
+            if self.display_frame_quarter_clock_counter >= DISPLAY_FRAME_QUARTER_PERIOD_NS {
+                self.display_frame_quarter_clock_counter -= DISPLAY_FRAME_QUARTER_PERIOD_NS;
 
-            if let DrawingState::Drawing = self.drawing_state {
-                self.drawing_counter += CPU_CYCLE_PERIOD_NS;
-                if self.drawing_counter >= DRAWING_PERIOD_NS {
-                    self.end_drawing_process();
-                    self.reg_interrupt_pending_drawing_finished = true;
-                    if self.reg_interrupt_enable_drawing_finished {
-                        raise_interrupt = true;
+                self.display_frame_quarter_counter = match self.display_frame_quarter_counter {
+                    3 => 0,
+                    _ => self.display_frame_quarter_counter + 1
+                };
+
+                match self.display_frame_quarter_counter {
+                    0 => {
+                        self.frame_clock(&mut raise_interrupt);
                     }
-                }
-            }
-
-            if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
-                match self.display_state {
-                    DisplayState::Idle => {
-                        self.display_counter += CPU_CYCLE_PERIOD_NS;
-                        if self.display_counter >= DISPLAY_PROCESSING_DELAY_PERIOD_NS {
+                    1 => {
+                        if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
                             self.begin_left_framebuffer_display_process();
                         }
                     }
-                    DisplayState::LeftFramebuffer => {
-                        self.display_counter += CPU_CYCLE_PERIOD_NS;
-                        if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
-                            self.begin_right_framebuffer_display_process();
-                            self.reg_interrupt_pending_left_display_finished = true;
-                            if self.reg_interrupt_enable_left_display_finished {
+                    2 => {
+                        if let DrawingState::Drawing = self.drawing_state {
+                            self.end_drawing_process();
+                            self.reg_interrupt_pending_drawing_finished = true;
+                            if self.reg_interrupt_enable_drawing_finished {
                                 raise_interrupt = true;
                             }
                         }
+
+                        if self.reg_display_control_display_enable {
+                            if let DisplayState::LeftFramebuffer = self.display_state {
+                                self.reg_interrupt_pending_left_display_finished = true;
+                                if self.reg_interrupt_enable_left_display_finished {
+                                    raise_interrupt = true;
+                                }
+                            }
+
+                            if self.reg_display_control_sync_enable {
+                                self.begin_right_framebuffer_display_process();
+                            }
+                        }
                     }
-                    DisplayState::RightFramebuffer => {
-                        self.display_counter += CPU_CYCLE_PERIOD_NS;
-                        if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
+                    _ => {
+                        if self.reg_display_control_display_enable {
+                            if let DisplayState::RightFramebuffer = self.display_state {
+                                self.reg_interrupt_pending_right_display_finished = true;
+                                if self.reg_interrupt_enable_right_display_finished {
+                                    raise_interrupt = true;
+                                }
+                            }
+
                             self.end_display_process();
-                            self.reg_interrupt_pending_right_display_finished = true;
-                            if self.reg_interrupt_enable_right_display_finished {
-                                raise_interrupt = true;
-                            }
                         }
+
+                        self.display(video_driver);
                     }
-                    DisplayState::Finished => (),
                 }
             }
         }
@@ -488,10 +485,8 @@ impl Vip {
         raise_interrupt
     }
 
-    fn frame_clock(&mut self, raise_interrupt: &mut bool, video_driver: &mut VideoDriver) {
+    fn frame_clock(&mut self, raise_interrupt: &mut bool) {
         println!("Frame clock rising edge");
-
-        self.output_frame(video_driver);
 
         if self.reg_display_control_display_enable {
             self.reg_interrupt_pending_start_of_display_frame = true;
@@ -502,9 +497,9 @@ impl Vip {
             self.begin_display_process();
         }
 
-        self.game_frame_clock_counter += 1;
-        if self.game_frame_clock_counter >= self.reg_game_frame_control {
-            self.game_frame_clock_counter = 0;
+        self.game_frame_counter += 1;
+        if self.game_frame_counter >= self.reg_game_frame_control {
+            self.game_frame_counter = 0;
             self.game_clock(raise_interrupt);
         }
     }
@@ -532,7 +527,6 @@ impl Vip {
     fn begin_drawing_process(&mut self) {
         println!("Begin drawing process");
         self.drawing_state = DrawingState::Drawing;
-        self.drawing_counter = 0;
     }
 
     fn end_drawing_process(&mut self) {
@@ -545,7 +539,6 @@ impl Vip {
     fn begin_display_process(&mut self) {
         println!("Start display process");
         self.display_state = DisplayState::Idle;
-        self.display_counter = 0;
     }
 
     fn begin_left_framebuffer_display_process(&mut self) {
@@ -959,7 +952,7 @@ impl Vip {
         self.vram[framebuffer_offset + framebuffer_byte_index] = framebuffer_byte;
     }
 
-    fn output_frame(&self, video_driver: &mut VideoDriver) {
+    fn display(&mut self, video_driver: &mut VideoDriver) {
         let left_framebuffer_offset = if self.display_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
@@ -1002,11 +995,6 @@ impl Vip {
                     left_buffer[buffer_index] = left_brightness;
                     right_buffer[buffer_index] = right_brightness;
                 }
-            }
-        } else {
-            for i in 0..DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y {
-                left_buffer[i] = 0;
-                right_buffer[i] = 0;
             }
         }
 
