@@ -134,7 +134,7 @@ impl Vip {
             reg_interrupt_enable_start_of_display_frame: false,
             reg_interrupt_enable_drawing_finished: false,
 
-            reg_display_control_display_enable: false,
+            reg_display_control_display_enable: true,
             reg_display_control_sync_enable: false,
 
             reg_drawing_control_drawing_enable: false,
@@ -494,12 +494,12 @@ impl Vip {
     fn frame_clock(&mut self, raise_interrupt: &mut bool) {
         println!("Frame clock rising edge");
 
-        self.reg_interrupt_pending_start_of_display_frame = true;
-        if self.reg_interrupt_enable_start_of_display_frame {
-            *raise_interrupt = true;
-        }
-
         if self.reg_display_control_display_enable {
+            self.reg_interrupt_pending_start_of_display_frame = true;
+            if self.reg_interrupt_enable_start_of_display_frame {
+                *raise_interrupt = true;
+            }
+
             self.start_display_process();
         }
 
