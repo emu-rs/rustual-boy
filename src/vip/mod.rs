@@ -101,10 +101,27 @@ pub struct Vip {
 
     display_first_framebuffers: bool,
     last_clear_color: u8,
+
+    gamma_table: Box<[u8; 256]>,
 }
 
 impl Vip {
     pub fn new() -> Vip {
+        let gamma = 2.2;
+
+        let mut gamma_table = Box::new([0; 256]);
+        for (i, entry) in gamma_table.iter_mut().enumerate() {
+            let mut value = (((i as f64) / 255.0).powf(1.0 / gamma) * 255.0) as isize;
+            if value < 0 {
+                value = 0;
+            }
+            if value > 255 {
+                value = 0;
+            }
+
+            *entry = value as u8;
+        }
+
         Vip {
             vram: vec![0; VRAM_LENGTH as usize].into_boxed_slice(),
 
@@ -158,6 +175,8 @@ impl Vip {
 
             display_first_framebuffers: false,
             last_clear_color: 0,
+
+            gamma_table: gamma_table,
         }
     }
 
@@ -960,18 +979,21 @@ impl Vip {
         let mut right_buffer = vec![0; DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y];
 
         if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
-            let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
-            let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
-            let mut brightness_3 = ((self.reg_led_brightness_1 as u32) + (self.reg_led_brightness_2 as u32) + (self.reg_led_brightness_3 as u32)) * 2;
-            if brightness_1 > 255 {
-                brightness_1 = 255;
+            let mut brightness_1_index = (self.reg_led_brightness_1 as usize) * 2;
+            let mut brightness_2_index = (self.reg_led_brightness_2 as usize) * 2;
+            let mut brightness_3_index = ((self.reg_led_brightness_1 as usize) + (self.reg_led_brightness_2 as usize) + (self.reg_led_brightness_3 as usize)) * 2;
+            if brightness_1_index > 255 {
+                brightness_1_index = 255;
             }
-            if brightness_2 > 255 {
-                brightness_2 = 255;
+            if brightness_2_index > 255 {
+                brightness_2_index = 255;
             }
-            if brightness_3 > 255 {
-                brightness_3 = 255;
+            if brightness_3_index > 255 {
+                brightness_3_index = 255;
             }
+            let brightness_1 = self.gamma_table[brightness_1_index] as u32;
+            let brightness_2 = self.gamma_table[brightness_2_index] as u32;
+            let brightness_3 = self.gamma_table[brightness_3_index] as u32;
 
             for pixel_x in 0..DISPLAY_RESOLUTION_X as usize {
                 for pixel_y in 0..DISPLAY_RESOLUTION_Y as usize {
