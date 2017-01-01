@@ -966,7 +966,7 @@ impl Vip {
         let mut left_buffer = vec![0; DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y];
         let mut right_buffer = vec![0; DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y];
 
-        if self.reg_display_control_display_enable {
+        if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
             let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
             let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
             let mut brightness_3 = ((self.reg_led_brightness_1 as u32) + (self.reg_led_brightness_2 as u32) + (self.reg_led_brightness_3 as u32)) * 2;
