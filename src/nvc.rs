@@ -696,7 +696,7 @@ impl Nvc {
         let mut carry = false;
         let shift = (rhs as usize) & 0x1f;
         for _ in 0..shift {
-            carry = res & 0x80000000 != 0;
+            carry = (res & 0x80000000) != 0;
             res = res.wrapping_shl(1);
         }
         self.set_zero_sign_flags(res);
@@ -710,7 +710,7 @@ impl Nvc {
         let mut carry = false;
         let shift = (rhs as usize) & 0x1f;
         for _ in 0..shift {
-            carry = res & 0x00000001 != 0;
+            carry = (res & 0x00000001) != 0;
             res = res.wrapping_shr(1);
         }
         self.set_zero_sign_flags(res);
@@ -725,7 +725,7 @@ impl Nvc {
         let shift = (rhs as usize) & 0x1f;
         for _ in 0..shift {
             let sign = res & 0x80000000;
-            carry = res & 0x00000001 != 0;
+            carry = (res & 0x00000001) != 0;
             res = sign | res.wrapping_shr(1);
         }
         self.set_zero_sign_flags(res);
@@ -736,7 +736,7 @@ impl Nvc {
 
     fn set_zero_sign_flags(&mut self, value: u32) {
         self.psw_zero = value == 0;
-        self.psw_sign = value & 0x80000000 != 0;
+        self.psw_sign = (value & 0x80000000) != 0;
     }
 
     fn request_exception(&mut self, exception_code: u16) {
