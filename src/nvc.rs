@@ -553,19 +553,13 @@ impl Nvc {
                         let rhs = self.reg_gpr_float(reg1);
                         let value = lhs - rhs;
 
-                        self.psw_carry = false;
-                        self.psw_overflow = false;
-                        self.psw_sign = value.is_sign_negative();
-                        self.psw_zero = value == 0.0;
+                        self.set_fp_flags(value);
                     }
                     SubOp::CvtWs => {
                         let value = (self.reg_gpr(reg1) as i32) as f32;
                         self.set_reg_gpr_float(reg2, value);
 
-                        self.psw_carry = false;
-                        self.psw_overflow = false;
-                        self.psw_sign = value.is_sign_negative();
-                        self.psw_zero = value == 0.0;
+                        self.set_fp_flags(value);
                     }
                     SubOp::CvtSw => {
                         let value = (self.reg_gpr_float(reg1).round() as i32) as u32;
@@ -580,10 +574,7 @@ impl Nvc {
                         let value = lhs + rhs;
                         self.set_reg_gpr_float(reg2, value);
 
-                        self.psw_carry = false;
-                        self.psw_overflow = false;
-                        self.psw_sign = value.is_sign_negative();
-                        self.psw_zero = value == 0.0;
+                        self.set_fp_flags(value);
                     }
                     SubOp::SubfS => {
                         let lhs = self.reg_gpr_float(reg2);
@@ -591,10 +582,7 @@ impl Nvc {
                         let value = lhs - rhs;
                         self.set_reg_gpr_float(reg2, value);
 
-                        self.psw_carry = false;
-                        self.psw_overflow = false;
-                        self.psw_sign = value.is_sign_negative();
-                        self.psw_zero = value == 0.0;
+                        self.set_fp_flags(value);
                     }
                     SubOp::MulfS => {
                         let lhs = self.reg_gpr_float(reg2);
@@ -602,10 +590,7 @@ impl Nvc {
                         let value = lhs * rhs;
                         self.set_reg_gpr_float(reg2, value);
 
-                        self.psw_carry = false;
-                        self.psw_overflow = false;
-                        self.psw_sign = value < 0.0;
-                        self.psw_zero = value == 0.0;
+                        self.set_fp_flags(value);
                     }
                     SubOp::DivfS => {
                         let lhs = self.reg_gpr_float(reg2);
@@ -613,10 +598,7 @@ impl Nvc {
                         let value = lhs / rhs;
                         self.set_reg_gpr_float(reg2, value);
 
-                        self.psw_carry = false;
-                        self.psw_overflow = false;
-                        self.psw_sign = value.is_sign_negative();
-                        self.psw_zero = value == 0.0;
+                        self.set_fp_flags(value);
                     }
                     SubOp::Xb => {
                         let original = self.reg_gpr(reg2);
@@ -737,6 +719,13 @@ impl Nvc {
     fn set_zero_sign_flags(&mut self, value: u32) {
         self.psw_zero = value == 0;
         self.psw_sign = (value & 0x80000000) != 0;
+    }
+
+    fn set_fp_flags(&mut self, value: f32) {
+        self.psw_carry = value.is_sign_negative();
+        self.psw_overflow = false;
+        self.psw_sign = self.psw_carry;
+        self.psw_zero = value == 0.0;
     }
 
     fn request_exception(&mut self, exception_code: u16) {
