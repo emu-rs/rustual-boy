@@ -326,7 +326,7 @@ impl Nvc {
             }, first_halfword),
             Opcode::ShlImm => format_ii(|imm5, reg2| {
                 let lhs = self.reg_gpr(reg2);
-                let rhs = sign_extend_imm5(imm5);
+                let rhs = imm5 as u32;
                 let res = self.shl_and_set_flags(lhs, rhs);
                 self.set_reg_gpr(reg2, res);
             }, first_halfword),
