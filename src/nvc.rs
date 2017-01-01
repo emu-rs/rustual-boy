@@ -774,7 +774,7 @@ fn format_ii<F: FnOnce(usize, usize)>(f: F, first_halfword: u16) {
 
 fn format_iv<F: FnOnce(u32)>(f: F, first_halfword: u16, second_halfword: u16, reg_pc: u32) {
     let disp26 = (((first_halfword as u32) & 0x03ff) << 16) | (second_halfword as u32);
-    let disp = disp26 | if disp26 & 0x02000000 == 0 { 0x00000000 } else { 0xfc000000 };
+    let disp = disp26 | if (disp26 & 0x02000000) == 0 { 0x00000000 } else { 0xfc000000 };
     let target = reg_pc.wrapping_add(disp);
     f(target);
 }
@@ -794,5 +794,5 @@ fn format_vi<F: FnOnce(usize, usize, i16)>(f: F, first_halfword: u16, second_hal
 }
 
 fn sign_extend_imm5(imm5: usize) -> u32 {
-    (imm5 as u32) | (if imm5 & 0x10 == 0 { 0x00000000 } else { 0xffffffe0 })
+    (imm5 as u32) | (if (imm5 & 0x10) == 0 { 0x00000000 } else { 0xffffffe0 })
 }
