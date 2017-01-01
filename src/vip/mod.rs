@@ -28,6 +28,7 @@ enum DisplayState {
     Idle,
     LeftFramebuffer,
     RightFramebuffer,
+    Finished,
 }
 
 enum DrawingState {
@@ -65,14 +66,14 @@ pub struct Vip {
 
     reg_interrupt_pending_left_display_finished: bool,
     reg_interrupt_pending_right_display_finished: bool,
-    reg_interrupt_pending_drawing_started: bool,
-    reg_interrupt_pending_start_of_frame_processing: bool,
+    reg_interrupt_pending_start_of_game_frame: bool,
+    reg_interrupt_pending_start_of_display_frame: bool,
     reg_interrupt_pending_drawing_finished: bool,
 
     reg_interrupt_enable_left_display_finished: bool,
     reg_interrupt_enable_right_display_finished: bool,
-    reg_interrupt_enable_drawing_started: bool,
-    reg_interrupt_enable_start_of_frame_processing: bool,
+    reg_interrupt_enable_start_of_game_frame: bool,
+    reg_interrupt_enable_start_of_display_frame: bool,
     reg_interrupt_enable_drawing_finished: bool,
 
     reg_display_control_display_enable: bool,
@@ -123,14 +124,14 @@ impl Vip {
 
             reg_interrupt_pending_left_display_finished: false,
             reg_interrupt_pending_right_display_finished: false,
-            reg_interrupt_pending_drawing_started: false,
-            reg_interrupt_pending_start_of_frame_processing: false,
+            reg_interrupt_pending_start_of_game_frame: false,
+            reg_interrupt_pending_start_of_display_frame: false,
             reg_interrupt_pending_drawing_finished: false,
 
             reg_interrupt_enable_left_display_finished: false,
             reg_interrupt_enable_right_display_finished: false,
-            reg_interrupt_enable_drawing_started: false,
-            reg_interrupt_enable_start_of_frame_processing: false,
+            reg_interrupt_enable_start_of_game_frame: false,
+            reg_interrupt_enable_start_of_display_frame: false,
             reg_interrupt_enable_drawing_finished: false,
 
             reg_display_control_display_enable: false,
@@ -217,16 +218,16 @@ impl Vip {
                 //println!("WARNING: Read halfword from Interrupt Pending Reg not fully implemented");
                 (if self.reg_interrupt_pending_left_display_finished { 1 } else { 0 } << 1) |
                 (if self.reg_interrupt_pending_right_display_finished { 1 } else { 0 } << 2) |
-                (if self.reg_interrupt_pending_drawing_started { 1 } else { 0 } << 3) |
-                (if self.reg_interrupt_pending_start_of_frame_processing { 1 } else { 0 } << 4) |
+                (if self.reg_interrupt_pending_start_of_game_frame { 1 } else { 0 } << 3) |
+                (if self.reg_interrupt_pending_start_of_display_frame { 1 } else { 0 } << 4) |
                 (if self.reg_interrupt_pending_drawing_finished { 1 } else { 0 } << 14)
             }
             MappedAddress::InterruptEnableReg => {
                 println!("WARNING: Read halfword from Interrupt Enable Reg not fully implemented");
                 (if self.reg_interrupt_enable_left_display_finished { 1 } else { 0 } << 1) |
                 (if self.reg_interrupt_enable_right_display_finished { 1 } else { 0 } << 2) |
-                (if self.reg_interrupt_enable_drawing_started { 1 } else { 0 } << 3) |
-                (if self.reg_interrupt_enable_start_of_frame_processing { 1 } else { 0 } << 4) |
+                (if self.reg_interrupt_enable_start_of_game_frame { 1 } else { 0 } << 3) |
+                (if self.reg_interrupt_enable_start_of_display_frame { 1 } else { 0 } << 4) |
                 (if self.reg_interrupt_enable_drawing_finished { 1 } else { 0 } << 14)
             }
             MappedAddress::InterruptClearReg => {
@@ -245,7 +246,7 @@ impl Vip {
 
                 (if self.reg_display_control_display_enable { 1 } else { 0 } << 1) |
                 (match self.display_state {
-                    DisplayState::Idle => 0b0000,
+                    DisplayState::Idle | DisplayState::Finished => 0b0000,
                     DisplayState::LeftFramebuffer => if self.display_first_framebuffers { 0b0001 } else { 0b0100 },
                     DisplayState::RightFramebuffer => if self.display_first_framebuffers { 0b0010 } else { 0b1000 },
                 } << 2) |
@@ -330,8 +331,8 @@ impl Vip {
                 println!("WARNING: Write halfword to Interrupt Enable Reg not fully implemented (value: 0x{:04x})", value);
                 self.reg_interrupt_enable_left_display_finished = (value & 0x0002) != 0;
                 self.reg_interrupt_enable_right_display_finished = (value & 0x0004) != 0;
-                self.reg_interrupt_enable_drawing_started = (value & 0x0008) != 0;
-                self.reg_interrupt_enable_start_of_frame_processing = (value & 0x0010) != 0;
+                self.reg_interrupt_enable_start_of_game_frame = (value & 0x0008) != 0;
+                self.reg_interrupt_enable_start_of_display_frame = (value & 0x0010) != 0;
                 self.reg_interrupt_enable_drawing_finished = (value & 0x4000) != 0;
             }
             MappedAddress::InterruptClearReg => {
@@ -343,10 +344,10 @@ impl Vip {
                     self.reg_interrupt_pending_right_display_finished = false;
                 }
                 if (value & 0x0008) != 0 {
-                    self.reg_interrupt_pending_drawing_started = false;
+                    self.reg_interrupt_pending_start_of_game_frame = false;
                 }
                 if (value & 0x0010) != 0 {
-                    self.reg_interrupt_pending_start_of_frame_processing = false;
+                    self.reg_interrupt_pending_start_of_display_frame = false;
                 }
                 if (value & 0x4000) != 0 {
                     self.reg_interrupt_pending_drawing_finished = false;
@@ -357,13 +358,27 @@ impl Vip {
             }
             MappedAddress::DisplayControlWriteReg => {
                 println!("WARNING: Write halfword to Display Control Write Reg not fully implemented (value: 0x{:04x})", value);
-                let _reset = (value & 0x01) != 0; // TODO: Soft reset
-                self.reg_display_control_display_enable = (value & 0x02) != 0;
-                let _mem_refresh = (value & 0x10) != 0; // TODO
-                self.reg_display_control_sync_enable = (value & 0x20) != 0;
-                let _column_table_addr_lock = (value & 0x40) != 0;
 
-                // TODO
+                let reset = (value & 0x0001) != 0;
+                let enable = (value & 0x0002) != 0;
+                let _mem_refresh = (value & 0x0100) != 0; // TODO
+                self.reg_display_control_sync_enable = (value & 0x0200) != 0;
+                let _column_table_addr_lock = (value & 0x0400) != 0;
+
+                if reset {
+                    self.display_state = DisplayState::Finished;
+
+                    self.reg_interrupt_pending_start_of_game_frame = false;
+                    self.reg_interrupt_pending_start_of_display_frame = false;
+                    self.reg_interrupt_pending_left_display_finished = false;
+                    self.reg_interrupt_pending_right_display_finished = false;
+                }
+
+                if enable && !self.reg_display_control_display_enable {
+                    self.display_state = DisplayState::Finished;
+                }
+
+                self.reg_display_control_display_enable = enable;
             }
             MappedAddress::LedBrightness1Reg => self.reg_led_brightness_1 = value as _,
             MappedAddress::LedBrightness2Reg => self.reg_led_brightness_2 = value as _,
@@ -380,7 +395,17 @@ impl Vip {
             }
             MappedAddress::DrawingControlWriteReg => {
                 println!("WARNING: Write halfword to Drawing Control Write Reg not fully implemented (value: 0x{:04x})", value);
-                self.reg_drawing_control_drawing_enable = (value & 0x02) != 0;
+
+                let reset = (value & 0x01) != 0;
+                let enable = (value & 0x02) != 0;
+
+                if reset {
+                    self.drawing_state = DrawingState::Idle;
+
+                    self.reg_interrupt_pending_drawing_finished = false;
+                }
+
+                self.reg_drawing_control_drawing_enable = enable;
             }
             MappedAddress::ObjGroup0PointerReg => self.reg_obj_group_0_ptr = value & 0x03ff,
             MappedAddress::ObjGroup1PointerReg => self.reg_obj_group_1_ptr = value & 0x03ff,
@@ -431,33 +456,38 @@ impl Vip {
                 }
             }
 
-            self.display_counter += CPU_CYCLE_PERIOD_NS;
-            match self.display_state {
-                DisplayState::Idle => {
-                    if self.display_counter >= DISPLAY_PROCESSING_DELAY_PERIOD_NS {
-                        self.display_counter -= DISPLAY_PROCESSING_DELAY_PERIOD_NS;
-                        self.start_left_framebuffer_display_process();
-                    }
-                }
-                DisplayState::LeftFramebuffer => {
-                    if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
-                        self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
-                        self.start_right_framebuffer_display_process();
-                        self.reg_interrupt_pending_left_display_finished = true;
-                        if self.reg_interrupt_enable_left_display_finished {
-                            raise_interrupt = true;
+            if self.reg_display_control_sync_enable {
+                match self.display_state {
+                    DisplayState::Idle => {
+                        self.display_counter += CPU_CYCLE_PERIOD_NS;
+                        if self.display_counter >= DISPLAY_PROCESSING_DELAY_PERIOD_NS {
+                            self.display_counter -= DISPLAY_PROCESSING_DELAY_PERIOD_NS;
+                            self.start_left_framebuffer_display_process();
                         }
                     }
-                }
-                DisplayState::RightFramebuffer => {
-                    if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
-                        self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
-                        self.end_display_processing(video_driver);
-                        self.reg_interrupt_pending_right_display_finished = true;
-                        if self.reg_interrupt_enable_right_display_finished {
-                            raise_interrupt = true;
+                    DisplayState::LeftFramebuffer => {
+                        self.display_counter += CPU_CYCLE_PERIOD_NS;
+                        if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
+                            self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
+                            self.start_right_framebuffer_display_process();
+                            self.reg_interrupt_pending_left_display_finished = true;
+                            if self.reg_interrupt_enable_left_display_finished {
+                                raise_interrupt = true;
+                            }
                         }
                     }
+                    DisplayState::RightFramebuffer => {
+                        self.display_counter += CPU_CYCLE_PERIOD_NS;
+                        if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
+                            self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
+                            self.end_display_processing(video_driver);
+                            self.reg_interrupt_pending_right_display_finished = true;
+                            if self.reg_interrupt_enable_right_display_finished {
+                                raise_interrupt = true;
+                            }
+                        }
+                    }
+                    DisplayState::Finished => (),
                 }
             }
         }
@@ -468,9 +498,13 @@ impl Vip {
     fn frame_clock(&mut self, raise_interrupt: &mut bool) {
         println!("Frame clock rising edge");
 
-        self.reg_interrupt_pending_start_of_frame_processing = true;
-        if self.reg_interrupt_enable_start_of_frame_processing {
+        self.reg_interrupt_pending_start_of_display_frame = true;
+        if self.reg_interrupt_enable_start_of_display_frame {
             *raise_interrupt = true;
+        }
+
+        if self.reg_display_control_display_enable {
+            self.start_display_process();
         }
 
         self.game_frame_clock_counter += 1;
@@ -483,8 +517,8 @@ impl Vip {
     fn game_clock(&mut self, raise_interrupt: &mut bool) {
         println!("Game clock rising edge");
 
-        self.reg_interrupt_pending_drawing_started = true;
-        if self.reg_interrupt_enable_drawing_started {
+        self.reg_interrupt_pending_start_of_game_frame = true;
+        if self.reg_interrupt_enable_start_of_game_frame {
             *raise_interrupt = true;
         }
 
@@ -513,6 +547,11 @@ impl Vip {
         self.drawing_state = DrawingState::Idle;
     }
 
+    fn start_display_process(&mut self) {
+        println!("Start display process");
+        self.display_state = DisplayState::Idle;
+    }
+
     fn start_left_framebuffer_display_process(&mut self) {
         println!("Start left framebuffer display process");
         self.display_state = DisplayState::LeftFramebuffer;
@@ -527,7 +566,7 @@ impl Vip {
         self.display(video_driver);
 
         println!("End display process");
-        self.display_state = DisplayState::Idle;
+        self.display_state = DisplayState::Finished;
     }
 
     fn draw(&mut self) {
