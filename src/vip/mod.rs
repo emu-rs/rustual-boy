@@ -116,7 +116,7 @@ pub struct Vip {
 impl Vip {
     pub fn new() -> Vip {
         Vip {
-            vram: vec![0xff; VRAM_LENGTH as usize].into_boxed_slice(),
+            vram: vec![0; VRAM_LENGTH as usize].into_boxed_slice(),
 
             display_state: DisplayState::Idle,
 
@@ -438,7 +438,7 @@ impl Vip {
             self.frame_clock_counter += CPU_CYCLE_PERIOD_NS;
             if self.frame_clock_counter >= FRAME_CLOCK_PERIOD_NS {
                 self.frame_clock_counter -= FRAME_CLOCK_PERIOD_NS;
-                self.frame_clock(&mut raise_interrupt);
+                self.frame_clock(&mut raise_interrupt, video_driver);
             }
 
             if let DrawingState::Drawing = self.drawing_state {
@@ -457,15 +457,13 @@ impl Vip {
                     DisplayState::Idle => {
                         self.display_counter += CPU_CYCLE_PERIOD_NS;
                         if self.display_counter >= DISPLAY_PROCESSING_DELAY_PERIOD_NS {
-                            self.display_counter -= DISPLAY_PROCESSING_DELAY_PERIOD_NS;
-                            self.start_left_framebuffer_display_process();
+                            self.begin_left_framebuffer_display_process();
                         }
                     }
                     DisplayState::LeftFramebuffer => {
                         self.display_counter += CPU_CYCLE_PERIOD_NS;
                         if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
-                            self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
-                            self.start_right_framebuffer_display_process();
+                            self.begin_right_framebuffer_display_process();
                             self.reg_interrupt_pending_left_display_finished = true;
                             if self.reg_interrupt_enable_left_display_finished {
                                 raise_interrupt = true;
@@ -475,8 +473,7 @@ impl Vip {
                     DisplayState::RightFramebuffer => {
                         self.display_counter += CPU_CYCLE_PERIOD_NS;
                         if self.display_counter >= DISPLAY_PROCESSING_BUFFER_PERIOD_NS {
-                            self.display_counter -= DISPLAY_PROCESSING_BUFFER_PERIOD_NS;
-                            self.end_display_processing(video_driver);
+                            self.end_display_process();
                             self.reg_interrupt_pending_right_display_finished = true;
                             if self.reg_interrupt_enable_right_display_finished {
                                 raise_interrupt = true;
@@ -491,8 +488,10 @@ impl Vip {
         raise_interrupt
     }
 
-    fn frame_clock(&mut self, raise_interrupt: &mut bool) {
+    fn frame_clock(&mut self, raise_interrupt: &mut bool, video_driver: &mut VideoDriver) {
         println!("Frame clock rising edge");
+
+        self.output_frame(video_driver);
 
         if self.reg_display_control_display_enable {
             self.reg_interrupt_pending_start_of_display_frame = true;
@@ -500,7 +499,7 @@ impl Vip {
                 *raise_interrupt = true;
             }
 
-            self.start_display_process();
+            self.begin_display_process();
         }
 
         self.game_frame_clock_counter += 1;
@@ -543,24 +542,23 @@ impl Vip {
         self.drawing_state = DrawingState::Idle;
     }
 
-    fn start_display_process(&mut self) {
+    fn begin_display_process(&mut self) {
         println!("Start display process");
         self.display_state = DisplayState::Idle;
+        self.display_counter = 0;
     }
 
-    fn start_left_framebuffer_display_process(&mut self) {
+    fn begin_left_framebuffer_display_process(&mut self) {
         println!("Start left framebuffer display process");
         self.display_state = DisplayState::LeftFramebuffer;
     }
 
-    fn start_right_framebuffer_display_process(&mut self) {
+    fn begin_right_framebuffer_display_process(&mut self) {
         println!("Start right framebuffer display process");
         self.display_state = DisplayState::RightFramebuffer;
     }
 
-    fn end_display_processing(&mut self, video_driver: &mut VideoDriver) {
-        self.display(video_driver);
-
+    fn end_display_process(&mut self) {
         println!("End display process");
         self.display_state = DisplayState::Finished;
     }
@@ -961,46 +959,54 @@ impl Vip {
         self.vram[framebuffer_offset + framebuffer_byte_index] = framebuffer_byte;
     }
 
-    fn display(&self, video_driver: &mut VideoDriver) {
+    fn output_frame(&self, video_driver: &mut VideoDriver) {
         let left_framebuffer_offset = if self.display_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
-        let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
-        let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
-        let mut brightness_3 = ((self.reg_led_brightness_1 as u32) + (self.reg_led_brightness_2 as u32) + (self.reg_led_brightness_3 as u32)) * 2;
-        if brightness_1 > 255 {
-            brightness_1 = 255;
-        }
-        if brightness_2 > 255 {
-            brightness_2 = 255;
-        }
-        if brightness_3 > 255 {
-            brightness_3 = 255;
-        }
-
         let mut left_buffer = vec![0; DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y];
         let mut right_buffer = vec![0; DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y];
-        for pixel_x in 0..DISPLAY_RESOLUTION_X as usize {
-            for pixel_y in 0..DISPLAY_RESOLUTION_Y as usize {
-                let framebuffer_byte_index = (pixel_x * FRAMEBUFFER_RESOLUTION_Y + pixel_y) / 4;
-                let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
-                let left_color = (self.vram[left_framebuffer_offset + framebuffer_byte_index] >> framebuffer_byte_shift) & 0x03;
-                let right_color = (self.vram[right_framebuffer_offset + framebuffer_byte_index] >> framebuffer_byte_shift) & 0x03;
-                let left_brightness = match left_color {
-                    0 => 0,
-                    1 => brightness_1,
-                    2 => brightness_2,
-                    _ => brightness_3
-                } as u8;
-                let right_brightness = match right_color {
-                    0 => 0,
-                    1 => brightness_1,
-                    2 => brightness_2,
-                    _ => brightness_3
-                } as u8;
-                let buffer_index = pixel_y * DISPLAY_RESOLUTION_X + pixel_x;
-                left_buffer[buffer_index] = left_brightness;
-                right_buffer[buffer_index] = right_brightness;
+
+        if self.reg_display_control_display_enable {
+            let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
+            let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
+            let mut brightness_3 = ((self.reg_led_brightness_1 as u32) + (self.reg_led_brightness_2 as u32) + (self.reg_led_brightness_3 as u32)) * 2;
+            if brightness_1 > 255 {
+                brightness_1 = 255;
+            }
+            if brightness_2 > 255 {
+                brightness_2 = 255;
+            }
+            if brightness_3 > 255 {
+                brightness_3 = 255;
+            }
+
+            for pixel_x in 0..DISPLAY_RESOLUTION_X as usize {
+                for pixel_y in 0..DISPLAY_RESOLUTION_Y as usize {
+                    let framebuffer_byte_index = (pixel_x * FRAMEBUFFER_RESOLUTION_Y + pixel_y) / 4;
+                    let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
+                    let left_color = (self.vram[left_framebuffer_offset + framebuffer_byte_index] >> framebuffer_byte_shift) & 0x03;
+                    let right_color = (self.vram[right_framebuffer_offset + framebuffer_byte_index] >> framebuffer_byte_shift) & 0x03;
+                    let left_brightness = match left_color {
+                        0 => 0,
+                        1 => brightness_1,
+                        2 => brightness_2,
+                        _ => brightness_3
+                    } as u8;
+                    let right_brightness = match right_color {
+                        0 => 0,
+                        1 => brightness_1,
+                        2 => brightness_2,
+                        _ => brightness_3
+                    } as u8;
+                    let buffer_index = pixel_y * DISPLAY_RESOLUTION_X + pixel_x;
+                    left_buffer[buffer_index] = left_brightness;
+                    right_buffer[buffer_index] = right_brightness;
+                }
+            }
+        } else {
+            for i in 0..DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y {
+                left_buffer[i] = 0;
+                right_buffer[i] = 0;
             }
         }
 
