@@ -287,7 +287,9 @@ impl Emulator {
                 self.last_command = Some(c);
             }
 
-            self.print_cursor();
+            if self.mode == Mode::Debugging {
+                self.print_cursor();
+            }
         }
 
         return false;
