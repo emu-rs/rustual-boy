@@ -10,14 +10,14 @@
 #[cfg(feature = "logging")]
 macro_rules! log {
     ($fmt:expr) => (print!($fmt));
-    ($fmt:expr, $($arg:expr),*) => (print!($fmt, $($arg)*));
+    ($fmt:expr, $($arg:expr),*) => (print!($fmt, $($arg),*));
 }
 
 #[macro_export]
 #[cfg(feature = "logging")]
 macro_rules! logln {
     ($fmt:expr) => (println!($fmt));
-    ($fmt:expr, $($arg:expr),*) => (println!($fmt, $($arg)*));
+    ($fmt:expr, $($arg:expr),*) => (println!($fmt, $($arg),*));
 }
 
 // When the logging feature is not used, these should effectively do nothing.
