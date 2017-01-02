@@ -654,7 +654,7 @@ impl Nvc {
     }
 
     fn check_watchpoints(&self, addr: u32) -> bool {
-        self.watchpoints.contains(&addr)
+        self.watchpoints.len() != 0 && self.watchpoints.contains(&addr)
     }
 
     fn add(&mut self, lhs: u32, rhs: u32, reg2: usize) {

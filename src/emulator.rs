@@ -134,7 +134,7 @@ impl Emulator {
         while self.frame_cycles < CPU_CYCLES_PER_FRAME {
             let (num_cycles, trigger_watchpoint) = self.virtual_boy.step(video_driver);
             self.frame_cycles += num_cycles;
-            if trigger_watchpoint || self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc()) {
+            if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
                 start_debugger = true;
                 break;
             }
