@@ -5,6 +5,8 @@ extern crate nom;
 
 extern crate minifb;
 
+#[macro_use]
+mod logging;
 mod video_driver;
 mod rom;
 mod wram;
@@ -30,33 +32,33 @@ use std::env;
 fn main() {
     let rom_file_name = env::args().nth(1).unwrap();
 
-    println!("Loading ROM file {}", rom_file_name);
+    logln!("Loading ROM file {}", rom_file_name);
 
     let rom = Rom::load(&rom_file_name).unwrap();
 
-    print!("ROM size: ");
+    log!("ROM size: ");
     if rom.size() >= 1024 * 1024 {
-        println!("{}MB", rom.size() / 1024 / 1024);
+        logln!("{}MB", rom.size() / 1024 / 1024);
     } else {
-        println!("{}KB", rom.size() / 1024);
+        logln!("{}KB", rom.size() / 1024);
     }
 
-    println!("Header info:");
-    println!(" name: \"{}\"", rom.name().unwrap());
-    println!(" maker code: \"{}\"", rom.maker_code().unwrap());
-    println!(" game code: \"{}\"", rom.game_code().unwrap());
-    println!(" game version: 1.{:#02}", rom.game_version_byte());
+    logln!("Header info:");
+    logln!(" name: \"{}\"", rom.name().unwrap());
+    logln!(" maker code: \"{}\"", rom.maker_code().unwrap());
+    logln!(" game code: \"{}\"", rom.game_code().unwrap());
+    logln!(" game version: 1.{:#02}", rom.game_version_byte());
 
     let sram_file_name = rom_file_name.replace(".vb", ".srm");
-    println!("Attempting to load SRAM file: {}", sram_file_name);
+    logln!("Attempting to load SRAM file: {}", sram_file_name);
     let sram = match Sram::load(&sram_file_name) {
         Ok(sram) => {
-            println!(" SRAM loaded successfully");
+            logln!(" SRAM loaded successfully");
 
             sram
         }
         Err(err) => {
-            println!(" Couldn't load SRAM file: {}", err);
+            logln!(" Couldn't load SRAM file: {}", err);
 
             Sram::new()
         }
@@ -66,7 +68,7 @@ fn main() {
     emulator.run();
 
     if emulator.virtual_boy.interconnect.sram.size() > 0 {
-        println!("SRAM used, saving to {}", sram_file_name);
+        logln!("SRAM used, saving to {}", sram_file_name);
         emulator.virtual_boy.interconnect.sram.save(sram_file_name).unwrap();
     }
 }

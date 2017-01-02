@@ -36,11 +36,11 @@ impl Interconnect {
             MappedAddress::Vip(addr) => self.vip.read_byte(addr),
             MappedAddress::Vsu(addr) => self.vsu.read_byte(addr),
             MappedAddress::LinkControlReg => {
-                println!("WARNING: Read byte from Link Control Register not yet implemented");
+                logln!("WARNING: Read byte from Link Control Register not yet implemented");
                 0
             }
             MappedAddress::AuxLinkReg => {
-                println!("WARNING: Read byte from Auxiliary Link Register not yet implemented");
+                logln!("WARNING: Read byte from Auxiliary Link Register not yet implemented");
                 0
             }
             MappedAddress::LinkTransmitDataReg => {
@@ -55,12 +55,12 @@ impl Interconnect {
             MappedAddress::TimerCounterReloadHighReg => self.timer.read_counter_reload_high_reg(),
             MappedAddress::TimerControlReg => self.timer.read_control_reg(),
             MappedAddress::WaitControlReg => {
-                println!("WARNING: Read byte from Wait Control Register not yet implemented");
+                logln!("WARNING: Read byte from Wait Control Register not yet implemented");
                 0
             }
             MappedAddress::GamePadInputControlReg => self.game_pad.read_input_control_reg(),
             MappedAddress::CartridgeExpansion(addr) => {
-                println!("WARNING: Read byte from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr);
+                logln!("WARNING: Read byte from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr);
                 0
             }
             MappedAddress::Wram(addr) => self.wram.read_byte(addr),
@@ -96,7 +96,7 @@ impl Interconnect {
             }
             MappedAddress::GamePadInputControlReg => self.game_pad.read_input_control_reg() as _,
             MappedAddress::CartridgeExpansion(addr) => {
-                println!("WARNING: Read halfword from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr);
+                logln!("WARNING: Read halfword from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr);
                 0
             }
             MappedAddress::Wram(addr) => self.wram.read_halfword(addr),
@@ -133,7 +133,7 @@ impl Interconnect {
             }
             MappedAddress::GamePadInputControlReg => self.game_pad.read_input_control_reg() as _,
             MappedAddress::CartridgeExpansion(addr) => {
-                println!("WARNING: Read word from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr);
+                logln!("WARNING: Read word from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr);
                 0
             }
             MappedAddress::Wram(addr) => self.wram.read_word(addr),
@@ -147,39 +147,39 @@ impl Interconnect {
             MappedAddress::Vip(addr) => self.vip.write_byte(addr, value),
             MappedAddress::Vsu(addr) => self.vsu.write_byte(addr, value),
             MappedAddress::LinkControlReg => {
-                println!("WARNING: Write byte to Link Control Register not yet implemented (value: 0x{:02x})", value);
+                logln!("WARNING: Write byte to Link Control Register not yet implemented (value: 0x{:02x})", value);
             }
             MappedAddress::AuxLinkReg => {
-                println!("WARNING: Write byte to Auxiliary Link Register not yet implemented (value: 0x{:02x})", value);
+                logln!("WARNING: Write byte to Auxiliary Link Register not yet implemented (value: 0x{:02x})", value);
             }
             MappedAddress::LinkTransmitDataReg => {
-                println!("WARNING: Write byte to Link Transmit Data Register not yet implemented (value: 0x{:02x})", value);
+                logln!("WARNING: Write byte to Link Transmit Data Register not yet implemented (value: 0x{:02x})", value);
             }
             MappedAddress::LinkReceiveDataReg => {
-                println!("WARNING: Write byte to Link Receive Data Register not yet implemented (value: 0x{:02x})", value);
+                logln!("WARNING: Write byte to Link Receive Data Register not yet implemented (value: 0x{:02x})", value);
             }
             MappedAddress::GamePadInputLowReg => {
-                println!("WARNING: Attempted write byte to Game Pad Input Low Register (value: 0x{:02x})", value);
+                logln!("WARNING: Attempted write byte to Game Pad Input Low Register (value: 0x{:02x})", value);
             }
             MappedAddress::GamePadInputHighReg => {
-                println!("WARNING: Attempted write byte to Game Pad Input High Register (value: 0x{:02x})", value);
+                logln!("WARNING: Attempted write byte to Game Pad Input High Register (value: 0x{:02x})", value);
             }
             MappedAddress::TimerCounterReloadLowReg => self.timer.write_counter_reload_low_reg(value),
             MappedAddress::TimerCounterReloadHighReg => self.timer.write_counter_reload_high_reg(value),
             MappedAddress::TimerControlReg => self.timer.write_control_reg(value),
             MappedAddress::WaitControlReg => {
-                println!("Wait Control Register (0x{:08x}) written: 0x{:02x}", addr, value);
-                println!(" Cartridge ROM Waits: {}", if value & 0x01 == 0 { 2 } else { 1 });
-                println!(" Cartridge Expansion Waits: {}", if value & 0x02 == 0 { 2 } else { 1 });
+                logln!("Wait Control Register (0x{:08x}) written: 0x{:02x}", addr, value);
+                logln!(" Cartridge ROM Waits: {}", if value & 0x01 == 0 { 2 } else { 1 });
+                logln!(" Cartridge Expansion Waits: {}", if value & 0x02 == 0 { 2 } else { 1 });
             }
             MappedAddress::GamePadInputControlReg => self.game_pad.write_input_control_reg(value),
             MappedAddress::CartridgeExpansion(addr) => {
-                println!("WARNING: Write byte to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:02x})", addr, value);
+                logln!("WARNING: Write byte to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:02x})", addr, value);
             }
             MappedAddress::Wram(addr) => self.wram.write_byte(addr, value),
             MappedAddress::CartridgeRam(addr) => self.sram.write_byte(addr, value),
             MappedAddress::CartridgeRom(_) => {
-                println!("WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr);
+                logln!("WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr);
             }
         }
     }
@@ -190,37 +190,37 @@ impl Interconnect {
             MappedAddress::Vip(addr) => self.vip.write_halfword(addr, value),
             MappedAddress::Vsu(addr) => self.vsu.write_halfword(addr, value),
             MappedAddress::LinkControlReg => {
-                println!("WARNING: Write halfword to Link Control Register not yet implemented (value: 0x{:04x})", value);
+                logln!("WARNING: Write halfword to Link Control Register not yet implemented (value: 0x{:04x})", value);
             }
             MappedAddress::AuxLinkReg => {
-                println!("WARNING: Write halfword to Auxiliary Link Register not yet implemented (value: 0x{:04x})", value);
+                logln!("WARNING: Write halfword to Auxiliary Link Register not yet implemented (value: 0x{:04x})", value);
             }
             MappedAddress::LinkTransmitDataReg => {
-                println!("WARNING: Write halfword to Link Transmit Data Register not yet implemented (value: 0x{:04x})", value);
+                logln!("WARNING: Write halfword to Link Transmit Data Register not yet implemented (value: 0x{:04x})", value);
             }
             MappedAddress::LinkReceiveDataReg => {
-                println!("WARNING: Write halfword to Link Receive Data Register not yet implemented (value: 0x{:04x})", value);
+                logln!("WARNING: Write halfword to Link Receive Data Register not yet implemented (value: 0x{:04x})", value);
             }
             MappedAddress::GamePadInputLowReg => {
-                println!("WARNING: Attempted halfword byte to Game Pad Input Low Register (value: 0x{:04x})", value);
+                logln!("WARNING: Attempted halfword byte to Game Pad Input Low Register (value: 0x{:04x})", value);
             }
             MappedAddress::GamePadInputHighReg => {
-                println!("WARNING: Attempted halfword byte to Game Pad Input High Register (value: 0x{:04x})", value);
+                logln!("WARNING: Attempted halfword byte to Game Pad Input High Register (value: 0x{:04x})", value);
             }
             MappedAddress::TimerCounterReloadLowReg => self.timer.write_counter_reload_low_reg(value as _),
             MappedAddress::TimerCounterReloadHighReg => self.timer.write_counter_reload_high_reg(value as _),
             MappedAddress::TimerControlReg => self.timer.write_control_reg(value as _),
             MappedAddress::WaitControlReg => {
-                println!("WARNING: Write halfword to Wait Control Register not yet implemented (value: 0x{:04x})", value);
+                logln!("WARNING: Write halfword to Wait Control Register not yet implemented (value: 0x{:04x})", value);
             }
             MappedAddress::GamePadInputControlReg => self.game_pad.write_input_control_reg(value as _),
             MappedAddress::CartridgeExpansion(addr) => {
-                println!("WARNING: Write halfword to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
+                logln!("WARNING: Write halfword to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
             }
             MappedAddress::Wram(addr) => self.wram.write_halfword(addr, value),
             MappedAddress::CartridgeRam(addr) => self.sram.write_halfword(addr, value),
             MappedAddress::CartridgeRom(_) => {
-                println!("WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr);
+                logln!("WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr);
             }
         }
     }
@@ -234,22 +234,22 @@ impl Interconnect {
             }
             MappedAddress::Vsu(addr) => self.vsu.write_word(addr, value),
             MappedAddress::LinkControlReg => {
-                println!("WARNING: Write word to Link Control Register not yet implemented (value: 0x{:08x})", value);
+                logln!("WARNING: Write word to Link Control Register not yet implemented (value: 0x{:08x})", value);
             }
             MappedAddress::AuxLinkReg => {
-                println!("WARNING: Write word to Auxiliary Link Register not yet implemented (value: 0x{:08x})", value);
+                logln!("WARNING: Write word to Auxiliary Link Register not yet implemented (value: 0x{:08x})", value);
             }
             MappedAddress::LinkTransmitDataReg => {
-                println!("WARNING: Write word to Link Transmit Data Register not yet implemented (value: 0x{:08x})", value);
+                logln!("WARNING: Write word to Link Transmit Data Register not yet implemented (value: 0x{:08x})", value);
             }
             MappedAddress::LinkReceiveDataReg => {
-                println!("WARNING: Write word to Link Receive Data Register not yet implemented (value: 0x{:08x})", value);
+                logln!("WARNING: Write word to Link Receive Data Register not yet implemented (value: 0x{:08x})", value);
             }
             MappedAddress::GamePadInputLowReg => {
-                println!("WARNING: Attempted word byte to Game Pad Input Low Register (value: 0x{:08x})", value);
+                logln!("WARNING: Attempted word byte to Game Pad Input Low Register (value: 0x{:08x})", value);
             }
             MappedAddress::GamePadInputHighReg => {
-                println!("WARNING: Attempted word byte to Game Pad Input High Register (value: 0x{:08x})", value);
+                logln!("WARNING: Attempted word byte to Game Pad Input High Register (value: 0x{:08x})", value);
             }
             MappedAddress::TimerCounterReloadLowReg => self.timer.write_counter_reload_low_reg(value as _),
             MappedAddress::TimerCounterReloadHighReg => self.timer.write_counter_reload_high_reg(value as _),
@@ -259,12 +259,12 @@ impl Interconnect {
             }
             MappedAddress::GamePadInputControlReg => self.game_pad.write_input_control_reg(value as _),
             MappedAddress::CartridgeExpansion(addr) => {
-                println!("WARNING: Write word to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:08x})", addr, value);
+                logln!("WARNING: Write word to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:08x})", addr, value);
             }
             MappedAddress::Wram(addr) => self.wram.write_word(addr, value),
             MappedAddress::CartridgeRam(addr) => self.sram.write_word(addr, value),
             MappedAddress::CartridgeRom(_) => {
-                println!("WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr);
+                logln!("WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr);
             }
         }
     }

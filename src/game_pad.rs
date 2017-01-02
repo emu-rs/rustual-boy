@@ -53,12 +53,12 @@ impl GamePad {
     }
 
     pub fn read_input_control_reg(&self) -> u8 {
-        println!("WARNING: Read Game Pad Input Control Register not yet implemented");
+        logln!("WARNING: Read Game Pad Input Control Register not yet implemented");
         0
     }
 
     pub fn write_input_control_reg(&mut self, value: u8) {
-        println!("WARNING: Write Game Pad Input Control Register not yet implemented (value: 0x{:02x})", value);
+        logln!("WARNING: Write Game Pad Input Control Register not yet implemented (value: 0x{:02x})", value);
     }
 
     pub fn read_input_low_reg(&self) -> u8 {

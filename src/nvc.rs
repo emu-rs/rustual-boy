@@ -359,17 +359,17 @@ impl Nvc {
                         self.reg_eipsw = value;
                     }
                     SystemRegister::Fepc => {
-                        println!("WARNING: ldsr fepc not yet implemented (value: 0x{:08x})", value);
+                        logln!("WARNING: ldsr fepc not yet implemented (value: 0x{:08x})", value);
                     }
                     SystemRegister::Fepsw => {
-                        println!("WARNING: ldsr fepsw not yet implemented (value: 0x{:08x})", value);
+                        logln!("WARNING: ldsr fepsw not yet implemented (value: 0x{:08x})", value);
                     }
                     SystemRegister::Ecr => {
-                        println!("WARNING: Attempted ldsr ecr (value: 0x{:08x})", value);
+                        logln!("WARNING: Attempted ldsr ecr (value: 0x{:08x})", value);
                     }
                     SystemRegister::Psw => self.set_reg_psw(value),
                     SystemRegister::Chcw => {
-                        println!("WARNING: ldsr chcw not yet implemented (value: 0x{:08x})", value);
+                        logln!("WARNING: ldsr chcw not yet implemented (value: 0x{:08x})", value);
                     }
                 }
             }, first_halfword),
@@ -379,20 +379,20 @@ impl Nvc {
                     SystemRegister::Eipc => self.reg_eipc,
                     SystemRegister::Eipsw => self.reg_eipsw,
                     SystemRegister::Fepc => {
-                        println!("WARNING: stsr fepc not yet implemented");
+                        logln!("WARNING: stsr fepc not yet implemented");
                         0
                     }
                     SystemRegister::Fepsw => {
-                        println!("WARNING: stsr fepsw not yet implemented");
+                        logln!("WARNING: stsr fepsw not yet implemented");
                         0
                     }
                     SystemRegister::Ecr => {
-                        println!("WARNING: stsr ecr not yet implemented");
+                        logln!("WARNING: stsr ecr not yet implemented");
                         0
                     }
                     SystemRegister::Psw => self.reg_psw(),
                     SystemRegister::Chcw => {
-                        println!("WARNING: stsr chcw not yet implemented");
+                        logln!("WARNING: stsr chcw not yet implemented");
                         0
                     }
                 };
@@ -733,7 +733,7 @@ impl Nvc {
             return;
         }
 
-        println!("Entering exception (code: 0x{:04x})", exception_code);
+        logln!("Entering exception (code: 0x{:04x})", exception_code);
         self.reg_eipc = self.reg_pc;
         self.reg_eipsw = self.reg_psw();
         self.reg_ecr = exception_code;
@@ -742,7 +742,7 @@ impl Nvc {
     }
 
     fn return_from_exception(&mut self) -> u32 {
-        println!("Returning from exception (code: 0x{:04x})", self.reg_ecr);
+        logln!("Returning from exception (code: 0x{:04x})", self.reg_ecr);
         let psw = self.reg_eipsw;
         self.set_reg_psw(psw);
         self.reg_eipc

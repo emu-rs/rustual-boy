@@ -112,7 +112,7 @@ impl Emulator {
 
             let frame_duration = frame_start_time.elapsed();
             if self.mode == Mode::Running {
-                println!("Frame duration: {}ms", frame_duration.subsec_nanos() / NS_TO_MS);
+                logln!("Frame duration: {}ms", frame_duration.subsec_nanos() / NS_TO_MS);
             }
             let target_frame_duration = time::Duration::from_millis(20);
             if frame_duration < target_frame_duration {
