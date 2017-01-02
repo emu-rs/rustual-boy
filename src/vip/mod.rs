@@ -447,29 +447,18 @@ impl Vip {
             if self.display_frame_quarter_clock_counter >= DISPLAY_FRAME_QUARTER_PERIOD_NS {
                 self.display_frame_quarter_clock_counter -= DISPLAY_FRAME_QUARTER_PERIOD_NS;
 
-                self.display_frame_quarter_counter = match self.display_frame_quarter_counter {
-                    3 => 0,
-                    _ => self.display_frame_quarter_counter + 1
-                };
-
                 match self.display_frame_quarter_counter {
                     0 => {
                         self.frame_clock(&mut raise_interrupt);
                     }
                     1 => {
+                        self.display(video_driver);
+
                         if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
                             self.begin_left_framebuffer_display_process();
                         }
                     }
                     2 => {
-                        if let DrawingState::Drawing = self.drawing_state {
-                            self.end_drawing_process();
-                            self.reg_interrupt_pending_drawing_finished = true;
-                            if self.reg_interrupt_enable_drawing_finished {
-                                raise_interrupt = true;
-                            }
-                        }
-
                         if self.reg_display_control_display_enable {
                             if let DisplayState::LeftFramebuffer = self.display_state {
                                 self.reg_interrupt_pending_left_display_finished = true;
@@ -480,6 +469,14 @@ impl Vip {
 
                             if self.reg_display_control_sync_enable {
                                 self.begin_right_framebuffer_display_process();
+                            }
+                        }
+
+                        if let DrawingState::Drawing = self.drawing_state {
+                            self.end_drawing_process();
+                            self.reg_interrupt_pending_drawing_finished = true;
+                            if self.reg_interrupt_enable_drawing_finished {
+                                raise_interrupt = true;
                             }
                         }
                     }
@@ -494,10 +491,13 @@ impl Vip {
 
                             self.end_display_process();
                         }
-
-                        self.display(video_driver);
                     }
                 }
+
+                self.display_frame_quarter_counter = match self.display_frame_quarter_counter {
+                    3 => 0,
+                    _ => self.display_frame_quarter_counter + 1
+                };
             }
         }
 
