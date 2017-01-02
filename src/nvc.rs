@@ -506,7 +506,7 @@ impl Nvc {
             Opcode::Ldw | Opcode::Inw => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                 trigger_watchpoint |= self.check_watchpoints(addr);
-                let value = interconnect.read_word(addr);
+                let value = (interconnect.read_halfword(addr) as u32) | ((interconnect.read_halfword(addr + 2) as u32) << 16);
                 self.set_reg_gpr(reg2, value);
             }, first_halfword, second_halfword),
             Opcode::Stb | Opcode::Outb => format_vi(|reg1, reg2, disp16| {
@@ -525,7 +525,8 @@ impl Nvc {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                 trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = self.reg_gpr(reg2);
-                interconnect.write_word(addr, value);
+                interconnect.write_halfword(addr, value as _);
+                interconnect.write_halfword(addr + 2, (value >> 16) as _);
             }, first_halfword, second_halfword),
             Opcode::Inb => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);

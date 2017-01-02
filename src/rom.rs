@@ -45,15 +45,6 @@ impl Rom {
         ((self.bytes[addr as usize + 1] as u16) << 8)
     }
 
-    pub fn read_word(&self, addr: u32) -> u32 {
-        let addr = addr & 0xfffffffc;
-        let addr = self.mask_addr(addr);
-        (self.bytes[addr as usize] as u32) |
-        ((self.bytes[addr as usize + 1] as u32) << 8) |
-        ((self.bytes[addr as usize + 2] as u32) << 16) |
-        ((self.bytes[addr as usize + 3] as u32) << 24)
-    }
-
     fn mask_addr(&self, addr: u32) -> u32 {
         let mask = (self.bytes.len() - 1) as u32;
         addr & mask

@@ -28,15 +28,4 @@ impl Vsu {
         let addr = addr & 0xfffffffe;
         logln!("VSU write halfword not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
     }
-
-    pub fn read_word(&self, addr: u32) -> u32 {
-        let addr = addr & 0xfffffffc;
-        logln!("VSU read word not yet implemented (addr: 0x{:08x})", addr);
-        0
-    }
-
-    pub fn write_word(&mut self, addr: u32, value: u32) {
-        let addr = addr & 0xfffffffc;
-        logln!("VSU write word not yet implemented (addr: 0x{:08x}, value: 0x{:08x})", addr, value);
-    }
 }

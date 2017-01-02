@@ -67,24 +67,6 @@ impl Sram {
         self.bytes[addr as usize + 1] = (value >> 8) as u8;
     }
 
-    pub fn read_word(&mut self, addr: u32) -> u32 {
-        let addr = addr & 0xfffffffc;
-        let addr = self.mask_addr(addr);
-        (self.bytes[addr as usize] as u32) |
-        ((self.bytes[addr as usize + 1] as u32) << 8) |
-        ((self.bytes[addr as usize + 2] as u32) << 16) |
-        ((self.bytes[addr as usize + 3] as u32) << 24)
-    }
-
-    pub fn write_word(&mut self, addr: u32, value: u32) {
-        let addr = addr & 0xfffffffc;
-        let addr = self.mask_addr(addr);
-        self.bytes[addr as usize] = value as u8;
-        self.bytes[addr as usize + 1] = (value >> 8) as u8;
-        self.bytes[addr as usize + 2] = (value >> 16) as u8;
-        self.bytes[addr as usize + 3] = (value >> 24) as u8;
-    }
-
     fn mask_addr(&mut self, addr: u32) -> u32 {
         let mask = (MAX_SRAM_SIZE - 1) as u32;
         let addr = addr & mask;
