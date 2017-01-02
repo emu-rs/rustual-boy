@@ -1,4 +1,4 @@
-# vb-rs
+# Rustual Boy
 
 ![Rustual Boy](logo.png)
 

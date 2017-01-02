@@ -1,5 +1,5 @@
 [root]
-name = "vb-rs"
+name = "rustual_boy"
 version = "0.1.0"
 dependencies = [
  "encoding 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",

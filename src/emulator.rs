@@ -60,7 +60,7 @@ impl Emulator {
         });
 
         Emulator {
-            window: Window::new("vb-rs", 384, 224, WindowOptions::default()).unwrap(),
+            window: Window::new("Rustual Boy", 384, 224, WindowOptions::default()).unwrap(),
 
             virtual_boy: VirtualBoy::new(rom, sram),
             mode: Mode::Running,
