@@ -1,5 +1,7 @@
 # vb-rs
 
+![Rustual Boy](logo.png)
+
 ![screenie](screenshot.png)
 ![screenie](screenshot2.png)
 ![screenie](screenshot3.png)
