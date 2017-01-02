@@ -888,6 +888,7 @@ impl Vip {
         }
     }
 
+    #[inline(always)]
     fn draw_background_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, segment_base: u32, segments_x: u32, segments_y: u32, background_x: u32, background_y: u32, out_of_bounds: bool, out_of_bounds_char_entry: u16) {
         let background_width = segments_x * 512;
         let background_height = segments_y * 512;
@@ -910,6 +911,7 @@ impl Vip {
         }
     }
 
+    #[inline(always)]
     fn draw_segment_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, segment_offset: u32, segment_x: u32, segment_y: u32) {
         let offset_x = segment_x & 0x07;
         let offset_y = segment_y & 0x07;
@@ -923,6 +925,7 @@ impl Vip {
         self.draw_char_entry_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_entry);
     }
 
+    #[inline(always)]
     fn draw_char_entry_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, offset_x: u32, offset_y: u32, char_entry: u16) {
         let pal = (char_entry >> 14) & 0x03;
         let horizontal_flip = (char_entry & 0x2000) != 0;
@@ -939,6 +942,7 @@ impl Vip {
         self.draw_char_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_index, horizontal_flip, vertical_flip, palette);
     }
 
+    #[inline(always)]
     fn draw_char_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, offset_x: u32, offset_y: u32, char_index: u32, horizontal_flip: bool, vertical_flip: bool, palette: u8) {
         let offset_x = if horizontal_flip { 7 - offset_x } else { offset_x };
         let offset_y = if vertical_flip { 7 - offset_y } else { offset_y };
