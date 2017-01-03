@@ -13,6 +13,7 @@ pub const MAX_ROM_SIZE: usize = 16 * 1024 * 1024;
 
 pub struct Rom {
     bytes: Box<[u8]>,
+    bytes_ptr: *mut u8,
 }
 
 impl Rom {
@@ -26,7 +27,13 @@ impl Rom {
             return Err(Error::new(ErrorKind::InvalidData, "Invalid ROM size"));
         }
 
-        Ok(Rom { bytes: vec.into_boxed_slice() })
+        let mut bytes = vec.into_boxed_slice();
+        let bytes_ptr = bytes.as_mut_ptr();
+
+        Ok(Rom {
+            bytes: bytes,
+            bytes_ptr: bytes_ptr,
+        })
     }
 
     pub fn size(&self) -> usize {
@@ -35,14 +42,18 @@ impl Rom {
 
     pub fn read_byte(&self, addr: u32) -> u8 {
         let addr = self.mask_addr(addr);
-        self.bytes[addr as usize]
+        unsafe {
+            *self.bytes_ptr.offset(addr as _)
+        }
     }
 
     pub fn read_halfword(&self, addr: u32) -> u16 {
         let addr = addr & 0xfffffffe;
         let addr = self.mask_addr(addr);
-        (self.bytes[addr as usize] as u16) |
-        ((self.bytes[addr as usize + 1] as u16) << 8)
+        unsafe {
+            (*self.bytes_ptr.offset(addr as _) as u16) |
+            ((*self.bytes_ptr.offset((addr + 1) as _) as u16) << 8)
+        }
     }
 
     fn mask_addr(&self, addr: u32) -> u32 {
