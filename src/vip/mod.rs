@@ -915,7 +915,12 @@ impl Vip {
         let background_width = segments_x * 512;
         let background_height = segments_y * 512;
 
-        if background_x < background_width && background_y < background_height {
+        if out_of_bounds && (background_x >= background_width || background_y >= background_height) {
+            let offset_x = background_x & 0x07;
+            let offset_y = background_y & 0x07;
+
+            self.draw_char_entry_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, out_of_bounds_char_entry);
+        } else {
             let x_segment = (background_x / 512) & (segments_x - 1);
             let y_segment = (background_y / 512) & (segments_y - 1);
 
@@ -925,11 +930,6 @@ impl Vip {
             let segment_y = background_y & 0x01ff;
 
             self.draw_segment_pixel(framebuffer_offset, pixel_x, pixel_y, segment_offset, segment_x, segment_y);
-        } else if out_of_bounds {
-            let offset_x = background_x & 0x07;
-            let offset_y = background_y & 0x07;
-
-            self.draw_char_entry_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, out_of_bounds_char_entry);
         }
     }
 
