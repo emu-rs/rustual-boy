@@ -7,13 +7,20 @@ pub const MAX_SRAM_SIZE: usize = 16 * 1024 * 1024;
 
 pub struct Sram {
     bytes: Box<[u8]>,
+    bytes_ptr: *mut u8,
+
     size: usize,
 }
 
 impl Sram {
     pub fn new() -> Sram {
+        let mut bytes = vec![0xff; MAX_SRAM_SIZE].into_boxed_slice();
+        let bytes_ptr = bytes.as_mut_ptr();
+
         Sram {
-            bytes: vec![0xff; MAX_SRAM_SIZE].into_boxed_slice(),
+            bytes: bytes,
+            bytes_ptr: bytes_ptr,
+
             size: 0,
         }
     }
@@ -28,8 +35,13 @@ impl Sram {
             return Err(Error::new(ErrorKind::InvalidData, "Invalid SRAM size"));
         }
 
+        let mut bytes = vec.into_boxed_slice();
+        let bytes_ptr = bytes.as_mut_ptr();
+
         Ok(Sram {
-            bytes: vec.into_boxed_slice(),
+            bytes: bytes,
+            bytes_ptr: bytes_ptr,
+
             size: size,
         })
     }
@@ -45,26 +57,34 @@ impl Sram {
 
     pub fn read_byte(&mut self, addr: u32) -> u8 {
         let addr = self.mask_addr(addr);
-        self.bytes[addr as usize]
+        unsafe {
+            *self.bytes_ptr.offset(addr as _)
+        }
     }
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         let addr = self.mask_addr(addr);
-        self.bytes[addr as usize] = value;
+        unsafe {
+            *self.bytes_ptr.offset(addr as _) = value;
+        }
     }
 
     pub fn read_halfword(&mut self, addr: u32) -> u16 {
         let addr = addr & 0xfffffffe;
         let addr = self.mask_addr(addr);
-        (self.bytes[addr as usize] as u16) |
-        ((self.bytes[addr as usize + 1] as u16) << 8)
+        unsafe {
+            (*self.bytes_ptr.offset(addr as _) as u16) |
+            ((*self.bytes_ptr.offset((addr + 1) as _) as u16) << 8)
+        }
     }
 
     pub fn write_halfword(&mut self, addr: u32, value: u16) {
         let addr = addr & 0xfffffffe;
         let addr = self.mask_addr(addr);
-        self.bytes[addr as usize] = value as u8;
-        self.bytes[addr as usize + 1] = (value >> 8) as u8;
+        unsafe {
+            *self.bytes_ptr.offset(addr as _) = value as _;
+            *self.bytes_ptr.offset((addr + 1) as _) = (value >> 8) as _;
+        }
     }
 
     fn mask_addr(&mut self, addr: u32) -> u32 {
