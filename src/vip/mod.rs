@@ -796,45 +796,50 @@ impl Vip {
                             }
                         }
                         WindowMode::Affine => {
-                            for pixel_y in 0..FRAMEBUFFER_RESOLUTION_Y as u32 {
-                                for pixel_x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
-                                    let x = {
-                                        let value = x as u32;
-                                        match eye {
-                                            Eye::Left => value.wrapping_sub(parallax as u32),
-                                            Eye::Right => value.wrapping_add(parallax as u32),
+                            let parallax_x = {
+                                match eye {
+                                    Eye::Left => (x as u32).wrapping_sub(parallax as u32),
+                                    Eye::Right => (x as u32).wrapping_add(parallax as u32),
+                                }
+                            };
+
+                            for window_y in 0..height {
+                                let pixel_y = window_y.wrapping_add(y as u32);
+                                if pixel_y >= FRAMEBUFFER_RESOLUTION_Y as u32 {
+                                    continue;
+                                }
+
+                                let affine_offset = param_offset + window_y * 16;
+                                let affine_bg_x = self.read_vram_halfword(affine_offset) as i16;
+                                let affine_bg_parallax = self.read_vram_halfword(affine_offset + 2) as i16;
+                                let affine_bg_y = self.read_vram_halfword(affine_offset + 4) as i16;
+                                let affine_bg_x_inc = self.read_vram_halfword(affine_offset + 6) as i16;
+                                let affine_bg_y_inc = self.read_vram_halfword(affine_offset + 8) as i16;
+                                let affine_parallax_x = match eye {
+                                    Eye::Left => {
+                                        if affine_bg_parallax < 0 {
+                                            0u32.wrapping_sub(affine_bg_parallax as u32)
+                                        } else {
+                                            0
                                         }
-                                    };
+                                    }
+                                    Eye::Right => {
+                                        if affine_bg_parallax > 0 {
+                                            0u32.wrapping_add(affine_bg_parallax as u32)
+                                        } else {
+                                            0
+                                        }
+                                    }
+                                };
 
-                                    let window_x = pixel_x.wrapping_sub(x as u32);
-                                    let window_y = pixel_y.wrapping_sub(y as u32);
-
-                                    if window_x >= width || window_y >= height {
+                                for window_x in 0..width {
+                                    let pixel_x = window_x.wrapping_add(parallax_x);
+                                    if pixel_x >= FRAMEBUFFER_RESOLUTION_X as u32 {
                                         continue;
                                     }
 
-                                    let affine_offset = param_offset + window_y * 16;
-                                    let affine_bg_x = self.read_vram_halfword(affine_offset) as i16;
-                                    let affine_bg_parallax = self.read_vram_halfword(affine_offset + 2) as i16; // TODO
-                                    let affine_bg_y = self.read_vram_halfword(affine_offset + 4) as i16;
-                                    let affine_bg_x_inc = self.read_vram_halfword(affine_offset + 6) as i16;
-                                    let affine_bg_y_inc = self.read_vram_halfword(affine_offset + 8) as i16;
-                                    let parallaxed_window_x = match eye {
-                                        Eye::Left => {
-                                            if affine_bg_parallax < 0 {
-                                                window_x.wrapping_sub(affine_bg_parallax as u32)
-                                            } else {
-                                                window_x
-                                            }
-                                        }
-                                        Eye::Right => {
-                                            if affine_bg_parallax > 0 {
-                                                window_x.wrapping_add(affine_bg_parallax as u32)
-                                            } else {
-                                                window_x
-                                            }
-                                        }
-                                    };
+                                    let parallaxed_window_x = window_x.wrapping_add(affine_parallax_x);
+
                                     let background_x = (((affine_bg_x as i32) << 6) + ((affine_bg_x_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
                                     let background_y = (((affine_bg_y as i32) << 6) + ((affine_bg_y_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
 
@@ -843,34 +848,36 @@ impl Vip {
                             }
                         }
                         _ => {
-                            for pixel_y in 0..FRAMEBUFFER_RESOLUTION_Y as u32 {
-                                for pixel_x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
-                                    let x = {
-                                        let value = x as u32;
-                                        match eye {
-                                            Eye::Left => value.wrapping_sub(parallax as u32),
-                                            Eye::Right => value.wrapping_add(parallax as u32),
-                                        }
-                                    };
+                            let parallax_x = {
+                                match eye {
+                                    Eye::Left => (x as u32).wrapping_sub(parallax as u32),
+                                    Eye::Right => (x as u32).wrapping_add(parallax as u32),
+                                }
+                            };
 
-                                    let window_x = pixel_x.wrapping_sub(x as u32);
-                                    let window_y = pixel_y.wrapping_sub(y as u32);
+                            for window_y in 0..height {
+                                let pixel_y = window_y.wrapping_add(y as u32);
+                                if pixel_y >= FRAMEBUFFER_RESOLUTION_Y as u32 {
+                                    continue;
+                                }
 
-                                    if window_x >= width || window_y >= height {
+                                let line_shift = match mode {
+                                    WindowMode::LineShift => {
+                                        let line_offset = param_offset + window_y * 4;
+                                        let eye_offset = line_offset + match eye {
+                                            Eye::Left => 0,
+                                            Eye::Right => 2,
+                                        };
+                                        (self.read_vram_halfword(eye_offset) as i16) as u32
+                                    }
+                                    _ => 0
+                                };
+
+                                for window_x in 0..width {
+                                    let pixel_x = window_x.wrapping_add(parallax_x);
+                                    if pixel_x >= FRAMEBUFFER_RESOLUTION_X as u32 {
                                         continue;
                                     }
-
-                                    let line_shift = match mode {
-                                        WindowMode::LineShift => {
-                                            let line_offset = param_offset + window_y * 4;
-                                            let eye_offset = line_offset + match eye {
-                                                Eye::Left => 0,
-                                                Eye::Right => 2,
-                                            };
-                                            (self.read_vram_halfword(eye_offset) as i16) as u32
-                                        }
-                                        _ => 0
-                                    };
 
                                     let background_x = {
                                         let value = window_x.wrapping_add(bg_x as u32).wrapping_add(line_shift);
