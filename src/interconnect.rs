@@ -44,10 +44,12 @@ impl Interconnect {
                 0
             }
             MappedAddress::LinkTransmitDataReg => {
-                panic!("Read byte from Link Transmit Data Register not yet implemented");
+                logln!("Read byte from Link Transmit Data Register not yet implemented");
+                0
             }
             MappedAddress::LinkReceiveDataReg => {
-                panic!("Read byte from Link Receive Data Register not yet implemented");
+                logln!("Read byte from Link Receive Data Register not yet implemented");
+                0
             }
             MappedAddress::GamePadInputLowReg => self.game_pad.read_input_low_reg(),
             MappedAddress::GamePadInputHighReg => self.game_pad.read_input_high_reg(),
@@ -75,16 +77,20 @@ impl Interconnect {
             MappedAddress::Vip(addr) => self.vip.read_halfword(addr),
             MappedAddress::Vsu(addr) => self.vsu.read_halfword(addr),
             MappedAddress::LinkControlReg => {
-                panic!("Read halfword from Link Control Register not yet implemented");
+                logln!("Read halfword from Link Control Register not yet implemented");
+                0
             }
             MappedAddress::AuxLinkReg => {
-                panic!("Read halfword from Auxiliary Link Register not yet implemented");
+                logln!("Read halfword from Auxiliary Link Register not yet implemented");
+                0
             }
             MappedAddress::LinkTransmitDataReg => {
-                panic!("Read halfword from Link Transmit Data Register not yet implemented");
+                logln!("Read halfword from Link Transmit Data Register not yet implemented");
+                0
             }
             MappedAddress::LinkReceiveDataReg => {
-                panic!("Read halfword from Link Receive Data Register not yet implemented");
+                logln!("Read halfword from Link Receive Data Register not yet implemented");
+                0
             }
             MappedAddress::GamePadInputLowReg => self.game_pad.read_input_low_reg() as _,
             MappedAddress::GamePadInputHighReg => self.game_pad.read_input_high_reg() as _,
@@ -92,7 +98,8 @@ impl Interconnect {
             MappedAddress::TimerCounterReloadHighReg => self.timer.read_counter_reload_high_reg() as _,
             MappedAddress::TimerControlReg => self.timer.read_control_reg() as _,
             MappedAddress::WaitControlReg => {
-                panic!("Read halfword from Wait Control Register not yet implemented");
+                logln!("Read halfword from Wait Control Register not yet implemented");
+                0
             }
             MappedAddress::GamePadInputControlReg => self.game_pad.read_input_control_reg() as _,
             MappedAddress::CartridgeExpansion(addr) => {
