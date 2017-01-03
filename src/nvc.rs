@@ -6,7 +6,9 @@ use std::collections::HashSet;
 
 pub struct Nvc {
     reg_pc: u32,
-    reg_gpr: [u32; 31],
+
+    _reg_gpr: Box<[u32; 32]>,
+    reg_gpr_ptr: *mut u32,
 
     reg_eipc: u32,
     reg_eipsw: u32,
@@ -33,9 +35,15 @@ pub struct Nvc {
 
 impl Nvc {
     pub fn new() -> Nvc {
+        let mut reg_gpr = Box::new([0xdeadbeef; 32]);
+        reg_gpr[0] = 0;
+        let reg_gpr_ptr = reg_gpr.as_mut_ptr();
+
         Nvc {
             reg_pc: 0xfffffff0,
-            reg_gpr: [0xdeadbeef; 31],
+
+            _reg_gpr: reg_gpr,
+            reg_gpr_ptr: reg_gpr_ptr,
 
             reg_eipc: 0xdeadbeef,
             reg_eipsw: 0xdeadbeef,
@@ -66,31 +74,38 @@ impl Nvc {
     }
 
     pub fn reg_gpr(&self, index: usize) -> u32 {
-        if index == 0 {
-            0
-        } else {
-            self.reg_gpr[index - 1]
+        unsafe {
+            let reg_ptr = self.reg_gpr_ptr.offset(index as _);
+            *reg_ptr
         }
     }
 
     fn set_reg_gpr(&mut self, index: usize, value: u32) {
         if index != 0 {
-            self.reg_gpr[index - 1] = value;
+            unsafe {
+                let reg_ptr = self.reg_gpr_ptr.offset(index as _);
+                *reg_ptr = value;
+            }
         }
     }
 
     // TODO: Come up with a more portable way to do this conversion
     fn reg_gpr_float(&self, index: usize) -> f32 {
-        let value = self.reg_gpr(index);
-        let value_ptr = &value as *const _;
-        let value_float_ptr = value_ptr as *const f32;
-        unsafe { *value_float_ptr }
+        unsafe {
+            let reg_ptr = self.reg_gpr_ptr.offset(index as _);
+            let reg_float_ptr = reg_ptr as *const f32;
+            *reg_float_ptr
+        }
     }
 
     fn set_reg_gpr_float(&mut self, index: usize, value: f32) {
-        let value_ptr = &value as *const _;
-        let value_int_ptr = value_ptr as *const u32;
-        self.set_reg_gpr(index, unsafe { *value_int_ptr });
+        if index != 0 {
+            unsafe {
+                let reg_ptr = self.reg_gpr_ptr.offset(index as _);
+                let reg_float_ptr = reg_ptr as *mut f32;
+                *reg_float_ptr = value;
+            }
+        }
     }
 
     pub fn reg_eipc(&self) -> u32 {
