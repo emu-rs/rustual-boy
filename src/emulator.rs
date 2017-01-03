@@ -388,7 +388,7 @@ impl Emulator {
 
                 let subop_bits = second_halfword >> 10;
 
-                let subop = opcode.subop(subop_bits as _);
+                let subop = opcode.subop(subop_bits);
 
                 println!("{} r{}, r{}", subop, reg1, reg2);
             }

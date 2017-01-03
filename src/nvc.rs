@@ -162,525 +162,543 @@ impl Nvc {
         let first_halfword = interconnect.read_halfword(original_pc);
         let mut next_pc = original_pc.wrapping_add(2);
 
-        let opcode = Opcode::from_halfword(first_halfword);
-        let instruction_format = opcode.instruction_format();
-
-        let second_halfword = if instruction_format.has_second_halfword() {
-            let second_halfword = interconnect.read_halfword(next_pc);
-            next_pc = next_pc.wrapping_add(2);
-            second_halfword
-        } else {
-            0
-        };
-
         let mut num_cycles = 1;
         let mut trigger_watchpoint = false;
 
-        // TODO: Not too convinced of this pattern, but we'll see what else we
-        //  may have to special case moving forward
-        let mut take_branch = false;
+        if first_halfword >> 13 == OPCODE_BITS_BCOND_PREFIX {
+            let cond_bits = (first_halfword >> 9) & 0x0f;
+            let take_branch = match cond_bits {
+                OPCODE_BITS_BCOND_BV => self.psw_overflow,
+                OPCODE_BITS_BCOND_BC => self.psw_carry,
+                OPCODE_BITS_BCOND_BZ => self.psw_zero,
+                OPCODE_BITS_BCOND_BNH => self.psw_carry | self.psw_zero,
+                OPCODE_BITS_BCOND_BN => self.psw_sign,
+                OPCODE_BITS_BCOND_BR => true,
+                OPCODE_BITS_BCOND_BLT => self.psw_sign != self.psw_overflow,
+                OPCODE_BITS_BCOND_BLE => (self.psw_sign != self.psw_overflow) || self.psw_zero,
+                OPCODE_BITS_BCOND_BNV => !self.psw_overflow,
+                OPCODE_BITS_BCOND_BNC => !self.psw_carry,
+                OPCODE_BITS_BCOND_BNZ => !self.psw_zero,
+                OPCODE_BITS_BCOND_BH => !(self.psw_carry || self.psw_zero),
+                OPCODE_BITS_BCOND_BP => !self.psw_sign,
+                OPCODE_BITS_BCOND_NOP => false,
+                OPCODE_BITS_BCOND_BGE => !(self.psw_sign != self.psw_overflow),
+                OPCODE_BITS_BCOND_BGT => !((self.psw_sign != self.psw_overflow) || self.psw_zero),
+                _ => panic!("Unrecognized cond bits: {:04b} (halfword: 0b{:016b})", cond_bits, first_halfword)
+            };
 
-        match opcode {
-            Opcode::MovReg => format_i(|reg1, reg2| {
-                let value = self.reg_gpr(reg1);
-                self.set_reg_gpr(reg2, value);
-            }, first_halfword),
-            Opcode::AddReg => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = self.reg_gpr(reg1);
-                self.add(lhs, rhs, reg2);
-            }, first_halfword),
-            Opcode::Sub => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = self.reg_gpr(reg1);
-                let res = self.sub_and_set_flags(lhs, rhs);
-                self.set_reg_gpr(reg2, res);
-            }, first_halfword),
-            Opcode::CmpReg => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = self.reg_gpr(reg1);
-                self.sub_and_set_flags(lhs, rhs);
-            }, first_halfword),
-            Opcode::ShlReg => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = self.reg_gpr(reg1);
-                let res = self.shl_and_set_flags(lhs, rhs);
-                self.set_reg_gpr(reg2, res);
-            }, first_halfword),
-            Opcode::ShrReg => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = self.reg_gpr(reg1);
-                let res = self.shr_and_set_flags(lhs, rhs);
-                self.set_reg_gpr(reg2, res);
-            }, first_halfword),
-            Opcode::Jmp => format_i(|reg1, _| {
-                next_pc = self.reg_gpr(reg1);
+            if take_branch {
+                let disp9 = first_halfword & 0x01ff;
+                let disp = (disp9 as u32) | if disp9 & 0x0100 == 0 { 0x00000000 } else { 0xfffffe00 };
+                next_pc = self.reg_pc.wrapping_add(disp);
                 num_cycles = 3;
-            }, first_halfword),
-            Opcode::SarReg => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = self.reg_gpr(reg1);
-                let res = self.sar_and_set_flags(lhs, rhs);
-                self.set_reg_gpr(reg2, res);
-            }, first_halfword),
-            Opcode::Mul => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2) as i64;
-                let rhs = self.reg_gpr(reg1) as i64;
-                let res = (lhs * rhs) as u64;
-                let res_low = res as u32;
-                let res_high = (res >> 32) as u32;
-                let overflow = res != (res_low as i32) as u64;
-                self.set_reg_gpr(30, res_high);
-                self.set_reg_gpr(reg2, res_low);
-                self.set_zero_sign_flags(res_low);
-                self.psw_overflow = overflow;
-                num_cycles = 13;
-            }, first_halfword),
-            Opcode::Div => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = self.reg_gpr(reg1);
-                let (res, r30, overflow) = if lhs == 0x80000000 && rhs == 0xffffffff {
-                    (lhs, 0, true)
-                } else {
-                    let lhs = lhs as i32;
-                    let rhs = rhs as i32;
-                    let res = (lhs / rhs) as u32;
-                    let r30 = (lhs % rhs) as u32;
-                    (res, r30, false)
-                };
-                self.set_reg_gpr(30, r30);
-                self.set_reg_gpr(reg2, res);
-                self.set_zero_sign_flags(res);
-                self.psw_overflow = overflow;
-                num_cycles = 38;
-            }, first_halfword),
-            Opcode::MulU => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2) as u64;
-                let rhs = self.reg_gpr(reg1) as u64;
-                let res = lhs * rhs;
-                let res_low = res as u32;
-                let res_high = (res >> 32) as u32;
-                let overflow = res != res_low as u64;
-                self.set_reg_gpr(30, res_high);
-                self.set_reg_gpr(reg2, res_low);
-                self.set_zero_sign_flags(res_low);
-                self.psw_overflow = overflow;
-                num_cycles = 13;
-            }, first_halfword),
-            Opcode::DivU => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = self.reg_gpr(reg1);
-                let res = lhs / rhs;
-                let r30 = lhs % rhs;
-                self.set_reg_gpr(30, r30);
-                self.set_reg_gpr(reg2, res);
-                self.set_zero_sign_flags(res);
-                self.psw_overflow = false;
-                num_cycles = 36;
-            }, first_halfword),
-            Opcode::Or => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = self.reg_gpr(reg1);
-                let res = lhs | rhs;
-                self.set_reg_gpr(reg2, res);
-                self.set_zero_sign_flags(res);
-                self.psw_overflow = false;
-            }, first_halfword),
-            Opcode::And => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = self.reg_gpr(reg1);
-                let res = lhs & rhs;
-                self.set_reg_gpr(reg2, res);
-                self.set_zero_sign_flags(res);
-                self.psw_overflow = false;
-            }, first_halfword),
-            Opcode::Xor => format_i(|reg1, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = self.reg_gpr(reg1);
-                let res = lhs ^ rhs;
-                self.set_reg_gpr(reg2, res);
-                self.set_zero_sign_flags(res);
-                self.psw_overflow = false;
-            }, first_halfword),
-            Opcode::Not => format_i(|reg1, reg2| {
-                let res = !self.reg_gpr(reg1);
-                self.set_reg_gpr(reg2, res);
-                self.set_zero_sign_flags(res);
-                self.psw_overflow = false;
-            }, first_halfword),
-            Opcode::MovImm => format_ii(|imm5, reg2| {
-                let value = sign_extend_imm5(imm5);
-                self.set_reg_gpr(reg2, value);
-            }, first_halfword),
-            Opcode::AddImm5 => format_ii(|imm5, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = sign_extend_imm5(imm5);
-                self.add(lhs, rhs, reg2);
-            }, first_halfword),
-            Opcode::Setf => format_ii(|imm5, reg2| {
-                let condition = opcode.condition(imm5);
-                // TODO: See if we can unify with branch code
-                let set = match condition {
-                    Condition::V => self.psw_overflow,
-                    Condition::C => self.psw_carry,
-                    Condition::Z => self.psw_zero,
-                    Condition::Nh => self.psw_carry || self.psw_zero,
-                    Condition::N => self.psw_sign,
-                    Condition::T => true,
-                    Condition::Lt => self.psw_sign != self.psw_overflow,
-                    Condition::Le => (self.psw_sign != self.psw_overflow) || self.psw_zero,
-                    Condition::Nv => !self.psw_overflow,
-                    Condition::Nc => !self.psw_carry,
-                    Condition::Nz => !self.psw_zero,
-                    Condition::H => !(self.psw_carry || self.psw_zero),
-                    Condition::P => !self.psw_sign,
-                    Condition::F => false,
-                    Condition::Ge => !(self.psw_sign != self.psw_overflow),
-                    Condition::Gt => !((self.psw_sign != self.psw_overflow) || self.psw_zero),
-                };
-                self.set_reg_gpr(reg2, if set { 1 } else { 0 });
-            }, first_halfword),
-            Opcode::CmpImm => format_ii(|imm5, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = sign_extend_imm5(imm5);
-                self.sub_and_set_flags(lhs, rhs);
-            }, first_halfword),
-            Opcode::ShlImm => format_ii(|imm5, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = imm5 as u32;
-                let res = self.shl_and_set_flags(lhs, rhs);
-                self.set_reg_gpr(reg2, res);
-            }, first_halfword),
-            Opcode::ShrImm => format_ii(|imm5, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = sign_extend_imm5(imm5);
-                let res = self.shr_and_set_flags(lhs, rhs);
-                self.set_reg_gpr(reg2, res);
-            }, first_halfword),
-            Opcode::Cli => format_ii(|_, _| {
-                self.psw_interrupt_disable = false;
-            }, first_halfword),
-            Opcode::SarImm => format_ii(|imm5, reg2| {
-                let lhs = self.reg_gpr(reg2);
-                let rhs = imm5 as u32;
-                let res = self.sar_and_set_flags(lhs, rhs);
-                self.set_reg_gpr(reg2, res);
-            }, first_halfword),
-            Opcode::Reti => format_ii(|_, _| {
-                next_pc = self.return_from_exception();
-                num_cycles = 10;
-            }, first_halfword),
-            Opcode::Ldsr => format_ii(|imm5, reg2| {
-                let value = self.reg_gpr(reg2);
-                let system_register = opcode.system_register(imm5);
-                match system_register {
-                    SystemRegister::Eipc => {
-                        self.reg_eipc = value;
-                    }
-                    SystemRegister::Eipsw => {
-                        self.reg_eipsw = value;
-                    }
-                    SystemRegister::Fepc => {
-                        logln!("WARNING: ldsr fepc not yet implemented (value: 0x{:08x})", value);
-                    }
-                    SystemRegister::Fepsw => {
-                        logln!("WARNING: ldsr fepsw not yet implemented (value: 0x{:08x})", value);
-                    }
-                    SystemRegister::Ecr => {
-                        logln!("WARNING: Attempted ldsr ecr (value: 0x{:08x})", value);
-                    }
-                    SystemRegister::Psw => self.set_reg_psw(value),
-                    SystemRegister::Chcw => {
-                        logln!("WARNING: ldsr chcw not yet implemented (value: 0x{:08x})", value);
-                    }
-                }
-            }, first_halfword),
-            Opcode::Stsr => format_ii(|imm5, reg2| {
-                let system_register = opcode.system_register(imm5);
-                let value = match system_register {
-                    SystemRegister::Eipc => self.reg_eipc,
-                    SystemRegister::Eipsw => self.reg_eipsw,
-                    SystemRegister::Fepc => {
-                        logln!("WARNING: stsr fepc not yet implemented");
-                        0
-                    }
-                    SystemRegister::Fepsw => {
-                        logln!("WARNING: stsr fepsw not yet implemented");
-                        0
-                    }
-                    SystemRegister::Ecr => {
-                        logln!("WARNING: stsr ecr not yet implemented");
-                        0
-                    }
-                    SystemRegister::Psw => self.reg_psw(),
-                    SystemRegister::Chcw => {
-                        logln!("WARNING: stsr chcw not yet implemented");
-                        0
-                    }
-                };
-                self.set_reg_gpr(reg2, value);
-            }, first_halfword),
-            Opcode::Sei => format_ii(|_, _| {
-                self.psw_interrupt_disable = true;
-            }, first_halfword),
-            Opcode::Bv => {
-                take_branch = self.psw_overflow;
-            },
-            Opcode::Bc => {
-                take_branch = self.psw_carry;
-            },
-            Opcode::Bz => {
-                take_branch = self.psw_zero;
-            },
-            Opcode::Bnh => {
-                take_branch = self.psw_carry | self.psw_zero;
-            },
-            Opcode::Bn => {
-                take_branch = self.psw_sign;
-            },
-            Opcode::Br => {
-                take_branch = true;
-            },
-            Opcode::Blt => {
-                take_branch = self.psw_sign != self.psw_overflow;
-            },
-            Opcode::Ble => {
-                take_branch = (self.psw_sign != self.psw_overflow) || self.psw_zero;
-            },
-            Opcode::Bnv => {
-                take_branch = !self.psw_overflow;
-            },
-            Opcode::Bnc => {
-                take_branch = !self.psw_carry;
-            },
-            Opcode::Bnz => {
-                take_branch = !self.psw_zero;
-            },
-            Opcode::Bh => {
-                take_branch = !(self.psw_carry || self.psw_zero);
-            },
-            Opcode::Bp => {
-                take_branch = !self.psw_sign;
-            },
-            Opcode::Nop => (),
-            Opcode::Bge => {
-                take_branch = !(self.psw_sign != self.psw_overflow);
-            },
-            Opcode::Bgt => {
-                take_branch = !((self.psw_sign != self.psw_overflow) || self.psw_zero);
-            },
-            Opcode::Movea => format_v(|reg1, reg2, imm16| {
-                let res = self.reg_gpr(reg1).wrapping_add((imm16 as i16) as u32);
-                self.set_reg_gpr(reg2, res);
-            }, first_halfword, second_halfword),
-            Opcode::AddImm16 => format_v(|reg1, reg2, imm16| {
-                let lhs = self.reg_gpr(reg1);
-                let rhs = (imm16 as i16) as u32;
-                self.add(lhs, rhs, reg2);
-            }, first_halfword, second_halfword),
-            Opcode::Jr => format_iv(|target| {
-                next_pc = target;
-                num_cycles = 3;
-            }, first_halfword, second_halfword, original_pc),
-            Opcode::Jal => format_iv(|target| {
-                self.set_reg_gpr(31, original_pc.wrapping_add(4));
-                next_pc = target;
-                num_cycles = 3;
-            }, first_halfword, second_halfword, original_pc),
-            Opcode::OrI => format_v(|reg1, reg2, imm16| {
-                let lhs = self.reg_gpr(reg1);
-                let rhs = imm16 as u32;
-                let res = lhs | rhs;
-                self.set_reg_gpr(reg2, res);
-                self.set_zero_sign_flags(res);
-                self.psw_overflow = false;
-            }, first_halfword, second_halfword),
-            Opcode::AndI => format_v(|reg1, reg2, imm16| {
-                let lhs = self.reg_gpr(reg1);
-                let rhs = imm16 as u32;
-                let res = lhs & rhs;
-                self.set_reg_gpr(reg2, res);
-                self.set_zero_sign_flags(res);
-                self.psw_overflow = false;
-            }, first_halfword, second_halfword),
-            Opcode::XorI => format_v(|reg1, reg2, imm16| {
-                let lhs = self.reg_gpr(reg1);
-                let rhs = imm16 as u32;
-                let res = lhs ^ rhs;
-                self.set_reg_gpr(reg2, res);
-                self.set_zero_sign_flags(res);
-                self.psw_overflow = false;
-            }, first_halfword, second_halfword),
-            Opcode::Movhi => format_v(|reg1, reg2, imm16| {
-                let res = self.reg_gpr(reg1).wrapping_add((imm16 as u32) << 16);
-                self.set_reg_gpr(reg2, res);
-            }, first_halfword, second_halfword),
-            Opcode::Ldb => format_vi(|reg1, reg2, disp16| {
-                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
-                trigger_watchpoint |= self.check_watchpoints(addr);
-                let value = (interconnect.read_byte(addr) as i8) as u32;
-                self.set_reg_gpr(reg2, value);
-                num_cycles = 4;
-            }, first_halfword, second_halfword),
-            Opcode::Ldh => format_vi(|reg1, reg2, disp16| {
-                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
-                trigger_watchpoint |= self.check_watchpoints(addr);
-                let value = (interconnect.read_halfword(addr) as i16) as u32;
-                self.set_reg_gpr(reg2, value);
-                num_cycles = 4;
-            }, first_halfword, second_halfword),
-            Opcode::Ldw | Opcode::Inw => format_vi(|reg1, reg2, disp16| {
-                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
-                trigger_watchpoint |= self.check_watchpoints(addr);
-                let value = (interconnect.read_halfword(addr) as u32) | ((interconnect.read_halfword(addr + 2) as u32) << 16);
-                self.set_reg_gpr(reg2, value);
-                num_cycles = 4;
-            }, first_halfword, second_halfword),
-            Opcode::Stb | Opcode::Outb => format_vi(|reg1, reg2, disp16| {
-                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
-                trigger_watchpoint |= self.check_watchpoints(addr);
-                let value = self.reg_gpr(reg2) as u8;
-                interconnect.write_byte(addr, value);
-                num_cycles = 4;
-            }, first_halfword, second_halfword),
-            Opcode::Sth | Opcode::Outh => format_vi(|reg1, reg2, disp16| {
-                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
-                trigger_watchpoint |= self.check_watchpoints(addr);
-                let value = self.reg_gpr(reg2) as u16;
-                interconnect.write_halfword(addr, value);
-                num_cycles = 4;
-            }, first_halfword, second_halfword),
-            Opcode::Stw | Opcode::Outw => format_vi(|reg1, reg2, disp16| {
-                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
-                trigger_watchpoint |= self.check_watchpoints(addr);
-                let value = self.reg_gpr(reg2);
-                interconnect.write_halfword(addr, value as _);
-                interconnect.write_halfword(addr + 2, (value >> 16) as _);
-                num_cycles = 4;
-            }, first_halfword, second_halfword),
-            Opcode::Inb => format_vi(|reg1, reg2, disp16| {
-                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
-                trigger_watchpoint |= self.check_watchpoints(addr);
-                let value = interconnect.read_byte(addr) as u32;
-                self.set_reg_gpr(reg2, value);
-                num_cycles = 4;
-            }, first_halfword, second_halfword),
-            Opcode::Inh => format_vi(|reg1, reg2, disp16| {
-                let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
-                trigger_watchpoint |= self.check_watchpoints(addr);
-                let value = interconnect.read_halfword(addr) as u32;
-                self.set_reg_gpr(reg2, value);
-                num_cycles = 4;
-            }, first_halfword, second_halfword),
-            Opcode::Extended => {
-                let reg1 = (first_halfword & 0x1f) as usize;
-                let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
-
-                let subop_bits = second_halfword >> 10;
-
-                let subop = opcode.subop(subop_bits as _);
-
-                match subop {
-                    SubOp::CmpfS => {
-                        let lhs = self.reg_gpr_float(reg2);
-                        let rhs = self.reg_gpr_float(reg1);
-                        let value = lhs - rhs;
-
-                        self.set_fp_flags(value);
-
-                        num_cycles = 10;
-                    }
-                    SubOp::CvtWs => {
-                        let value = (self.reg_gpr(reg1) as i32) as f32;
-                        self.set_reg_gpr_float(reg2, value);
-
-                        self.set_fp_flags(value);
-
-                        num_cycles = 16;
-                    }
-                    SubOp::CvtSw => {
-                        let value = (self.reg_gpr_float(reg1).round() as i32) as u32;
-                        self.set_reg_gpr(reg2, value);
-
-                        self.psw_overflow = false;
-                        self.set_zero_sign_flags(value);
-
-                        num_cycles = 14;
-                    }
-                    SubOp::AddfS => {
-                        let lhs = self.reg_gpr_float(reg2);
-                        let rhs = self.reg_gpr_float(reg1);
-                        let value = lhs + rhs;
-                        self.set_reg_gpr_float(reg2, value);
-
-                        self.set_fp_flags(value);
-
-                        num_cycles = 28;
-                    }
-                    SubOp::SubfS => {
-                        let lhs = self.reg_gpr_float(reg2);
-                        let rhs = self.reg_gpr_float(reg1);
-                        let value = lhs - rhs;
-                        self.set_reg_gpr_float(reg2, value);
-
-                        self.set_fp_flags(value);
-
-                        num_cycles = 28;
-                    }
-                    SubOp::MulfS => {
-                        let lhs = self.reg_gpr_float(reg2);
-                        let rhs = self.reg_gpr_float(reg1);
-                        let value = lhs * rhs;
-                        self.set_reg_gpr_float(reg2, value);
-
-                        self.set_fp_flags(value);
-
-                        num_cycles = 30;
-                    }
-                    SubOp::DivfS => {
-                        let lhs = self.reg_gpr_float(reg2);
-                        let rhs = self.reg_gpr_float(reg1);
-                        let value = lhs / rhs;
-                        self.set_reg_gpr_float(reg2, value);
-
-                        self.set_fp_flags(value);
-
-                        num_cycles = 44;
-                    }
-                    SubOp::Xb => {
-                        let original = self.reg_gpr(reg2);
-                        let value = (original & 0xffff0000) | ((original & 0x0000ff00) >> 8) | ((original & 0x000000ff) << 8);
-                        self.set_reg_gpr(reg2, value);
-                    }
-                    SubOp::Xh => {
-                        let original = self.reg_gpr(reg2);
-                        let value = (original >> 16) | ((original & 0xffff) << 16);
-                        self.set_reg_gpr(reg2, value);
-                    }
-                    SubOp::TrncSw => {
-                        let value = (self.reg_gpr_float(reg1).trunc() as i32) as u32;
-                        self.set_reg_gpr(reg2, value);
-
-                        self.psw_overflow = false;
-                        self.set_zero_sign_flags(value);
-
-                        num_cycles = 14;
-                    }
-                    SubOp::Mpyhw => {
-                        let lhs = (self.reg_gpr(reg2) as i16) as i32;
-                        let rhs = (self.reg_gpr(reg1) as i16) as i32;
-                        let value = (lhs * rhs) as u32;
-                        self.set_reg_gpr(reg2, value);
-                    }
-                }
             }
-        }
+        } else {
+            macro_rules! format_i {
+                ($f:expr) => ({
+                    let reg1 = (first_halfword & 0x1f) as usize;
+                    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
 
-        if take_branch {
-            let disp9 = first_halfword & 0x01ff;
-            let disp = (disp9 as u32) | if disp9 & 0x0100 == 0 { 0x00000000 } else { 0xfffffe00 };
-            next_pc = self.reg_pc.wrapping_add(disp);
-            num_cycles = 3;
+                    $f(reg1, reg2);
+                });
+            }
+
+            macro_rules! format_ii {
+                ($f:expr) => ({
+                    let imm5 = (first_halfword & 0x1f) as usize;
+                    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+                    $f(imm5, reg2);
+                })
+            }
+
+            macro_rules! format_iv {
+                ($f:expr) => ({
+                    let second_halfword = interconnect.read_halfword(next_pc);
+                    next_pc = next_pc.wrapping_add(2);
+
+                    let disp26 = (((first_halfword as u32) & 0x03ff) << 16) | (second_halfword as u32);
+                    let disp = disp26 | if (disp26 & 0x02000000) == 0 { 0x00000000 } else { 0xfc000000 };
+                    let target = self.reg_pc.wrapping_add(disp);
+                    $f(target);
+                })
+            }
+
+            macro_rules! format_v {
+                ($f:expr) => ({
+                    let second_halfword = interconnect.read_halfword(next_pc);
+                    next_pc = next_pc.wrapping_add(2);
+
+                    let reg1 = (first_halfword & 0x1f) as usize;
+                    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+                    let imm16 = second_halfword;
+                    $f(reg1, reg2, imm16);
+                })
+            }
+
+            macro_rules! format_vi {
+                ($f:expr) => ({
+                    let second_halfword = interconnect.read_halfword(next_pc);
+                    next_pc = next_pc.wrapping_add(2);
+
+                    let reg1 = (first_halfword & 0x1f) as usize;
+                    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+                    let disp16 = second_halfword as i16;
+                    $f(reg1, reg2, disp16);
+                })
+            }
+
+            let opcode_bits = first_halfword >> 10;
+            match opcode_bits {
+                OPCODE_BITS_MOV_REG => format_i!(|reg1, reg2| {
+                    let value = self.reg_gpr(reg1);
+                    self.set_reg_gpr(reg2, value);
+                }),
+                OPCODE_BITS_ADD_REG => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = self.reg_gpr(reg1);
+                    self.add(lhs, rhs, reg2);
+                }),
+                OPCODE_BITS_SUB => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = self.reg_gpr(reg1);
+                    let res = self.sub_and_set_flags(lhs, rhs);
+                    self.set_reg_gpr(reg2, res);
+                }),
+                OPCODE_BITS_CMP_REG => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = self.reg_gpr(reg1);
+                    self.sub_and_set_flags(lhs, rhs);
+                }),
+                OPCODE_BITS_SHL_REG => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = self.reg_gpr(reg1);
+                    let res = self.shl_and_set_flags(lhs, rhs);
+                    self.set_reg_gpr(reg2, res);
+                }),
+                OPCODE_BITS_SHR_REG => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = self.reg_gpr(reg1);
+                    let res = self.shr_and_set_flags(lhs, rhs);
+                    self.set_reg_gpr(reg2, res);
+                }),
+                OPCODE_BITS_JMP => format_i!(|reg1, _| {
+                    next_pc = self.reg_gpr(reg1);
+                    num_cycles = 3;
+                }),
+                OPCODE_BITS_SAR_REG => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = self.reg_gpr(reg1);
+                    let res = self.sar_and_set_flags(lhs, rhs);
+                    self.set_reg_gpr(reg2, res);
+                }),
+                OPCODE_BITS_MUL => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2) as i64;
+                    let rhs = self.reg_gpr(reg1) as i64;
+                    let res = (lhs * rhs) as u64;
+                    let res_low = res as u32;
+                    let res_high = (res >> 32) as u32;
+                    let overflow = res != (res_low as i32) as u64;
+                    self.set_reg_gpr(30, res_high);
+                    self.set_reg_gpr(reg2, res_low);
+                    self.set_zero_sign_flags(res_low);
+                    self.psw_overflow = overflow;
+                    num_cycles = 13;
+                }),
+                OPCODE_BITS_DIV => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = self.reg_gpr(reg1);
+                    let (res, r30, overflow) = if lhs == 0x80000000 && rhs == 0xffffffff {
+                        (lhs, 0, true)
+                    } else {
+                        let lhs = lhs as i32;
+                        let rhs = rhs as i32;
+                        let res = (lhs / rhs) as u32;
+                        let r30 = (lhs % rhs) as u32;
+                        (res, r30, false)
+                    };
+                    self.set_reg_gpr(30, r30);
+                    self.set_reg_gpr(reg2, res);
+                    self.set_zero_sign_flags(res);
+                    self.psw_overflow = overflow;
+                    num_cycles = 38;
+                }),
+                OPCODE_BITS_MUL_U => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2) as u64;
+                    let rhs = self.reg_gpr(reg1) as u64;
+                    let res = lhs * rhs;
+                    let res_low = res as u32;
+                    let res_high = (res >> 32) as u32;
+                    let overflow = res != res_low as u64;
+                    self.set_reg_gpr(30, res_high);
+                    self.set_reg_gpr(reg2, res_low);
+                    self.set_zero_sign_flags(res_low);
+                    self.psw_overflow = overflow;
+                    num_cycles = 13;
+                }),
+                OPCODE_BITS_DIV_U => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = self.reg_gpr(reg1);
+                    let res = lhs / rhs;
+                    let r30 = lhs % rhs;
+                    self.set_reg_gpr(30, r30);
+                    self.set_reg_gpr(reg2, res);
+                    self.set_zero_sign_flags(res);
+                    self.psw_overflow = false;
+                    num_cycles = 36;
+                }),
+                OPCODE_BITS_OR => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = self.reg_gpr(reg1);
+                    let res = lhs | rhs;
+                    self.set_reg_gpr(reg2, res);
+                    self.set_zero_sign_flags(res);
+                    self.psw_overflow = false;
+                }),
+                OPCODE_BITS_AND => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = self.reg_gpr(reg1);
+                    let res = lhs & rhs;
+                    self.set_reg_gpr(reg2, res);
+                    self.set_zero_sign_flags(res);
+                    self.psw_overflow = false;
+                }),
+                OPCODE_BITS_XOR => format_i!(|reg1, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = self.reg_gpr(reg1);
+                    let res = lhs ^ rhs;
+                    self.set_reg_gpr(reg2, res);
+                    self.set_zero_sign_flags(res);
+                    self.psw_overflow = false;
+                }),
+                OPCODE_BITS_NOT => format_i!(|reg1, reg2| {
+                    let res = !self.reg_gpr(reg1);
+                    self.set_reg_gpr(reg2, res);
+                    self.set_zero_sign_flags(res);
+                    self.psw_overflow = false;
+                }),
+                OPCODE_BITS_MOV_IMM => format_ii!(|imm5, reg2| {
+                    let value = sign_extend_imm5(imm5);
+                    self.set_reg_gpr(reg2, value);
+                }),
+                OPCODE_BITS_ADD_IMM_5 => format_ii!(|imm5, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = sign_extend_imm5(imm5);
+                    self.add(lhs, rhs, reg2);
+                }),
+                OPCODE_BITS_SETF => format_ii!(|imm5, reg2| {
+                    let set = match imm5 {
+                        OPCODE_CONDITION_BITS_V => self.psw_overflow,
+                        OPCODE_CONDITION_BITS_C => self.psw_carry,
+                        OPCODE_CONDITION_BITS_Z => self.psw_zero,
+                        OPCODE_CONDITION_BITS_NH => self.psw_carry || self.psw_zero,
+                        OPCODE_CONDITION_BITS_N => self.psw_sign,
+                        OPCODE_CONDITION_BITS_T => true,
+                        OPCODE_CONDITION_BITS_LT => self.psw_sign != self.psw_overflow,
+                        OPCODE_CONDITION_BITS_LE => (self.psw_sign != self.psw_overflow) || self.psw_zero,
+                        OPCODE_CONDITION_BITS_NV => !self.psw_overflow,
+                        OPCODE_CONDITION_BITS_NC => !self.psw_carry,
+                        OPCODE_CONDITION_BITS_NZ => !self.psw_zero,
+                        OPCODE_CONDITION_BITS_H => !(self.psw_carry || self.psw_zero),
+                        OPCODE_CONDITION_BITS_P => !self.psw_sign,
+                        OPCODE_CONDITION_BITS_F => false,
+                        OPCODE_CONDITION_BITS_GE => !(self.psw_sign != self.psw_overflow),
+                        OPCODE_CONDITION_BITS_GT => !((self.psw_sign != self.psw_overflow) || self.psw_zero),
+                        _ => panic!("Unrecognized condition: {}", imm5),
+                    };
+                    self.set_reg_gpr(reg2, if set { 1 } else { 0 });
+                }),
+                OPCODE_BITS_CMP_IMM => format_ii!(|imm5, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = sign_extend_imm5(imm5);
+                    self.sub_and_set_flags(lhs, rhs);
+                }),
+                OPCODE_BITS_SHL_IMM => format_ii!(|imm5, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = imm5 as u32;
+                    let res = self.shl_and_set_flags(lhs, rhs);
+                    self.set_reg_gpr(reg2, res);
+                }),
+                OPCODE_BITS_SHR_IMM => format_ii!(|imm5, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = sign_extend_imm5(imm5);
+                    let res = self.shr_and_set_flags(lhs, rhs);
+                    self.set_reg_gpr(reg2, res);
+                }),
+                OPCODE_BITS_CLI => format_ii!(|_, _| {
+                    self.psw_interrupt_disable = false;
+                }),
+                OPCODE_BITS_SAR_IMM => format_ii!(|imm5, reg2| {
+                    let lhs = self.reg_gpr(reg2);
+                    let rhs = imm5 as u32;
+                    let res = self.sar_and_set_flags(lhs, rhs);
+                    self.set_reg_gpr(reg2, res);
+                }),
+                OPCODE_BITS_RETI => format_ii!(|_, _| {
+                    next_pc = self.return_from_exception();
+                    num_cycles = 10;
+                }),
+                OPCODE_BITS_LDSR => format_ii!(|imm5, reg2| {
+                    let value = self.reg_gpr(reg2);
+                    match imm5 {
+                        OPCODE_SYSTEM_REGISTER_ID_EIPC => {
+                            self.reg_eipc = value;
+                        }
+                        OPCODE_SYSTEM_REGISTER_ID_EIPSW => {
+                            self.reg_eipsw = value;
+                        }
+                        OPCODE_SYSTEM_REGISTER_ID_FEPC => {
+                            logln!("WARNING: ldsr fepc not yet implemented (value: 0x{:08x})", value);
+                        }
+                        OPCODE_SYSTEM_REGISTER_ID_FEPSW => {
+                            logln!("WARNING: ldsr fepsw not yet implemented (value: 0x{:08x})", value);
+                        }
+                        OPCODE_SYSTEM_REGISTER_ID_ECR => {
+                            logln!("WARNING: Attempted ldsr ecr (value: 0x{:08x})", value);
+                        }
+                        OPCODE_SYSTEM_REGISTER_ID_PSW => self.set_reg_psw(value),
+                        OPCODE_SYSTEM_REGISTER_ID_CHCW => {
+                            logln!("WARNING: ldsr chcw not yet implemented (value: 0x{:08x})", value);
+                        }
+                        _ => panic!("Unrecognized system register: {}", imm5),
+                    }
+                }),
+                OPCODE_BITS_STSR => format_ii!(|imm5, reg2| {
+                    let value = match imm5 {
+                        OPCODE_SYSTEM_REGISTER_ID_EIPC => self.reg_eipc,
+                        OPCODE_SYSTEM_REGISTER_ID_EIPSW => self.reg_eipsw,
+                        OPCODE_SYSTEM_REGISTER_ID_FEPC => {
+                            logln!("WARNING: stsr fepc not yet implemented");
+                            0
+                        }
+                        OPCODE_SYSTEM_REGISTER_ID_FEPSW => {
+                            logln!("WARNING: stsr fepsw not yet implemented");
+                            0
+                        }
+                        OPCODE_SYSTEM_REGISTER_ID_ECR => {
+                            logln!("WARNING: stsr ecr not yet implemented");
+                            0
+                        }
+                        OPCODE_SYSTEM_REGISTER_ID_PSW => self.reg_psw(),
+                        OPCODE_SYSTEM_REGISTER_ID_CHCW => {
+                            logln!("WARNING: stsr chcw not yet implemented");
+                            0
+                        }
+                        _ => panic!("Unrecognized system register: {}", imm5),
+                    };
+                    self.set_reg_gpr(reg2, value);
+                }),
+                OPCODE_BITS_SEI => format_ii!(|_, _| {
+                    self.psw_interrupt_disable = true;
+                }),
+                OPCODE_BITS_MOVEA => format_v!(|reg1, reg2, imm16| {
+                    let res = self.reg_gpr(reg1).wrapping_add((imm16 as i16) as u32);
+                    self.set_reg_gpr(reg2, res);
+                }),
+                OPCODE_BITS_ADD_IMM_16 => format_v!(|reg1, reg2, imm16| {
+                    let lhs = self.reg_gpr(reg1);
+                    let rhs = (imm16 as i16) as u32;
+                    self.add(lhs, rhs, reg2);
+                }),
+                OPCODE_BITS_JR => format_iv!(|target| {
+                    next_pc = target;
+                    num_cycles = 3;
+                }),
+                OPCODE_BITS_JAL => format_iv!(|target| {
+                    self.set_reg_gpr(31, original_pc.wrapping_add(4));
+                    next_pc = target;
+                    num_cycles = 3;
+                }),
+                OPCODE_BITS_OR_I => format_v!(|reg1, reg2, imm16| {
+                    let lhs = self.reg_gpr(reg1);
+                    let rhs = imm16 as u32;
+                    let res = lhs | rhs;
+                    self.set_reg_gpr(reg2, res);
+                    self.set_zero_sign_flags(res);
+                    self.psw_overflow = false;
+                }),
+                OPCODE_BITS_AND_I => format_v!(|reg1, reg2, imm16| {
+                    let lhs = self.reg_gpr(reg1);
+                    let rhs = imm16 as u32;
+                    let res = lhs & rhs;
+                    self.set_reg_gpr(reg2, res);
+                    self.set_zero_sign_flags(res);
+                    self.psw_overflow = false;
+                }),
+                OPCODE_BITS_XOR_I => format_v!(|reg1, reg2, imm16| {
+                    let lhs = self.reg_gpr(reg1);
+                    let rhs = imm16 as u32;
+                    let res = lhs ^ rhs;
+                    self.set_reg_gpr(reg2, res);
+                    self.set_zero_sign_flags(res);
+                    self.psw_overflow = false;
+                }),
+                OPCODE_BITS_MOVHI => format_v!(|reg1, reg2, imm16| {
+                    let res = self.reg_gpr(reg1).wrapping_add((imm16 as u32) << 16);
+                    self.set_reg_gpr(reg2, res);
+                }),
+                OPCODE_BITS_LDB => format_vi!(|reg1, reg2, disp16| {
+                    let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    trigger_watchpoint |= self.check_watchpoints(addr);
+                    let value = (interconnect.read_byte(addr) as i8) as u32;
+                    self.set_reg_gpr(reg2, value);
+                    num_cycles = 4;
+                }),
+                OPCODE_BITS_LDH => format_vi!(|reg1, reg2, disp16| {
+                    let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    trigger_watchpoint |= self.check_watchpoints(addr);
+                    let value = (interconnect.read_halfword(addr) as i16) as u32;
+                    self.set_reg_gpr(reg2, value);
+                    num_cycles = 4;
+                }),
+                OPCODE_BITS_LDW | OPCODE_BITS_INW => format_vi!(|reg1, reg2, disp16| {
+                    let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    trigger_watchpoint |= self.check_watchpoints(addr);
+                    let value = (interconnect.read_halfword(addr) as u32) | ((interconnect.read_halfword(addr + 2) as u32) << 16);
+                    self.set_reg_gpr(reg2, value);
+                    num_cycles = 4;
+                }),
+                OPCODE_BITS_STB | OPCODE_BITS_OUTB => format_vi!(|reg1, reg2, disp16| {
+                    let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    trigger_watchpoint |= self.check_watchpoints(addr);
+                    let value = self.reg_gpr(reg2) as u8;
+                    interconnect.write_byte(addr, value);
+                    num_cycles = 4;
+                }),
+                OPCODE_BITS_STH | OPCODE_BITS_OUTH => format_vi!(|reg1, reg2, disp16| {
+                    let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    trigger_watchpoint |= self.check_watchpoints(addr);
+                    let value = self.reg_gpr(reg2) as u16;
+                    interconnect.write_halfword(addr, value);
+                    num_cycles = 4;
+                }),
+                OPCODE_BITS_STW | OPCODE_BITS_OUTW => format_vi!(|reg1, reg2, disp16| {
+                    let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    trigger_watchpoint |= self.check_watchpoints(addr);
+                    let value = self.reg_gpr(reg2);
+                    interconnect.write_halfword(addr, value as _);
+                    interconnect.write_halfword(addr + 2, (value >> 16) as _);
+                    num_cycles = 4;
+                }),
+                OPCODE_BITS_INB => format_vi!(|reg1, reg2, disp16| {
+                    let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    trigger_watchpoint |= self.check_watchpoints(addr);
+                    let value = interconnect.read_byte(addr) as u32;
+                    self.set_reg_gpr(reg2, value);
+                    num_cycles = 4;
+                }),
+                OPCODE_BITS_INH => format_vi!(|reg1, reg2, disp16| {
+                    let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    trigger_watchpoint |= self.check_watchpoints(addr);
+                    let value = interconnect.read_halfword(addr) as u32;
+                    self.set_reg_gpr(reg2, value);
+                    num_cycles = 4;
+                }),
+                OPCODE_BITS_EXTENDED => {
+                    let second_halfword = interconnect.read_halfword(next_pc);
+                    next_pc = next_pc.wrapping_add(2);
+
+                    let reg1 = (first_halfword & 0x1f) as usize;
+                    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+
+                    let subop_bits = second_halfword >> 10;
+
+                    match subop_bits {
+                        OPCODE_BITS_SUB_OP_CMPF_S => {
+                            let lhs = self.reg_gpr_float(reg2);
+                            let rhs = self.reg_gpr_float(reg1);
+                            let value = lhs - rhs;
+
+                            self.set_fp_flags(value);
+
+                            num_cycles = 10;
+                        }
+                        OPCODE_BITS_SUB_OP_CVT_WS => {
+                            let value = (self.reg_gpr(reg1) as i32) as f32;
+                            self.set_reg_gpr_float(reg2, value);
+
+                            self.set_fp_flags(value);
+
+                            num_cycles = 16;
+                        }
+                        OPCODE_BITS_SUB_OP_CVT_SW => {
+                            let value = (self.reg_gpr_float(reg1).round() as i32) as u32;
+                            self.set_reg_gpr(reg2, value);
+
+                            self.psw_overflow = false;
+                            self.set_zero_sign_flags(value);
+
+                            num_cycles = 14;
+                        }
+                        OPCODE_BITS_SUB_OP_ADDF_S => {
+                            let lhs = self.reg_gpr_float(reg2);
+                            let rhs = self.reg_gpr_float(reg1);
+                            let value = lhs + rhs;
+                            self.set_reg_gpr_float(reg2, value);
+
+                            self.set_fp_flags(value);
+
+                            num_cycles = 28;
+                        }
+                        OPCODE_BITS_SUB_OP_SUBF_S => {
+                            let lhs = self.reg_gpr_float(reg2);
+                            let rhs = self.reg_gpr_float(reg1);
+                            let value = lhs - rhs;
+                            self.set_reg_gpr_float(reg2, value);
+
+                            self.set_fp_flags(value);
+
+                            num_cycles = 28;
+                        }
+                        OPCODE_BITS_SUB_OP_MULF_S => {
+                            let lhs = self.reg_gpr_float(reg2);
+                            let rhs = self.reg_gpr_float(reg1);
+                            let value = lhs * rhs;
+                            self.set_reg_gpr_float(reg2, value);
+
+                            self.set_fp_flags(value);
+
+                            num_cycles = 30;
+                        }
+                        OPCODE_BITS_SUB_OP_DIVF_S => {
+                            let lhs = self.reg_gpr_float(reg2);
+                            let rhs = self.reg_gpr_float(reg1);
+                            let value = lhs / rhs;
+                            self.set_reg_gpr_float(reg2, value);
+
+                            self.set_fp_flags(value);
+
+                            num_cycles = 44;
+                        }
+                        OPCODE_BITS_SUB_OP_XB => {
+                            let original = self.reg_gpr(reg2);
+                            let value = (original & 0xffff0000) | ((original & 0x0000ff00) >> 8) | ((original & 0x000000ff) << 8);
+                            self.set_reg_gpr(reg2, value);
+                        }
+                        OPCODE_BITS_SUB_OP_XH => {
+                            let original = self.reg_gpr(reg2);
+                            let value = (original >> 16) | ((original & 0xffff) << 16);
+                            self.set_reg_gpr(reg2, value);
+                        }
+                        OPCODE_BITS_SUB_OP_TRNC_SW => {
+                            let value = (self.reg_gpr_float(reg1).trunc() as i32) as u32;
+                            self.set_reg_gpr(reg2, value);
+
+                            self.psw_overflow = false;
+                            self.set_zero_sign_flags(value);
+
+                            num_cycles = 14;
+                        }
+                        OPCODE_BITS_SUB_OP_MPYHW => {
+                            let lhs = (self.reg_gpr(reg2) as i16) as i32;
+                            let rhs = (self.reg_gpr(reg1) as i16) as i32;
+                            let value = (lhs * rhs) as u32;
+                            self.set_reg_gpr(reg2, value);
+                        }
+                        _ => panic!("Unrecognized subop bits: {:06b}", subop_bits)
+                    }
+                }
+                _ => panic!("Unrecognized opcode bits: {:06b} (halfword: 0b{:016b})", opcode_bits, first_halfword),
+            }
         }
 
         self.reg_pc = next_pc;
@@ -786,39 +804,6 @@ impl Nvc {
         self.set_reg_psw(psw);
         self.reg_eipc
     }
-}
-
-fn format_i<F: FnOnce(usize, usize)>(f: F, first_halfword: u16) {
-    let reg1 = (first_halfword & 0x1f) as usize;
-    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
-    f(reg1, reg2);
-}
-
-fn format_ii<F: FnOnce(usize, usize)>(f: F, first_halfword: u16) {
-    let imm5 = (first_halfword & 0x1f) as usize;
-    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
-    f(imm5, reg2);
-}
-
-fn format_iv<F: FnOnce(u32)>(f: F, first_halfword: u16, second_halfword: u16, reg_pc: u32) {
-    let disp26 = (((first_halfword as u32) & 0x03ff) << 16) | (second_halfword as u32);
-    let disp = disp26 | if (disp26 & 0x02000000) == 0 { 0x00000000 } else { 0xfc000000 };
-    let target = reg_pc.wrapping_add(disp);
-    f(target);
-}
-
-fn format_v<F: FnOnce(usize, usize, u16)>(f: F, first_halfword: u16, second_halfword: u16) {
-    let reg1 = (first_halfword & 0x1f) as usize;
-    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
-    let imm16 = second_halfword;
-    f(reg1, reg2, imm16);
-}
-
-fn format_vi<F: FnOnce(usize, usize, i16)>(f: F, first_halfword: u16, second_halfword: u16) {
-    let reg1 = (first_halfword & 0x1f) as usize;
-    let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
-    let disp16 = second_halfword as i16;
-    f(reg1, reg2, disp16);
 }
 
 fn sign_extend_imm5(imm5: usize) -> u32 {
