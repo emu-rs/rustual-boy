@@ -49,7 +49,8 @@ enum ObjGroup {
 }
 
 pub struct Vip {
-    vram: Box<[u8]>,
+    _vram: Box<[u8]>,
+    vram_ptr: *mut u8,
 
     display_state: DisplayState,
 
@@ -107,8 +108,10 @@ pub struct Vip {
 
 impl Vip {
     pub fn new() -> Vip {
-        let gamma = 2.2;
+        let mut vram = vec![0; VRAM_LENGTH as usize].into_boxed_slice();
+        let vram_ptr = vram.as_mut_ptr();
 
+        let gamma = 2.2;
         let mut gamma_table = Box::new([0; 256]);
         for (i, entry) in gamma_table.iter_mut().enumerate() {
             let mut value = (((i as f64) / 255.0).powf(1.0 / gamma) * 255.0) as isize;
@@ -123,7 +126,8 @@ impl Vip {
         }
 
         Vip {
-            vram: vec![0; VRAM_LENGTH as usize].into_boxed_slice(),
+            _vram: vram,
+            vram_ptr: vram_ptr,
 
             display_state: DisplayState::Idle,
 
@@ -182,9 +186,7 @@ impl Vip {
 
     pub fn read_byte(&self, addr: u32) -> u8 {
         match map_address(addr) {
-            MappedAddress::Vram(addr) => {
-                self.vram[addr as usize]
-            }
+            MappedAddress::Vram(addr) => self.read_vram_byte(addr),
             MappedAddress::Unrecognized(addr) => {
                 logln!("WARNING: Attempted read byte from unrecognized VIP address (addr: 0x{:08x})", addr);
                 0
@@ -202,9 +204,7 @@ impl Vip {
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         match map_address(addr) {
-            MappedAddress::Vram(addr) => {
-                self.vram[addr as usize] = value;
-            }
+            MappedAddress::Vram(addr) => self.write_vram_byte(addr, value),
             MappedAddress::Unrecognized(addr) => {
                 logln!("WARNING: Attempted write byte to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:02x})", addr, value);
             }
@@ -318,10 +318,7 @@ impl Vip {
             MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2 as _,
             MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3 as _,
             MappedAddress::ClearColorReg => self.reg_clear_color as _,
-            MappedAddress::Vram(addr) => {
-                (self.vram[addr as usize] as u16) |
-                ((self.vram[addr as usize + 1] as u16) << 8)
-            }
+            MappedAddress::Vram(addr) => self.read_vram_halfword(addr),
             MappedAddress::Unrecognized(addr) => {
                 logln!("WARNING: Attempted read halfword from unrecognized VIP address (addr: 0x{:08x})", addr);
                 0
@@ -424,19 +421,37 @@ impl Vip {
             MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2 = value as _,
             MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3 = value as _,
             MappedAddress::ClearColorReg => self.reg_clear_color = (value & 0x03) as _,
-            MappedAddress::Vram(addr) => {
-                self.vram[addr as usize] = value as u8;
-                self.vram[addr as usize + 1] = (value >> 8) as u8;
-            }
+            MappedAddress::Vram(addr) => self.write_vram_halfword(addr, value),
             MappedAddress::Unrecognized(addr) => {
                 logln!("WARNING: Attempted write halfword to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
             }
         }
     }
 
+    fn read_vram_byte(&self, addr: u32) -> u8 {
+        unsafe {
+            *self.vram_ptr.offset(addr as _)
+        }
+    }
+
+    fn write_vram_byte(&mut self, addr: u32, value: u8) {
+        unsafe {
+            *self.vram_ptr.offset(addr as _) = value;
+        }
+    }
+
     fn read_vram_halfword(&self, addr: u32) -> u16 {
-        (self.vram[addr as usize] as u16) |
-        ((self.vram[addr as usize + 1] as u16) << 8)
+        unsafe {
+            (*self.vram_ptr.offset(addr as _) as u16) |
+            ((*self.vram_ptr.offset((addr + 1) as _) as u16) << 8)
+        }
+    }
+
+    fn write_vram_halfword(&mut self, addr: u32, value: u16) {
+        unsafe {
+            *self.vram_ptr.offset(addr as _) = value as _;
+            *self.vram_ptr.offset((addr + 1) as _) = (value >> 8) as _;
+        }
     }
 
     pub fn cycles(&mut self, cycles: usize, video_driver: &mut VideoDriver) -> bool {
@@ -581,17 +596,17 @@ impl Vip {
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
         let clear_pixels = (self.reg_clear_color << 6) | (self.reg_clear_color << 4) | (self.reg_clear_color << 2) | self.reg_clear_color;
-        for i in 0..FRAMEBUFFER_RESOLUTION_X * FRAMEBUFFER_RESOLUTION_Y / 4 {
-            self.vram[left_framebuffer_offset + i] = clear_pixels;
-            self.vram[right_framebuffer_offset + i] = clear_pixels;
+        for i in 0..(FRAMEBUFFER_RESOLUTION_X * FRAMEBUFFER_RESOLUTION_Y / 4) as u32 {
+            self.write_vram_byte(left_framebuffer_offset + i, clear_pixels);
+            self.write_vram_byte(right_framebuffer_offset + i, clear_pixels);
         }
         let last_clear_pixels = (self.last_clear_color << 6) | (self.last_clear_color << 4) | (self.last_clear_color << 2) | self.last_clear_color;
         for x in 0..FRAMEBUFFER_RESOLUTION_X {
-            let x_offset = x * FRAMEBUFFER_RESOLUTION_Y / 4;
-            self.vram[left_framebuffer_offset + x_offset] = last_clear_pixels;
-            self.vram[left_framebuffer_offset + x_offset + 1] = last_clear_pixels;
-            self.vram[right_framebuffer_offset + x_offset] = last_clear_pixels;
-            self.vram[right_framebuffer_offset + x_offset + 1] = last_clear_pixels;
+            let x_offset = (x * FRAMEBUFFER_RESOLUTION_Y / 4) as u32;
+            self.write_vram_byte(left_framebuffer_offset + x_offset, last_clear_pixels);
+            self.write_vram_byte(left_framebuffer_offset + x_offset + 1, last_clear_pixels);
+            self.write_vram_byte(right_framebuffer_offset + x_offset, last_clear_pixels);
+            self.write_vram_byte(right_framebuffer_offset + x_offset + 1, last_clear_pixels);
         }
         self.last_clear_color = self.reg_clear_color;
 
@@ -889,7 +904,7 @@ impl Vip {
     }
 
     #[inline(always)]
-    fn draw_background_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, segment_base: u32, segments_x: u32, segments_y: u32, background_x: u32, background_y: u32, out_of_bounds: bool, out_of_bounds_char_entry: u16) {
+    fn draw_background_pixel(&mut self, framebuffer_offset: u32, pixel_x: u32, pixel_y: u32, segment_base: u32, segments_x: u32, segments_y: u32, background_x: u32, background_y: u32, out_of_bounds: bool, out_of_bounds_char_entry: u16) {
         let background_width = segments_x * 512;
         let background_height = segments_y * 512;
 
@@ -912,7 +927,7 @@ impl Vip {
     }
 
     #[inline(always)]
-    fn draw_segment_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, segment_offset: u32, segment_x: u32, segment_y: u32) {
+    fn draw_segment_pixel(&mut self, framebuffer_offset: u32, pixel_x: u32, pixel_y: u32, segment_offset: u32, segment_x: u32, segment_y: u32) {
         let offset_x = segment_x & 0x07;
         let offset_y = segment_y & 0x07;
 
@@ -926,7 +941,7 @@ impl Vip {
     }
 
     #[inline(always)]
-    fn draw_char_entry_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, offset_x: u32, offset_y: u32, char_entry: u16) {
+    fn draw_char_entry_pixel(&mut self, framebuffer_offset: u32, pixel_x: u32, pixel_y: u32, offset_x: u32, offset_y: u32, char_entry: u16) {
         let pal = (char_entry >> 14) & 0x03;
         let horizontal_flip = (char_entry & 0x2000) != 0;
         let vertical_flip = (char_entry & 0x1000) != 0;
@@ -943,7 +958,7 @@ impl Vip {
     }
 
     #[inline(always)]
-    fn draw_char_pixel(&mut self, framebuffer_offset: usize, pixel_x: u32, pixel_y: u32, offset_x: u32, offset_y: u32, char_index: u32, horizontal_flip: bool, vertical_flip: bool, palette: u8) {
+    fn draw_char_pixel(&mut self, framebuffer_offset: u32, pixel_x: u32, pixel_y: u32, offset_x: u32, offset_y: u32, char_index: u32, horizontal_flip: bool, vertical_flip: bool, palette: u8) {
         let offset_x = if horizontal_flip { 7 - offset_x } else { offset_x };
         let offset_y = if vertical_flip { 7 - offset_y } else { offset_y };
 
@@ -967,20 +982,22 @@ impl Vip {
 
         let color = (palette >> (palette_index * 2)) & 0x03;
 
-        let framebuffer_byte_index = ((pixel_x as usize) * FRAMEBUFFER_RESOLUTION_Y + (pixel_y as usize)) / 4;
+        let framebuffer_byte_index = (pixel_x * (FRAMEBUFFER_RESOLUTION_Y as u32) + pixel_y) / 4;
         let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
         let framebuffer_byte_mask = 0x03 << framebuffer_byte_shift;
-        let mut framebuffer_byte = self.vram[framebuffer_offset + framebuffer_byte_index];
+        let mut framebuffer_byte = self.read_vram_byte(framebuffer_offset + framebuffer_byte_index);
         framebuffer_byte = (framebuffer_byte & !framebuffer_byte_mask) | (color << framebuffer_byte_shift);
-        self.vram[framebuffer_offset + framebuffer_byte_index] = framebuffer_byte;
+        self.write_vram_byte(framebuffer_offset + framebuffer_byte_index, framebuffer_byte);
     }
 
     fn display(&mut self, video_driver: &mut VideoDriver) {
         let left_framebuffer_offset = if self.display_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
-        let mut left_buffer = vec![0; DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y];
-        let mut right_buffer = vec![0; DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y];
+        let mut left_buffer = vec![0; DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y].into_boxed_slice();
+        let mut right_buffer = vec![0; DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y].into_boxed_slice();
+        let left_buffer_ptr = left_buffer.as_mut_ptr();
+        let right_buffer_ptr = right_buffer.as_mut_ptr();
 
         if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
             let mut brightness_1_index = (self.reg_led_brightness_1 as usize) * 2;
@@ -999,31 +1016,33 @@ impl Vip {
             let brightness_2 = self.gamma_table[brightness_2_index] as u32;
             let brightness_3 = self.gamma_table[brightness_3_index] as u32;
 
-            for pixel_x in 0..DISPLAY_RESOLUTION_X as usize {
-                for pixel_y in 0..DISPLAY_RESOLUTION_Y as usize {
-                    let framebuffer_byte_index = (pixel_x * FRAMEBUFFER_RESOLUTION_Y + pixel_y) / 4;
-                    let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
-                    let left_color = (self.vram[left_framebuffer_offset + framebuffer_byte_index] >> framebuffer_byte_shift) & 0x03;
-                    let right_color = (self.vram[right_framebuffer_offset + framebuffer_byte_index] >> framebuffer_byte_shift) & 0x03;
-                    let left_brightness = match left_color {
-                        0 => 0,
-                        1 => brightness_1,
-                        2 => brightness_2,
-                        _ => brightness_3
-                    } as u8;
-                    let right_brightness = match right_color {
-                        0 => 0,
-                        1 => brightness_1,
-                        2 => brightness_2,
-                        _ => brightness_3
-                    } as u8;
-                    let buffer_index = pixel_y * DISPLAY_RESOLUTION_X + pixel_x;
-                    left_buffer[buffer_index] = left_brightness;
-                    right_buffer[buffer_index] = right_brightness;
+            unsafe {
+                for pixel_x in 0..DISPLAY_RESOLUTION_X as u32 {
+                    for pixel_y in 0..DISPLAY_RESOLUTION_Y as u32 {
+                        let framebuffer_byte_index = (pixel_x * (FRAMEBUFFER_RESOLUTION_Y as u32) + pixel_y) / 4;
+                        let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
+                        let left_color = (self.read_vram_byte(left_framebuffer_offset + framebuffer_byte_index) >> framebuffer_byte_shift) & 0x03;
+                        let right_color = (self.read_vram_byte(right_framebuffer_offset + framebuffer_byte_index) >> framebuffer_byte_shift) & 0x03;
+                        let left_brightness = match left_color {
+                            0 => 0,
+                            1 => brightness_1,
+                            2 => brightness_2,
+                            _ => brightness_3
+                        } as u8;
+                        let right_brightness = match right_color {
+                            0 => 0,
+                            1 => brightness_1,
+                            2 => brightness_2,
+                            _ => brightness_3
+                        } as u8;
+                        let buffer_index = pixel_y * (DISPLAY_RESOLUTION_X as u32) + pixel_x;
+                        *left_buffer_ptr.offset(buffer_index as _) = left_brightness;
+                        *right_buffer_ptr.offset(buffer_index as _) = right_brightness;
+                    }
                 }
             }
         }
 
-        video_driver.output_frame((left_buffer.into_boxed_slice(), right_buffer.into_boxed_slice()));
+        video_driver.output_frame((left_buffer, right_buffer));
     }
 }
