@@ -270,76 +270,6 @@ impl Opcode {
             _ => panic!("Unrecognized condition: {}", imm5),
         }
     }
-
-    pub fn num_cycles(&self, branch_taken: bool) -> usize {
-        match self {
-            &Opcode::MovReg => 1,
-            &Opcode::AddReg => 1,
-            &Opcode::Sub => 1,
-            &Opcode::CmpReg => 1,
-            &Opcode::ShlReg => 1,
-            &Opcode::ShrReg => 1,
-            &Opcode::Jmp => 3,
-            &Opcode::SarReg => 1,
-            &Opcode::Mul => 13,
-            &Opcode::Div => 38,
-            &Opcode::MulU => 13,
-            &Opcode::DivU => 36,
-            &Opcode::Or => 1,
-            &Opcode::And => 1,
-            &Opcode::Xor => 1,
-            &Opcode::Not => 1,
-            &Opcode::MovImm => 1,
-            &Opcode::AddImm5 => 1,
-            &Opcode::Setf => 1,
-            &Opcode::CmpImm => 1,
-            &Opcode::ShlImm => 1,
-            &Opcode::ShrImm => 1,
-            &Opcode::Cli => 1,
-            &Opcode::SarImm => 1,
-            &Opcode::Reti => 10,
-            &Opcode::Ldsr => 1,
-            &Opcode::Stsr => 1,
-            &Opcode::Sei => 1,
-            &Opcode::Bv |
-            &Opcode::Bc |
-            &Opcode::Bz |
-            &Opcode::Bnh |
-            &Opcode::Bn |
-            &Opcode::Blt |
-            &Opcode::Ble |
-            &Opcode::Bnv |
-            &Opcode::Bnc |
-            &Opcode::Bnz |
-            &Opcode::Bh |
-            &Opcode::Bp |
-            &Opcode::Bge |
-            &Opcode::Bgt => if branch_taken { 3 } else { 1 },
-            &Opcode::Br => 3,
-            &Opcode::Nop => 1,
-            &Opcode::Movea => 1,
-            &Opcode::AddImm16 => 1,
-            &Opcode::Jr => 3,
-            &Opcode::Jal => 3,
-            &Opcode::OrI => 1,
-            &Opcode::AndI => 1,
-            &Opcode::XorI => 1,
-            &Opcode::Movhi => 1,
-            &Opcode::Ldb => 4,
-            &Opcode::Ldh => 4,
-            &Opcode::Ldw => 4,
-            &Opcode::Stb => 4,
-            &Opcode::Sth => 4,
-            &Opcode::Stw => 4,
-            &Opcode::Inb => 4,
-            &Opcode::Inh => 4,
-            &Opcode::Inw => 4,
-            &Opcode::Outb => 4,
-            &Opcode::Outh => 4,
-            &Opcode::Extended => unreachable!(), // TODO: Better pattern
-            &Opcode::Outw => 4,
-        }
-    }
 }
 
 impl fmt::Display for Opcode {
@@ -445,24 +375,6 @@ pub enum SubOp {
     Xh,
     TrncSw,
     Mpyhw,
-}
-
-impl SubOp {
-    pub fn num_cycles(&self) -> usize {
-        match self {
-            &SubOp::CmpfS => 10,
-            &SubOp::CvtWs => 16,
-            &SubOp::CvtSw => 14,
-            &SubOp::AddfS => 28,
-            &SubOp::SubfS => 28,
-            &SubOp::MulfS => 30,
-            &SubOp::DivfS => 44,
-            &SubOp::Xb => 1,
-            &SubOp::Xh => 1,
-            &SubOp::TrncSw => 14,
-            &SubOp::Mpyhw => 1,
-        }
-    }
 }
 
 impl fmt::Display for SubOp {

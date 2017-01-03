@@ -158,6 +158,7 @@ impl Nvc {
             0
         };
 
+        let mut num_cycles = 1;
         let mut trigger_watchpoint = false;
 
         // TODO: Not too convinced of this pattern, but we'll see what else we
@@ -199,6 +200,7 @@ impl Nvc {
             }, first_halfword),
             Opcode::Jmp => format_i(|reg1, _| {
                 next_pc = self.reg_gpr(reg1);
+                num_cycles = 3;
             }, first_halfword),
             Opcode::SarReg => format_i(|reg1, reg2| {
                 let lhs = self.reg_gpr(reg2);
@@ -217,6 +219,7 @@ impl Nvc {
                 self.set_reg_gpr(reg2, res_low);
                 self.set_zero_sign_flags(res_low);
                 self.psw_overflow = overflow;
+                num_cycles = 13;
             }, first_halfword),
             Opcode::Div => format_i(|reg1, reg2| {
                 let lhs = self.reg_gpr(reg2);
@@ -234,6 +237,7 @@ impl Nvc {
                 self.set_reg_gpr(reg2, res);
                 self.set_zero_sign_flags(res);
                 self.psw_overflow = overflow;
+                num_cycles = 38;
             }, first_halfword),
             Opcode::MulU => format_i(|reg1, reg2| {
                 let lhs = self.reg_gpr(reg2) as u64;
@@ -246,6 +250,7 @@ impl Nvc {
                 self.set_reg_gpr(reg2, res_low);
                 self.set_zero_sign_flags(res_low);
                 self.psw_overflow = overflow;
+                num_cycles = 13;
             }, first_halfword),
             Opcode::DivU => format_i(|reg1, reg2| {
                 let lhs = self.reg_gpr(reg2);
@@ -256,6 +261,7 @@ impl Nvc {
                 self.set_reg_gpr(reg2, res);
                 self.set_zero_sign_flags(res);
                 self.psw_overflow = false;
+                num_cycles = 36;
             }, first_halfword),
             Opcode::Or => format_i(|reg1, reg2| {
                 let lhs = self.reg_gpr(reg2);
@@ -347,6 +353,7 @@ impl Nvc {
             }, first_halfword),
             Opcode::Reti => format_ii(|_, _| {
                 next_pc = self.return_from_exception();
+                num_cycles = 10;
             }, first_halfword),
             Opcode::Ldsr => format_ii(|imm5, reg2| {
                 let value = self.reg_gpr(reg2);
@@ -458,10 +465,12 @@ impl Nvc {
             }, first_halfword, second_halfword),
             Opcode::Jr => format_iv(|target| {
                 next_pc = target;
+                num_cycles = 3;
             }, first_halfword, second_halfword, original_pc),
             Opcode::Jal => format_iv(|target| {
                 self.set_reg_gpr(31, original_pc.wrapping_add(4));
                 next_pc = target;
+                num_cycles = 3;
             }, first_halfword, second_halfword, original_pc),
             Opcode::OrI => format_v(|reg1, reg2, imm16| {
                 let lhs = self.reg_gpr(reg1);
@@ -496,30 +505,35 @@ impl Nvc {
                 trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = (interconnect.read_byte(addr) as i8) as u32;
                 self.set_reg_gpr(reg2, value);
+                num_cycles = 4;
             }, first_halfword, second_halfword),
             Opcode::Ldh => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                 trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = (interconnect.read_halfword(addr) as i16) as u32;
                 self.set_reg_gpr(reg2, value);
+                num_cycles = 4;
             }, first_halfword, second_halfword),
             Opcode::Ldw | Opcode::Inw => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                 trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = (interconnect.read_halfword(addr) as u32) | ((interconnect.read_halfword(addr + 2) as u32) << 16);
                 self.set_reg_gpr(reg2, value);
+                num_cycles = 4;
             }, first_halfword, second_halfword),
             Opcode::Stb | Opcode::Outb => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                 trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = self.reg_gpr(reg2) as u8;
                 interconnect.write_byte(addr, value);
+                num_cycles = 4;
             }, first_halfword, second_halfword),
             Opcode::Sth | Opcode::Outh => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                 trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = self.reg_gpr(reg2) as u16;
                 interconnect.write_halfword(addr, value);
+                num_cycles = 4;
             }, first_halfword, second_halfword),
             Opcode::Stw | Opcode::Outw => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
@@ -527,18 +541,21 @@ impl Nvc {
                 let value = self.reg_gpr(reg2);
                 interconnect.write_halfword(addr, value as _);
                 interconnect.write_halfword(addr + 2, (value >> 16) as _);
+                num_cycles = 4;
             }, first_halfword, second_halfword),
             Opcode::Inb => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                 trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = interconnect.read_byte(addr) as u32;
                 self.set_reg_gpr(reg2, value);
+                num_cycles = 4;
             }, first_halfword, second_halfword),
             Opcode::Inh => format_vi(|reg1, reg2, disp16| {
                 let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                 trigger_watchpoint |= self.check_watchpoints(addr);
                 let value = interconnect.read_halfword(addr) as u32;
                 self.set_reg_gpr(reg2, value);
+                num_cycles = 4;
             }, first_halfword, second_halfword),
             Opcode::Extended => {
                 let reg1 = (first_halfword & 0x1f) as usize;
@@ -555,12 +572,16 @@ impl Nvc {
                         let value = lhs - rhs;
 
                         self.set_fp_flags(value);
+
+                        num_cycles = 10;
                     }
                     SubOp::CvtWs => {
                         let value = (self.reg_gpr(reg1) as i32) as f32;
                         self.set_reg_gpr_float(reg2, value);
 
                         self.set_fp_flags(value);
+
+                        num_cycles = 16;
                     }
                     SubOp::CvtSw => {
                         let value = (self.reg_gpr_float(reg1).round() as i32) as u32;
@@ -568,6 +589,8 @@ impl Nvc {
 
                         self.psw_overflow = false;
                         self.set_zero_sign_flags(value);
+
+                        num_cycles = 14;
                     }
                     SubOp::AddfS => {
                         let lhs = self.reg_gpr_float(reg2);
@@ -576,6 +599,8 @@ impl Nvc {
                         self.set_reg_gpr_float(reg2, value);
 
                         self.set_fp_flags(value);
+
+                        num_cycles = 28;
                     }
                     SubOp::SubfS => {
                         let lhs = self.reg_gpr_float(reg2);
@@ -584,6 +609,8 @@ impl Nvc {
                         self.set_reg_gpr_float(reg2, value);
 
                         self.set_fp_flags(value);
+
+                        num_cycles = 28;
                     }
                     SubOp::MulfS => {
                         let lhs = self.reg_gpr_float(reg2);
@@ -592,6 +619,8 @@ impl Nvc {
                         self.set_reg_gpr_float(reg2, value);
 
                         self.set_fp_flags(value);
+
+                        num_cycles = 30;
                     }
                     SubOp::DivfS => {
                         let lhs = self.reg_gpr_float(reg2);
@@ -600,6 +629,8 @@ impl Nvc {
                         self.set_reg_gpr_float(reg2, value);
 
                         self.set_fp_flags(value);
+
+                        num_cycles = 44;
                     }
                     SubOp::Xb => {
                         let original = self.reg_gpr(reg2);
@@ -617,6 +648,8 @@ impl Nvc {
 
                         self.psw_overflow = false;
                         self.set_zero_sign_flags(value);
+
+                        num_cycles = 14;
                     }
                     SubOp::Mpyhw => {
                         let lhs = (self.reg_gpr(reg2) as i16) as i32;
@@ -632,20 +665,10 @@ impl Nvc {
             let disp9 = first_halfword & 0x01ff;
             let disp = (disp9 as u32) | if disp9 & 0x0100 == 0 { 0x00000000 } else { 0xfffffe00 };
             next_pc = self.reg_pc.wrapping_add(disp);
+            num_cycles = 3;
         }
 
         self.reg_pc = next_pc;
-
-        let num_cycles = match opcode.instruction_format() {
-            InstructionFormat::VII => {
-                let subop_bits = second_halfword >> 10;
-
-                let subop = opcode.subop(subop_bits as _);
-
-                subop.num_cycles()
-            }
-            _ => opcode.num_cycles(take_branch)
-        };
 
         if let Some(exception_code) = interconnect.cycles(num_cycles, video_driver) {
             self.request_exception(exception_code);
