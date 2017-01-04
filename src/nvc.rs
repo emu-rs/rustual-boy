@@ -459,7 +459,7 @@ impl Nvc {
                         OPCODE_SYSTEM_REGISTER_ID_CHCW => {
                             logln!("WARNING: ldsr chcw not yet implemented (value: 0x{:08x})", value);
                         }
-                        _ => panic!("Unrecognized system register: {}", imm5),
+                        _ => logln!("WARNING: Unrecognized system register: {}", imm5),
                     }
                 }),
                 OPCODE_BITS_STSR => format_ii!(|imm5, reg2| {
@@ -483,7 +483,10 @@ impl Nvc {
                             logln!("WARNING: stsr chcw not yet implemented");
                             0
                         }
-                        _ => panic!("Unrecognized system register: {}", imm5),
+                        _ => {
+                            logln!("WARNING: Unrecognized system register: {}", imm5);
+                            0
+                        }
                     };
                     self.set_reg_gpr(reg2, value);
                 }),

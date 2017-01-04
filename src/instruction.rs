@@ -351,7 +351,7 @@ impl Opcode {
             OPCODE_SYSTEM_REGISTER_ID_ECR => SystemRegister::Ecr,
             OPCODE_SYSTEM_REGISTER_ID_PSW => SystemRegister::Psw,
             OPCODE_SYSTEM_REGISTER_ID_CHCW => SystemRegister::Chcw,
-            _ => panic!("Unrecognized system register: {}", imm5),
+            _ => SystemRegister::Unknown(imm5),
         }
     }
 }
@@ -487,20 +487,21 @@ pub enum SystemRegister {
     Fepsw,
     Ecr,
     Psw,
-    Chcw
+    Chcw,
+    Unknown(usize),
 }
 
 impl fmt::Display for SystemRegister {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mnemonic = match self {
-            &SystemRegister::Eipc => "eipc",
-            &SystemRegister::Eipsw => "eipsw",
-            &SystemRegister::Fepc => "fepc",
-            &SystemRegister::Fepsw => "fepsw",
-            &SystemRegister::Ecr => "ecr",
-            &SystemRegister::Psw => "psw",
-            &SystemRegister::Chcw => "chcw",
-        };
-        write!(f, "{}", mnemonic)
+        match self {
+            &SystemRegister::Eipc => write!(f, "{}", "eipc"),
+            &SystemRegister::Eipsw => write!(f, "{}", "eipsw"),
+            &SystemRegister::Fepc => write!(f, "{}", "fepc"),
+            &SystemRegister::Fepsw => write!(f, "{}", "fepsw"),
+            &SystemRegister::Ecr => write!(f, "{}", "ecr"),
+            &SystemRegister::Psw => write!(f, "{}", "psw"),
+            &SystemRegister::Chcw => write!(f, "{}", "chcw"),
+            &SystemRegister::Unknown(imm5) => write!(f, "??? ({})", imm5),
+        }
     }
 }
