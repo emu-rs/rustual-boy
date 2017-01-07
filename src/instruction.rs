@@ -44,6 +44,7 @@ pub const OPCODE_BITS_SHR_IMM: u16 = 0b010101;
 pub const OPCODE_BITS_CLI: u16 = 0b010110;
 pub const OPCODE_BITS_SAR_IMM: u16 = 0b010111;
 pub const OPCODE_BITS_RETI: u16 = 0b011001;
+pub const OPCODE_BITS_HALT: u16 = 0b011010;
 pub const OPCODE_BITS_LDSR: u16 = 0b011100;
 pub const OPCODE_BITS_STSR: u16 = 0b011101;
 pub const OPCODE_BITS_SEI: u16 = 0b011110;
@@ -133,6 +134,7 @@ pub enum Opcode {
     Cli,
     SarImm,
     Reti,
+    Halt,
     Ldsr,
     Stsr,
     Sei,
@@ -226,6 +228,7 @@ impl Opcode {
                 OPCODE_BITS_CLI => Opcode::Cli,
                 OPCODE_BITS_SAR_IMM => Opcode::SarImm,
                 OPCODE_BITS_RETI => Opcode::Reti,
+                OPCODE_BITS_HALT => Opcode::Halt,
                 OPCODE_BITS_LDSR => Opcode::Ldsr,
                 OPCODE_BITS_STSR => Opcode::Stsr,
                 OPCODE_BITS_SEI => Opcode::Sei,
@@ -282,6 +285,7 @@ impl Opcode {
             &Opcode::Cli => InstructionFormat::II,
             &Opcode::SarImm => InstructionFormat::II,
             &Opcode::Reti => InstructionFormat::II,
+            &Opcode::Halt => InstructionFormat::II,
             &Opcode::Ldsr => InstructionFormat::II,
             &Opcode::Stsr => InstructionFormat::II,
             &Opcode::Sei => InstructionFormat::II,
@@ -378,6 +382,7 @@ impl fmt::Display for Opcode {
             &Opcode::Setf => "setf",
             &Opcode::Cli => "cli",
             &Opcode::Reti => "reti",
+            &Opcode::Halt => "halt",
             &Opcode::Ldsr => "ldsr",
             &Opcode::Stsr => "stsr",
             &Opcode::Sei => "sei",

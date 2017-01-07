@@ -437,6 +437,9 @@ impl Nvc {
                     next_pc = self.return_from_exception();
                     num_cycles = 10;
                 }),
+                OPCODE_BITS_HALT => format_ii!(|_, _| {
+                    next_pc = original_pc;
+                }),
                 OPCODE_BITS_LDSR => format_ii!(|imm5, reg2| {
                     let value = self.reg_gpr(reg2);
                     match imm5 {

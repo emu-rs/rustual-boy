@@ -349,7 +349,7 @@ impl Emulator {
                 let imm5 = (first_halfword & 0x1f) as usize;
                 let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
                 match opcode {
-                    Opcode::Cli | Opcode::Reti | Opcode::Sei => println!("{}", opcode),
+                    Opcode::Cli | Opcode::Reti | Opcode::Halt | Opcode::Sei => println!("{}", opcode),
                     Opcode::Ldsr | Opcode::Stsr => println!("{} r{}, {}", opcode, reg2, opcode.system_register(imm5)),
                     _ => println!("{} {}, r{}", opcode, imm5, reg2)
                 }
