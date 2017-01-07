@@ -683,6 +683,8 @@ impl Nvc {
                             let original = self.reg_gpr(reg2);
                             let value = (original & 0xffff0000) | ((original & 0x0000ff00) >> 8) | ((original & 0x000000ff) << 8);
                             self.set_reg_gpr(reg2, value);
+
+                            num_cycles = 6;
                         }
                         OPCODE_BITS_SUB_OP_XH => {
                             let original = self.reg_gpr(reg2);
