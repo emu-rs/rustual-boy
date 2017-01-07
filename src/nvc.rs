@@ -695,10 +695,12 @@ impl Nvc {
                             num_cycles = 14;
                         }
                         OPCODE_BITS_SUB_OP_MPYHW => {
-                            let lhs = (self.reg_gpr(reg2) as i16) as i32;
-                            let rhs = (self.reg_gpr(reg1) as i16) as i32;
+                            let lhs = self.reg_gpr(reg2) as i32;
+                            let rhs = ((self.reg_gpr(reg1) as i32) << 15) >> 15;
                             let value = (lhs * rhs) as u32;
                             self.set_reg_gpr(reg2, value);
+
+                            num_cycles = 9;
                         }
                         _ => panic!("Unrecognized subop bits: {:06b}", subop_bits)
                     }
