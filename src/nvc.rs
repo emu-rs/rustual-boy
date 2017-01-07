@@ -426,6 +426,8 @@ impl Nvc {
                 }),
                 OPCODE_BITS_CLI => format_ii!(|_, _| {
                     self.psw_interrupt_disable = false;
+
+                    num_cycles = 12;
                 }),
                 OPCODE_BITS_SAR_IMM => format_ii!(|imm5, reg2| {
                     let lhs = self.reg_gpr(reg2);
@@ -495,6 +497,8 @@ impl Nvc {
                 }),
                 OPCODE_BITS_SEI => format_ii!(|_, _| {
                     self.psw_interrupt_disable = true;
+
+                    num_cycles = 12;
                 }),
                 OPCODE_BITS_MOVEA => format_v!(|reg1, reg2, imm16| {
                     let res = self.reg_gpr(reg1).wrapping_add((imm16 as i16) as u32);
