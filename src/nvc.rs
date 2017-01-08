@@ -171,7 +171,7 @@ impl Nvc {
                 OPCODE_BITS_BCOND_BV => self.psw_overflow,
                 OPCODE_BITS_BCOND_BC => self.psw_carry,
                 OPCODE_BITS_BCOND_BZ => self.psw_zero,
-                OPCODE_BITS_BCOND_BNH => self.psw_carry | self.psw_zero,
+                OPCODE_BITS_BCOND_BNH => self.psw_carry || self.psw_zero,
                 OPCODE_BITS_BCOND_BN => self.psw_sign,
                 OPCODE_BITS_BCOND_BR => true,
                 OPCODE_BITS_BCOND_BLT => self.psw_sign != self.psw_overflow,
@@ -215,7 +215,7 @@ impl Nvc {
                     let second_halfword = interconnect.read_halfword(next_pc);
                     next_pc = next_pc.wrapping_add(2);
 
-                    let disp = (((((first_halfword as i16) << 6) >> 6) as u32) << 16) | (second_halfword as u32);
+                    let disp = ((((((first_halfword as i16) << 6) >> 6) as u32) << 16) | (second_halfword as u32)) & 0xfffffffe;
                     let target = self.reg_pc.wrapping_add(disp);
                     $f(target);
                 })
@@ -280,7 +280,7 @@ impl Nvc {
                     self.set_reg_gpr(reg2, res);
                 }),
                 OPCODE_BITS_JMP => format_i!(|reg1, _| {
-                    next_pc = self.reg_gpr(reg1);
+                    next_pc = self.reg_gpr(reg1) & 0xfffffffe;
                     num_cycles = 3;
                 }),
                 OPCODE_BITS_SAR_REG => format_i!(|reg1, reg2| {
@@ -295,7 +295,7 @@ impl Nvc {
                     let res = (lhs * rhs) as u64;
                     let res_low = res as u32;
                     let res_high = (res >> 32) as u32;
-                    let overflow = res != (res_low as i32) as u64;
+                    let overflow = res != ((res_low as i32) as u64);
                     self.set_reg_gpr(30, res_high);
                     self.set_reg_gpr(reg2, res_low);
                     self.set_zero_sign_flags(res_low);
@@ -326,7 +326,7 @@ impl Nvc {
                     let res = lhs * rhs;
                     let res_low = res as u32;
                     let res_high = (res >> 32) as u32;
-                    let overflow = res != res_low as u64;
+                    let overflow = res != (res_low as u64);
                     self.set_reg_gpr(30, res_high);
                     self.set_reg_gpr(reg2, res_low);
                     self.set_zero_sign_flags(res_low);
@@ -384,7 +384,7 @@ impl Nvc {
                     self.add(lhs, rhs, reg2);
                 }),
                 OPCODE_BITS_SETF => format_ii!(|imm5, reg2| {
-                    let set = match imm5 {
+                    let set = match imm5 & 0xffff {
                         OPCODE_CONDITION_BITS_V => self.psw_overflow,
                         OPCODE_CONDITION_BITS_C => self.psw_carry,
                         OPCODE_CONDITION_BITS_Z => self.psw_zero,
@@ -496,7 +496,9 @@ impl Nvc {
                     num_cycles = 12;
                 }),
                 OPCODE_BITS_MOVEA => format_v!(|reg1, reg2, imm16| {
-                    let res = self.reg_gpr(reg1).wrapping_add((imm16 as i16) as u32);
+                    let lhs = self.reg_gpr(reg1);
+                    let rhs = (imm16 as i16) as u32;
+                    let res = lhs.wrapping_add(rhs);
                     self.set_reg_gpr(reg2, res);
                 }),
                 OPCODE_BITS_ADD_IMM_16 => format_v!(|reg1, reg2, imm16| {
@@ -538,7 +540,9 @@ impl Nvc {
                     self.psw_overflow = false;
                 }),
                 OPCODE_BITS_MOVHI => format_v!(|reg1, reg2, imm16| {
-                    let res = self.reg_gpr(reg1).wrapping_add((imm16 as u32) << 16);
+                    let lhs = self.reg_gpr(reg1);
+                    let rhs = (imm16 as u32) << 16;
+                    let res = lhs.wrapping_add(rhs);
                     self.set_reg_gpr(reg2, res);
                 }),
                 OPCODE_BITS_LDB => format_vi!(|reg1, reg2, disp16| {
@@ -550,6 +554,7 @@ impl Nvc {
                 }),
                 OPCODE_BITS_LDH => format_vi!(|reg1, reg2, disp16| {
                     let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    let addr = addr & 0xfffffffe;
                     trigger_watchpoint |= self.check_watchpoints(addr);
                     let value = (interconnect.read_halfword(addr) as i16) as u32;
                     self.set_reg_gpr(reg2, value);
@@ -572,6 +577,7 @@ impl Nvc {
                 }),
                 OPCODE_BITS_STH | OPCODE_BITS_OUTH => format_vi!(|reg1, reg2, disp16| {
                     let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    let addr = addr & 0xfffffffe;
                     trigger_watchpoint |= self.check_watchpoints(addr);
                     let value = self.reg_gpr(reg2) as u16;
                     interconnect.write_halfword(addr, value);
@@ -595,6 +601,7 @@ impl Nvc {
                 }),
                 OPCODE_BITS_INH => format_vi!(|reg1, reg2, disp16| {
                     let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    let addr = addr & 0xfffffffe;
                     trigger_watchpoint |= self.check_watchpoints(addr);
                     let value = interconnect.read_halfword(addr) as u32;
                     self.set_reg_gpr(reg2, value);
@@ -818,5 +825,5 @@ impl Nvc {
 }
 
 fn sign_extend_imm5(imm5: usize) -> u32 {
-    (imm5 as u32) | (if (imm5 & 0x10) == 0 { 0x00000000 } else { 0xffffffe0 })
+    (((imm5 as i32) << 27) >> 27) as _
 }
