@@ -188,8 +188,7 @@ impl Nvc {
             };
 
             if take_branch {
-                let disp9 = first_halfword & 0x01ff;
-                let disp = (disp9 as u32) | if disp9 & 0x0100 == 0 { 0x00000000 } else { 0xfffffe00 };
+                let disp = (((first_halfword as i16) << 7) >> 7) as u32;
                 next_pc = self.reg_pc.wrapping_add(disp);
                 num_cycles = 3;
             }
@@ -216,8 +215,7 @@ impl Nvc {
                     let second_halfword = interconnect.read_halfword(next_pc);
                     next_pc = next_pc.wrapping_add(2);
 
-                    let disp26 = (((first_halfword as u32) & 0x03ff) << 16) | (second_halfword as u32);
-                    let disp = disp26 | if (disp26 & 0x02000000) == 0 { 0x00000000 } else { 0xfc000000 };
+                    let disp = (((((first_halfword as i16) << 6) >> 6) as u32) << 16) | (second_halfword as u32);
                     let target = self.reg_pc.wrapping_add(disp);
                     $f(target);
                 })
