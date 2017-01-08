@@ -456,7 +456,7 @@ impl Nvc {
                             logln!("WARNING: ldsr fepsw not yet implemented (value: 0x{:08x})", value);
                         }
                         OPCODE_SYSTEM_REGISTER_ID_ECR => {
-                            logln!("WARNING: Attempted ldsr ecr (value: 0x{:08x})", value);
+                            self.reg_ecr = value as _;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_PSW => self.set_reg_psw(value),
                         OPCODE_SYSTEM_REGISTER_ID_CHCW => {
@@ -477,10 +477,7 @@ impl Nvc {
                             logln!("WARNING: stsr fepsw not yet implemented");
                             0
                         }
-                        OPCODE_SYSTEM_REGISTER_ID_ECR => {
-                            logln!("WARNING: stsr ecr not yet implemented");
-                            0
-                        }
+                        OPCODE_SYSTEM_REGISTER_ID_ECR => self.reg_ecr as _,
                         OPCODE_SYSTEM_REGISTER_ID_PSW => self.reg_psw(),
                         OPCODE_SYSTEM_REGISTER_ID_CHCW => {
                             logln!("WARNING: stsr chcw not yet implemented");
