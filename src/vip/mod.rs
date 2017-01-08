@@ -185,12 +185,17 @@ impl Vip {
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {
-        match map_address(addr) {
-            MappedAddress::Vram(addr) => self.read_vram_byte(addr),
-            MappedAddress::Unrecognized(addr) => {
-                logln!("WARNING: Attempted read byte from unrecognized VIP address (addr: 0x{:08x})", addr);
-                0
-            }
+        let addr = addr & 0x0007ffff;
+        match addr {
+            VRAM_START ... VRAM_END => self.read_vram_byte(addr - VRAM_START),
+            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
+                self.read_vram_byte(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START),
+            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ... CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
+                self.read_vram_byte(addr - CHR_RAM_PATTERN_TABLE_1_MIRROR_START + CHR_RAM_PATTERN_TABLE_1_START),
+            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ... CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
+                self.read_vram_byte(addr - CHR_RAM_PATTERN_TABLE_2_MIRROR_START + CHR_RAM_PATTERN_TABLE_2_START),
+            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
+                self.read_vram_byte(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START),
             _ => {
                 let halfword = self.read_halfword(addr & 0xfffffffe);
                 if (addr & 0x01) == 0 {
@@ -203,11 +208,17 @@ impl Vip {
     }
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
-        match map_address(addr) {
-            MappedAddress::Vram(addr) => self.write_vram_byte(addr, value),
-            MappedAddress::Unrecognized(addr) => {
-                logln!("WARNING: Attempted write byte to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:02x})", addr, value);
-            }
+        let addr = addr & 0x0007ffff;
+        match addr {
+            VRAM_START ... VRAM_END => self.write_vram_byte(addr - VRAM_START, value),
+            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
+                self.write_vram_byte(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START, value),
+            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ... CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
+                self.write_vram_byte(addr - CHR_RAM_PATTERN_TABLE_1_MIRROR_START + CHR_RAM_PATTERN_TABLE_1_START, value),
+            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ... CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
+                self.write_vram_byte(addr - CHR_RAM_PATTERN_TABLE_2_MIRROR_START + CHR_RAM_PATTERN_TABLE_2_START, value),
+            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
+                self.write_vram_byte(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START, value),
             _ => {
                 let halfword = if (addr & 0x01) == 0 {
                     value as _
@@ -220,9 +231,11 @@ impl Vip {
     }
 
     pub fn read_halfword(&self, addr: u32) -> u16 {
+        let addr = addr & 0x0007ffff;
         let addr = addr & 0xfffffffe;
-        match map_address(addr) {
-            MappedAddress::InterruptPendingReg => {
+        match addr {
+            VRAM_START ... VRAM_END => self.read_vram_halfword(addr - VRAM_START),
+            INTERRUPT_PENDING_REG => {
                 //logln!("WARNING: Read halfword from Interrupt Pending Reg not fully implemented");
                 (if self.reg_interrupt_pending_left_display_finished { 1 } else { 0 } << 1) |
                 (if self.reg_interrupt_pending_right_display_finished { 1 } else { 0 } << 2) |
@@ -230,7 +243,7 @@ impl Vip {
                 (if self.reg_interrupt_pending_start_of_display_frame { 1 } else { 0 } << 4) |
                 (if self.reg_interrupt_pending_drawing_finished { 1 } else { 0 } << 14)
             }
-            MappedAddress::InterruptEnableReg => {
+            INTERRUPT_ENABLE_REG => {
                 logln!("WARNING: Read halfword from Interrupt Enable Reg not fully implemented");
                 (if self.reg_interrupt_enable_left_display_finished { 1 } else { 0 } << 1) |
                 (if self.reg_interrupt_enable_right_display_finished { 1 } else { 0 } << 2) |
@@ -238,11 +251,11 @@ impl Vip {
                 (if self.reg_interrupt_enable_start_of_display_frame { 1 } else { 0 } << 4) |
                 (if self.reg_interrupt_enable_drawing_finished { 1 } else { 0 } << 14)
             }
-            MappedAddress::InterruptClearReg => {
+            INTERRUPT_CLEAR_REG => {
                 logln!("WARNING: Attempted read halfword from Interrupt Clear Reg");
                 0
             }
-            MappedAddress::DisplayControlReadReg => {
+            DISPLAY_CONTROL_READ_REG => {
                 let scan_ready = true; // TODO
                 // TODO: Not entirely sure this is correct
                 let frame_clock = match self.display_state {
@@ -264,21 +277,21 @@ impl Vip {
                 (if self.reg_display_control_sync_enable { 1 } else { 0 } << 9) |
                 (if column_table_addr_lock { 1 } else { 0 } << 10)
             }
-            MappedAddress::DisplayControlWriteReg => {
+            DISPLAY_CONTROL_WRITE_REG => {
                 logln!("WARNING: Attempted read halfword from Display Control Write Reg");
                 0
             }
-            MappedAddress::LedBrightness1Reg => self.reg_led_brightness_1 as _,
-            MappedAddress::LedBrightness2Reg => self.reg_led_brightness_2 as _,
-            MappedAddress::LedBrightness3Reg => self.reg_led_brightness_3 as _,
-            MappedAddress::LedBrightnessIdleReg => {
+            LED_BRIGHTNESS_1_REG => self.reg_led_brightness_1 as _,
+            LED_BRIGHTNESS_2_REG => self.reg_led_brightness_2 as _,
+            LED_BRIGHTNESS_3_REG => self.reg_led_brightness_3 as _,
+            LED_BRIGHTNESS_IDLE_REG => {
                 logln!("WARNING: Read halfword from LED Brightness Idle Reg not yet implemented");
                 0
             }
-            MappedAddress::GameFrameControlReg => {
+            GAME_FRAME_CONTROL_REG => {
                 (self.reg_game_frame_control - 1) as u16
             }
-            MappedAddress::DrawingControlReadReg => {
+            DRAWING_CONTROL_READ_REG => {
                 let draw_to_first_framebuffers = !self.display_first_framebuffers;
                 let (drawing_to_frame_buffer_0, drawing_to_frame_buffer_1) = match self.drawing_state {
                     DrawingState::Drawing => {
@@ -301,25 +314,32 @@ impl Vip {
                 (current_y_position << 8) |
                 (if drawing_at_y_position { 1 } else { 0 } << 15)
             }
-            MappedAddress::DrawingControlWriteReg => {
+            DRAWING_CONTROL_WRITE_REG => {
                 logln!("WARNING: Attempted read halfword from Drawing Control Write Reg");
                 0
             }
-            MappedAddress::ObjGroup0PointerReg => self.reg_obj_group_0_ptr,
-            MappedAddress::ObjGroup1PointerReg => self.reg_obj_group_1_ptr,
-            MappedAddress::ObjGroup2PointerReg => self.reg_obj_group_2_ptr,
-            MappedAddress::ObjGroup3PointerReg => self.reg_obj_group_3_ptr,
-            MappedAddress::BgPalette0Reg => self.reg_bg_palette_0 as _,
-            MappedAddress::BgPalette1Reg => self.reg_bg_palette_1 as _,
-            MappedAddress::BgPalette2Reg => self.reg_bg_palette_2 as _,
-            MappedAddress::BgPalette3Reg => self.reg_bg_palette_3 as _,
-            MappedAddress::ObjPalette0Reg => self.reg_obj_palette_0 as _,
-            MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1 as _,
-            MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2 as _,
-            MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3 as _,
-            MappedAddress::ClearColorReg => self.reg_clear_color as _,
-            MappedAddress::Vram(addr) => self.read_vram_halfword(addr),
-            MappedAddress::Unrecognized(addr) => {
+            OBJ_GROUP_0_POINTER_REG => self.reg_obj_group_0_ptr,
+            OBJ_GROUP_1_POINTER_REG => self.reg_obj_group_1_ptr,
+            OBJ_GROUP_2_POINTER_REG => self.reg_obj_group_2_ptr,
+            OBJ_GROUP_3_POINTER_REG => self.reg_obj_group_3_ptr,
+            BG_PALETTE_0_REG => self.reg_bg_palette_0 as _,
+            BG_PALETTE_1_REG => self.reg_bg_palette_1 as _,
+            BG_PALETTE_2_REG => self.reg_bg_palette_2 as _,
+            BG_PALETTE_3_REG => self.reg_bg_palette_3 as _,
+            OBJ_PALETTE_0_REG => self.reg_obj_palette_0 as _,
+            OBJ_PALETTE_1_REG => self.reg_obj_palette_1 as _,
+            OBJ_PALETTE_2_REG => self.reg_obj_palette_2 as _,
+            OBJ_PALETTE_3_REG => self.reg_obj_palette_3 as _,
+            CLEAR_COLOR_REG => self.reg_clear_color as _,
+            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
+                self.read_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START),
+            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ... CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
+                self.read_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_1_MIRROR_START + CHR_RAM_PATTERN_TABLE_1_START),
+            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ... CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
+                self.read_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_2_MIRROR_START + CHR_RAM_PATTERN_TABLE_2_START),
+            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
+                self.read_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START),
+            _ => {
                 logln!("WARNING: Attempted read halfword from unrecognized VIP address (addr: 0x{:08x})", addr);
                 0
             }
@@ -327,12 +347,14 @@ impl Vip {
     }
 
     pub fn write_halfword(&mut self, addr: u32, value: u16) {
+        let addr = addr & 0x0007ffff;
         let addr = addr & 0xfffffffe;
-        match map_address(addr) {
-            MappedAddress::InterruptPendingReg => {
+        match addr {
+            VRAM_START ... VRAM_END => self.write_vram_halfword(addr - VRAM_START, value),
+            INTERRUPT_PENDING_REG => {
                 logln!("WARNING: Attempted write halfword to Interrupt Pending Reg");
             }
-            MappedAddress::InterruptEnableReg => {
+            INTERRUPT_ENABLE_REG => {
                 logln!("WARNING: Write halfword to Interrupt Enable Reg not fully implemented (value: 0x{:04x})", value);
                 self.reg_interrupt_enable_left_display_finished = (value & 0x0002) != 0;
                 self.reg_interrupt_enable_right_display_finished = (value & 0x0004) != 0;
@@ -340,7 +362,7 @@ impl Vip {
                 self.reg_interrupt_enable_start_of_display_frame = (value & 0x0010) != 0;
                 self.reg_interrupt_enable_drawing_finished = (value & 0x4000) != 0;
             }
-            MappedAddress::InterruptClearReg => {
+            INTERRUPT_CLEAR_REG => {
                 logln!("WARNING: Write halfword to Interrupt Clear Reg not fully implemented (value: 0x{:04x})", value);
                 if (value & 0x0002) != 0 {
                     self.reg_interrupt_pending_left_display_finished = false;
@@ -358,10 +380,10 @@ impl Vip {
                     self.reg_interrupt_pending_drawing_finished = false;
                 }
             }
-            MappedAddress::DisplayControlReadReg => {
+            DISPLAY_CONTROL_READ_REG => {
                 logln!("WARNING: Attempted write halfword to Display Control Read Reg");
             }
-            MappedAddress::DisplayControlWriteReg => {
+            DISPLAY_CONTROL_WRITE_REG => {
                 logln!("WARNING: Write halfword to Display Control Write Reg not fully implemented (value: 0x{:04x})", value);
 
                 let reset = (value & 0x0001) != 0;
@@ -383,20 +405,20 @@ impl Vip {
 
                 self.reg_display_control_display_enable = enable;
             }
-            MappedAddress::LedBrightness1Reg => self.reg_led_brightness_1 = value as _,
-            MappedAddress::LedBrightness2Reg => self.reg_led_brightness_2 = value as _,
-            MappedAddress::LedBrightness3Reg => self.reg_led_brightness_3 = value as _,
-            MappedAddress::LedBrightnessIdleReg => {
+            LED_BRIGHTNESS_1_REG => self.reg_led_brightness_1 = value as _,
+            LED_BRIGHTNESS_2_REG => self.reg_led_brightness_2 = value as _,
+            LED_BRIGHTNESS_3_REG => self.reg_led_brightness_3 = value as _,
+            LED_BRIGHTNESS_IDLE_REG => {
                 logln!("WARNING: Write halfword to LED Brightness Idle Reg not yet implemented (value: 0x{:04x})", value);
             }
-            MappedAddress::GameFrameControlReg => {
+            GAME_FRAME_CONTROL_REG => {
                 logln!("Game Frame Control written (value: 0x{:04x})", value);
                 self.reg_game_frame_control = (value as usize) + 1;
             }
-            MappedAddress::DrawingControlReadReg => {
+            DRAWING_CONTROL_READ_REG => {
                 logln!("WARNING: Attempted write halfword to Drawing Control Read Reg (value: 0x{:04x})", value);
             }
-            MappedAddress::DrawingControlWriteReg => {
+            DRAWING_CONTROL_WRITE_REG => {
                 logln!("WARNING: Write halfword to Drawing Control Write Reg not fully implemented (value: 0x{:04x})", value);
 
                 let reset = (value & 0x01) != 0;
@@ -408,21 +430,28 @@ impl Vip {
                     self.reg_interrupt_pending_drawing_finished = false;
                 }
             }
-            MappedAddress::ObjGroup0PointerReg => self.reg_obj_group_0_ptr = value & 0x03ff,
-            MappedAddress::ObjGroup1PointerReg => self.reg_obj_group_1_ptr = value & 0x03ff,
-            MappedAddress::ObjGroup2PointerReg => self.reg_obj_group_2_ptr = value & 0x03ff,
-            MappedAddress::ObjGroup3PointerReg => self.reg_obj_group_3_ptr = value & 0x03ff,
-            MappedAddress::BgPalette0Reg => self.reg_bg_palette_0 = value as _,
-            MappedAddress::BgPalette1Reg => self.reg_bg_palette_1 = value as _,
-            MappedAddress::BgPalette2Reg => self.reg_bg_palette_2 = value as _,
-            MappedAddress::BgPalette3Reg => self.reg_bg_palette_3 = value as _,
-            MappedAddress::ObjPalette0Reg => self.reg_obj_palette_0 = value as _,
-            MappedAddress::ObjPalette1Reg => self.reg_obj_palette_1 = value as _,
-            MappedAddress::ObjPalette2Reg => self.reg_obj_palette_2 = value as _,
-            MappedAddress::ObjPalette3Reg => self.reg_obj_palette_3 = value as _,
-            MappedAddress::ClearColorReg => self.reg_clear_color = (value & 0x03) as _,
-            MappedAddress::Vram(addr) => self.write_vram_halfword(addr, value),
-            MappedAddress::Unrecognized(addr) => {
+            OBJ_GROUP_0_POINTER_REG => self.reg_obj_group_0_ptr = value & 0x03ff,
+            OBJ_GROUP_1_POINTER_REG => self.reg_obj_group_1_ptr = value & 0x03ff,
+            OBJ_GROUP_2_POINTER_REG => self.reg_obj_group_2_ptr = value & 0x03ff,
+            OBJ_GROUP_3_POINTER_REG => self.reg_obj_group_3_ptr = value & 0x03ff,
+            BG_PALETTE_0_REG => self.reg_bg_palette_0 = value as _,
+            BG_PALETTE_1_REG => self.reg_bg_palette_1 = value as _,
+            BG_PALETTE_2_REG => self.reg_bg_palette_2 = value as _,
+            BG_PALETTE_3_REG => self.reg_bg_palette_3 = value as _,
+            OBJ_PALETTE_0_REG => self.reg_obj_palette_0 = value as _,
+            OBJ_PALETTE_1_REG => self.reg_obj_palette_1 = value as _,
+            OBJ_PALETTE_2_REG => self.reg_obj_palette_2 = value as _,
+            OBJ_PALETTE_3_REG => self.reg_obj_palette_3 = value as _,
+            CLEAR_COLOR_REG => self.reg_clear_color = (value & 0x03) as _,
+            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
+                self.write_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START, value),
+            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ... CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
+                self.write_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_1_MIRROR_START + CHR_RAM_PATTERN_TABLE_1_START, value),
+            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ... CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
+                self.write_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_2_MIRROR_START + CHR_RAM_PATTERN_TABLE_2_START, value),
+            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
+                self.write_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START, value),
+            _ => {
                 logln!("WARNING: Attempted write halfword to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
             }
         }

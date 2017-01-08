@@ -1,56 +1,22 @@
-#![allow(dead_code)]
-
 pub const VRAM_START: u32 = 0x00000000;
 pub const VRAM_LENGTH: u32 = 0x00040000;
 pub const VRAM_END: u32 = VRAM_START + VRAM_LENGTH - 1;
 
-pub const LEFT_FRAME_BUFFER_0_START: u32 = 0x00000000;
-pub const LEFT_FRAME_BUFFER_0_LENGTH: u32 = 0x00006000;
-pub const LEFT_FRAME_BUFFER_0_END: u32 = LEFT_FRAME_BUFFER_0_START + LEFT_FRAME_BUFFER_0_LENGTH - 1;
-
 pub const CHR_RAM_PATTERN_TABLE_0_START: u32 = 0x00006000;
 pub const CHR_RAM_PATTERN_TABLE_0_LENGTH: u32 = 0x00002000;
-pub const CHR_RAM_PATTERN_TABLE_0_END: u32 = CHR_RAM_PATTERN_TABLE_0_START + CHR_RAM_PATTERN_TABLE_0_LENGTH - 1;
-
-pub const LEFT_FRAME_BUFFER_1_START: u32 = 0x00008000;
-pub const LEFT_FRAME_BUFFER_1_LENGTH: u32 = 0x00006000;
-pub const LEFT_FRAME_BUFFER_1_END: u32 = LEFT_FRAME_BUFFER_1_START + LEFT_FRAME_BUFFER_1_LENGTH - 1;
 
 pub const CHR_RAM_PATTERN_TABLE_1_START: u32 = 0x0000e000;
 pub const CHR_RAM_PATTERN_TABLE_1_LENGTH: u32 = 0x00002000;
-pub const CHR_RAM_PATTERN_TABLE_1_END: u32 = CHR_RAM_PATTERN_TABLE_1_START + CHR_RAM_PATTERN_TABLE_1_LENGTH - 1;
-
-pub const RIGHT_FRAME_BUFFER_0_START: u32 = 0x00010000;
-pub const RIGHT_FRAME_BUFFER_0_LENGTH: u32 = 0x00006000;
-pub const RIGHT_FRAME_BUFFER_0_END: u32 = RIGHT_FRAME_BUFFER_0_START + RIGHT_FRAME_BUFFER_0_LENGTH - 1;
 
 pub const CHR_RAM_PATTERN_TABLE_2_START: u32 = 0x00016000;
 pub const CHR_RAM_PATTERN_TABLE_2_LENGTH: u32 = 0x00002000;
-pub const CHR_RAM_PATTERN_TABLE_2_END: u32 = CHR_RAM_PATTERN_TABLE_2_START + CHR_RAM_PATTERN_TABLE_2_LENGTH - 1;
-
-pub const RIGHT_FRAME_BUFFER_1_START: u32 = 0x00018000;
-pub const RIGHT_FRAME_BUFFER_1_LENGTH: u32 = 0x00006000;
-pub const RIGHT_FRAME_BUFFER_1_END: u32 = RIGHT_FRAME_BUFFER_1_START + RIGHT_FRAME_BUFFER_1_LENGTH - 1;
 
 pub const CHR_RAM_PATTERN_TABLE_3_START: u32 = 0x0001e000;
 pub const CHR_RAM_PATTERN_TABLE_3_LENGTH: u32 = 0x00002000;
-pub const CHR_RAM_PATTERN_TABLE_3_END: u32 = CHR_RAM_PATTERN_TABLE_3_START + CHR_RAM_PATTERN_TABLE_3_LENGTH - 1;
-
-pub const BG_SEGMENTS_AND_WINDOW_PARAM_TABLE_START: u32 = 0x00020000;
-pub const BG_SEGMENTS_AND_WINDOW_PARAM_TABLE_LENGTH: u32 = 0x0001d800;
-pub const BG_SEGMENTS_AND_WINDOW_PARAM_TABLE_END: u32 = BG_SEGMENTS_AND_WINDOW_PARAM_TABLE_START + BG_SEGMENTS_AND_WINDOW_PARAM_TABLE_LENGTH - 1;
 
 pub const WINDOW_ATTRIBS_START: u32 = 0x0003d800;
 pub const WINDOW_ATTRIBS_LENGTH: u32 = 0x00000400;
 pub const WINDOW_ATTRIBS_END: u32 = WINDOW_ATTRIBS_START + WINDOW_ATTRIBS_LENGTH - 1;
-
-pub const COLUMN_TABLE_START: u32 = 0x0003dc00;
-pub const COLUMN_TABLE_LENGTH: u32 = 0x00000400;
-pub const COLUMN_TABLE_END: u32 = COLUMN_TABLE_START + COLUMN_TABLE_LENGTH - 1;
-
-pub const OAM_START: u32 = 0x0003e000;
-pub const OAM_LENGTH: u32 = 0x00002000;
-pub const OAM_END: u32 = OAM_START + OAM_LENGTH - 1;
 
 pub const INTERRUPT_PENDING_REG: u32 = 0x0005f800;
 pub const INTERRUPT_ENABLE_REG: u32 = 0x0005f802;
@@ -101,95 +67,3 @@ pub const CHR_RAM_PATTERN_TABLE_2_MIRROR_END: u32 = CHR_RAM_PATTERN_TABLE_2_MIRR
 pub const CHR_RAM_PATTERN_TABLE_3_MIRROR_START: u32 = 0x0007e000;
 pub const CHR_RAM_PATTERN_TABLE_3_MIRROR_LENGTH: u32 = CHR_RAM_PATTERN_TABLE_3_LENGTH;
 pub const CHR_RAM_PATTERN_TABLE_3_MIRROR_END: u32 = CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_MIRROR_LENGTH - 1;
-
-pub enum MappedAddress {
-    Vram(u32),
-
-    InterruptPendingReg,
-    InterruptEnableReg,
-    InterruptClearReg,
-
-    DisplayControlReadReg,
-    DisplayControlWriteReg,
-
-    LedBrightness1Reg,
-    LedBrightness2Reg,
-    LedBrightness3Reg,
-    LedBrightnessIdleReg,
-
-    GameFrameControlReg,
-
-    DrawingControlReadReg,
-    DrawingControlWriteReg,
-
-    ObjGroup0PointerReg,
-    ObjGroup1PointerReg,
-    ObjGroup2PointerReg,
-    ObjGroup3PointerReg,
-
-    BgPalette0Reg,
-    BgPalette1Reg,
-    BgPalette2Reg,
-    BgPalette3Reg,
-
-    ObjPalette0Reg,
-    ObjPalette1Reg,
-    ObjPalette2Reg,
-    ObjPalette3Reg,
-
-    ClearColorReg,
-
-    Unrecognized(u32),
-}
-
-pub fn map_address(addr: u32) -> MappedAddress {
-    let addr = addr & 0x0007ffff;
-    match addr {
-        VRAM_START ... VRAM_END => MappedAddress::Vram(addr - VRAM_START),
-
-        INTERRUPT_PENDING_REG => MappedAddress::InterruptPendingReg,
-        INTERRUPT_ENABLE_REG => MappedAddress::InterruptEnableReg,
-        INTERRUPT_CLEAR_REG => MappedAddress::InterruptClearReg,
-
-        DISPLAY_CONTROL_READ_REG => MappedAddress::DisplayControlReadReg,
-        DISPLAY_CONTROL_WRITE_REG => MappedAddress::DisplayControlWriteReg,
-
-        LED_BRIGHTNESS_1_REG => MappedAddress::LedBrightness1Reg,
-        LED_BRIGHTNESS_2_REG => MappedAddress::LedBrightness2Reg,
-        LED_BRIGHTNESS_3_REG => MappedAddress::LedBrightness3Reg,
-        LED_BRIGHTNESS_IDLE_REG => MappedAddress::LedBrightnessIdleReg,
-
-        GAME_FRAME_CONTROL_REG => MappedAddress::GameFrameControlReg,
-
-        DRAWING_CONTROL_READ_REG => MappedAddress::DrawingControlReadReg,
-        DRAWING_CONTROL_WRITE_REG => MappedAddress::DrawingControlWriteReg,
-
-        OBJ_GROUP_0_POINTER_REG => MappedAddress::ObjGroup0PointerReg,
-        OBJ_GROUP_1_POINTER_REG => MappedAddress::ObjGroup1PointerReg,
-        OBJ_GROUP_2_POINTER_REG => MappedAddress::ObjGroup2PointerReg,
-        OBJ_GROUP_3_POINTER_REG => MappedAddress::ObjGroup3PointerReg,
-
-        BG_PALETTE_0_REG => MappedAddress::BgPalette0Reg,
-        BG_PALETTE_1_REG => MappedAddress::BgPalette1Reg,
-        BG_PALETTE_2_REG => MappedAddress::BgPalette2Reg,
-        BG_PALETTE_3_REG => MappedAddress::BgPalette3Reg,
-
-        OBJ_PALETTE_0_REG => MappedAddress::ObjPalette0Reg,
-        OBJ_PALETTE_1_REG => MappedAddress::ObjPalette1Reg,
-        OBJ_PALETTE_2_REG => MappedAddress::ObjPalette2Reg,
-        OBJ_PALETTE_3_REG => MappedAddress::ObjPalette3Reg,
-
-        CLEAR_COLOR_REG => MappedAddress::ClearColorReg,
-
-        CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
-            MappedAddress::Vram(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START),
-        CHR_RAM_PATTERN_TABLE_1_MIRROR_START ... CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
-            MappedAddress::Vram(addr - CHR_RAM_PATTERN_TABLE_1_MIRROR_START + CHR_RAM_PATTERN_TABLE_1_START),
-        CHR_RAM_PATTERN_TABLE_2_MIRROR_START ... CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
-            MappedAddress::Vram(addr - CHR_RAM_PATTERN_TABLE_2_MIRROR_START + CHR_RAM_PATTERN_TABLE_2_START),
-        CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
-            MappedAddress::Vram(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START),
-
-        _ => MappedAddress::Unrecognized(addr)
-    }
-}
