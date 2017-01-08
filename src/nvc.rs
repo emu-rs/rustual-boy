@@ -47,7 +47,7 @@ impl Nvc {
 
             reg_eipc: 0xdeadbeef,
             reg_eipsw: 0xdeadbeef,
-            reg_ecr: 0xbeef,
+            reg_ecr: 0xfff0,
 
             psw_zero: false,
             psw_sign: false,
