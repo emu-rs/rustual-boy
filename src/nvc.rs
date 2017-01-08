@@ -557,6 +557,7 @@ impl Nvc {
                 }),
                 OPCODE_BITS_LDW | OPCODE_BITS_INW => format_vi!(|reg1, reg2, disp16| {
                     let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    let addr = addr & 0xfffffffc;
                     trigger_watchpoint |= self.check_watchpoints(addr);
                     let value = (interconnect.read_halfword(addr) as u32) | ((interconnect.read_halfword(addr + 2) as u32) << 16);
                     self.set_reg_gpr(reg2, value);
@@ -578,6 +579,7 @@ impl Nvc {
                 }),
                 OPCODE_BITS_STW | OPCODE_BITS_OUTW => format_vi!(|reg1, reg2, disp16| {
                     let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
+                    let addr = addr & 0xfffffffc;
                     trigger_watchpoint |= self.check_watchpoints(addr);
                     let value = self.reg_gpr(reg2);
                     interconnect.write_halfword(addr, value as _);
