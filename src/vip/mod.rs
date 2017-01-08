@@ -591,23 +591,29 @@ impl Vip {
     }
 
     fn draw(&mut self) {
+        for index in 0..28 {
+            self.draw_block(index);
+        }
+    }
+
+    fn draw_block(&mut self, index: usize) {
         let draw_to_first_framebuffers = !self.display_first_framebuffers;
         let left_framebuffer_offset = if draw_to_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
-        let clear_pixels = (self.reg_clear_color << 6) | (self.reg_clear_color << 4) | (self.reg_clear_color << 2) | self.reg_clear_color;
-        for i in 0..(FRAMEBUFFER_RESOLUTION_X * FRAMEBUFFER_RESOLUTION_Y / 4) as u32 {
-            self.write_vram_byte(left_framebuffer_offset + i, clear_pixels);
-            self.write_vram_byte(right_framebuffer_offset + i, clear_pixels);
+        let block_height = 8;
+        let block_start_y = (index * 8) as u32;
+        let block_end_y = block_start_y + block_height;
+
+        let clear_pixels = (self.last_clear_color << 6) | (self.last_clear_color << 4) | (self.last_clear_color << 2) | self.last_clear_color;
+        for x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
+            let column_offset = (x * (FRAMEBUFFER_RESOLUTION_Y as u32) + block_start_y) / 4;
+            self.write_vram_byte(left_framebuffer_offset + column_offset, clear_pixels);
+            self.write_vram_byte(left_framebuffer_offset + column_offset + 1, clear_pixels);
+            self.write_vram_byte(right_framebuffer_offset + column_offset, clear_pixels);
+            self.write_vram_byte(right_framebuffer_offset + column_offset + 1, clear_pixels);
         }
-        let last_clear_pixels = (self.last_clear_color << 6) | (self.last_clear_color << 4) | (self.last_clear_color << 2) | self.last_clear_color;
-        for x in 0..FRAMEBUFFER_RESOLUTION_X {
-            let x_offset = (x * FRAMEBUFFER_RESOLUTION_Y / 4) as u32;
-            self.write_vram_byte(left_framebuffer_offset + x_offset, last_clear_pixels);
-            self.write_vram_byte(left_framebuffer_offset + x_offset + 1, last_clear_pixels);
-            self.write_vram_byte(right_framebuffer_offset + x_offset, last_clear_pixels);
-            self.write_vram_byte(right_framebuffer_offset + x_offset + 1, last_clear_pixels);
-        }
+        // Latch clear color reg _after_ each block. This is a known (and documented) hardware bug.
         self.last_clear_color = self.reg_clear_color;
 
         let mut current_obj_group = Some(ObjGroup::Group3);
@@ -772,7 +778,7 @@ impl Vip {
 
                                         for offset_y in 0..8 {
                                             let pixel_y = (y as u32).wrapping_add(offset_y);
-                                            if pixel_y >= FRAMEBUFFER_RESOLUTION_Y as u32 {
+                                            if pixel_y < block_start_y || pixel_y >= block_end_y {
                                                 continue;
                                             }
                                             for offset_x in 0..8 {
@@ -805,7 +811,7 @@ impl Vip {
 
                             for window_y in 0..height {
                                 let pixel_y = window_y.wrapping_add(y as u32);
-                                if pixel_y >= FRAMEBUFFER_RESOLUTION_Y as u32 {
+                                if pixel_y < block_start_y || pixel_y >= block_end_y {
                                     continue;
                                 }
 
@@ -857,7 +863,7 @@ impl Vip {
 
                             for window_y in 0..height {
                                 let pixel_y = window_y.wrapping_add(y as u32);
-                                if pixel_y >= FRAMEBUFFER_RESOLUTION_Y as u32 {
+                                if pixel_y < block_start_y || pixel_y >= block_end_y {
                                     continue;
                                 }
 
