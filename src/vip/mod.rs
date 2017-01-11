@@ -3,17 +3,27 @@ mod mem_map;
 use video_driver::*;
 use self::mem_map::*;
 
+const FRAMEBUFFER_RESOLUTION_X: usize = 384;
+const FRAMEBUFFER_RESOLUTION_Y: usize = 256;
+const DISPLAY_RESOLUTION_X: usize = 384;
+const DISPLAY_RESOLUTION_Y: usize = 224;
+
+const DRAWING_BLOCK_HEIGHT: usize = 8;
+const DRAWING_BLOCK_COUNT: usize = DISPLAY_RESOLUTION_Y / DRAWING_BLOCK_HEIGHT;
+
 const MS_TO_NS: u64 = 1000000;
+const US_TO_NS: u64 = 1000;
 
 const CPU_CYCLE_PERIOD_NS: u64 = 50;
 
 const DISPLAY_FRAME_QUARTER_PERIOD_MS: u64 = 5;
 const DISPLAY_FRAME_QUARTER_PERIOD_NS: u64 = DISPLAY_FRAME_QUARTER_PERIOD_MS * MS_TO_NS;
 
-const FRAMEBUFFER_RESOLUTION_X: usize = 384;
-const FRAMEBUFFER_RESOLUTION_Y: usize = 256;
-const DISPLAY_RESOLUTION_X: usize = 384;
-const DISPLAY_RESOLUTION_Y: usize = 224;
+const DRAWING_PERIOD_NS: u64 = DISPLAY_FRAME_QUARTER_PERIOD_NS * 2;
+const DRAWING_BLOCK_PERIOD_NS: u64 = DRAWING_PERIOD_NS / (DRAWING_BLOCK_COUNT as u64);
+
+const DRAWING_SBOUT_PERIOD_US: u64 = 56;
+const DRAWING_SBOUT_PERIOD_NS: u64 = DRAWING_SBOUT_PERIOD_US * US_TO_NS;
 
 enum DisplayState {
     Idle,
@@ -60,18 +70,23 @@ pub struct Vip {
     reg_interrupt_pending_right_display_finished: bool,
     reg_interrupt_pending_start_of_game_frame: bool,
     reg_interrupt_pending_start_of_display_frame: bool,
+    reg_interrupt_pending_sbhit: bool,
     reg_interrupt_pending_drawing_finished: bool,
 
     reg_interrupt_enable_left_display_finished: bool,
     reg_interrupt_enable_right_display_finished: bool,
     reg_interrupt_enable_start_of_game_frame: bool,
     reg_interrupt_enable_start_of_display_frame: bool,
+    reg_interrupt_enable_sbhit: bool,
     reg_interrupt_enable_drawing_finished: bool,
 
     reg_display_control_display_enable: bool,
     reg_display_control_sync_enable: bool,
 
     reg_drawing_control_drawing_enable: bool,
+    reg_drawing_control_sbcount: usize,
+    reg_drawing_control_sbcmp: usize,
+    reg_drawing_control_sbout: bool,
 
     reg_game_frame_control: usize,
 
@@ -97,6 +112,9 @@ pub struct Vip {
 
     display_frame_quarter_clock_counter: u64,
     display_frame_quarter_counter: usize,
+
+    drawing_block_counter: u64,
+    drawing_sbout_counter: u64,
 
     game_frame_counter: usize,
 
@@ -137,18 +155,23 @@ impl Vip {
             reg_interrupt_pending_right_display_finished: false,
             reg_interrupt_pending_start_of_game_frame: false,
             reg_interrupt_pending_start_of_display_frame: false,
+            reg_interrupt_pending_sbhit: false,
             reg_interrupt_pending_drawing_finished: false,
 
             reg_interrupt_enable_left_display_finished: false,
             reg_interrupt_enable_right_display_finished: false,
             reg_interrupt_enable_start_of_game_frame: false,
             reg_interrupt_enable_start_of_display_frame: false,
+            reg_interrupt_enable_sbhit: false,
             reg_interrupt_enable_drawing_finished: false,
 
             reg_display_control_display_enable: false,
             reg_display_control_sync_enable: false,
 
             reg_drawing_control_drawing_enable: false,
+            reg_drawing_control_sbcount: 0,
+            reg_drawing_control_sbcmp: 0,
+            reg_drawing_control_sbout: false,
 
             reg_game_frame_control: 1,
 
@@ -174,6 +197,9 @@ impl Vip {
 
             display_frame_quarter_clock_counter: 0,
             display_frame_quarter_counter: 0,
+
+            drawing_block_counter: 0,
+            drawing_sbout_counter: 0,
 
             game_frame_counter: 0,
 
@@ -241,6 +267,7 @@ impl Vip {
                 (if self.reg_interrupt_pending_right_display_finished { 1 } else { 0 } << 2) |
                 (if self.reg_interrupt_pending_start_of_game_frame { 1 } else { 0 } << 3) |
                 (if self.reg_interrupt_pending_start_of_display_frame { 1 } else { 0 } << 4) |
+                (if self.reg_interrupt_pending_sbhit { 1 } else { 0 } << 13) |
                 (if self.reg_interrupt_pending_drawing_finished { 1 } else { 0 } << 14)
             }
             INTERRUPT_ENABLE_REG => {
@@ -249,6 +276,7 @@ impl Vip {
                 (if self.reg_interrupt_enable_right_display_finished { 1 } else { 0 } << 2) |
                 (if self.reg_interrupt_enable_start_of_game_frame { 1 } else { 0 } << 3) |
                 (if self.reg_interrupt_enable_start_of_display_frame { 1 } else { 0 } << 4) |
+                (if self.reg_interrupt_enable_sbhit { 1 } else { 0 } << 13) |
                 (if self.reg_interrupt_enable_drawing_finished { 1 } else { 0 } << 14)
             }
             INTERRUPT_CLEAR_REG => {
@@ -304,15 +332,13 @@ impl Vip {
                     _ => (false, false)
                 };
                 let drawing_exceeds_frame_period = false;
-                let current_y_position = 0; // TODO
-                let drawing_at_y_position = false;
 
                 (if self.reg_drawing_control_drawing_enable { 1 } else { 0 } << 1) |
                 (if drawing_to_frame_buffer_0 { 1 } else { 0 } << 2) |
                 (if drawing_to_frame_buffer_1 { 1 } else { 0 } << 3) |
                 (if drawing_exceeds_frame_period { 1 } else { 0 } << 4) |
-                (current_y_position << 8) |
-                (if drawing_at_y_position { 1 } else { 0 } << 15)
+                ((self.reg_drawing_control_sbcount as u16) << 8) |
+                (if self.reg_drawing_control_sbout { 1 } else { 0 } << 15)
             }
             DRAWING_CONTROL_WRITE_REG => {
                 logln!("WARNING: Attempted read halfword from Drawing Control Write Reg");
@@ -360,6 +386,7 @@ impl Vip {
                 self.reg_interrupt_enable_right_display_finished = (value & 0x0004) != 0;
                 self.reg_interrupt_enable_start_of_game_frame = (value & 0x0008) != 0;
                 self.reg_interrupt_enable_start_of_display_frame = (value & 0x0010) != 0;
+                self.reg_interrupt_enable_sbhit = (value & 0x2000) != 0;
                 self.reg_interrupt_enable_drawing_finished = (value & 0x4000) != 0;
             }
             INTERRUPT_CLEAR_REG => {
@@ -375,6 +402,9 @@ impl Vip {
                 }
                 if (value & 0x0010) != 0 {
                     self.reg_interrupt_pending_start_of_display_frame = false;
+                }
+                if (value & 0x2000) != 0 {
+                    self.reg_interrupt_pending_sbhit = false;
                 }
                 if (value & 0x4000) != 0 {
                     self.reg_interrupt_pending_drawing_finished = false;
@@ -423,10 +453,12 @@ impl Vip {
 
                 let reset = (value & 0x01) != 0;
                 self.reg_drawing_control_drawing_enable = (value & 0x02) != 0;
+                self.reg_drawing_control_sbcmp = ((value as usize) >> 8) & 0x1f;
 
                 if reset {
                     self.drawing_state = DrawingState::Idle;
 
+                    self.reg_interrupt_pending_sbhit = false;
                     self.reg_interrupt_pending_drawing_finished = false;
                 }
             }
@@ -515,14 +547,6 @@ impl Vip {
                                 self.begin_right_framebuffer_display_process();
                             }
                         }
-
-                        if let DrawingState::Drawing = self.drawing_state {
-                            self.end_drawing_process();
-                            self.reg_interrupt_pending_drawing_finished = true;
-                            if self.reg_interrupt_enable_drawing_finished {
-                                raise_interrupt = true;
-                            }
-                        }
                     }
                     _ => {
                         if self.reg_display_control_display_enable {
@@ -542,6 +566,39 @@ impl Vip {
                     3 => 0,
                     _ => self.display_frame_quarter_counter + 1
                 };
+            }
+
+            if let DrawingState::Drawing = self.drawing_state {
+                self.drawing_block_counter += CPU_CYCLE_PERIOD_NS;
+                if self.drawing_block_counter >= DRAWING_BLOCK_PERIOD_NS {
+                    self.drawing_block_counter -= DRAWING_BLOCK_PERIOD_NS;
+
+                    if self.reg_drawing_control_sbcount < DRAWING_BLOCK_COUNT {
+                        self.end_drawing_block(&mut raise_interrupt);
+
+                        if self.reg_drawing_control_sbcount < DRAWING_BLOCK_COUNT - 1 {
+                            self.reg_drawing_control_sbcount += 1;
+                            if self.reg_drawing_control_drawing_enable {
+                                self.begin_drawing_block();
+                            }
+                        } else {
+                            self.reg_drawing_control_sbcount = 0;
+
+                            self.end_drawing_process();
+                            self.reg_interrupt_pending_drawing_finished = true;
+                            if self.reg_interrupt_enable_drawing_finished {
+                                raise_interrupt = true;
+                            }
+                        }
+                    }
+                }
+
+                if self.reg_drawing_control_sbout {
+                    self.drawing_sbout_counter += CPU_CYCLE_PERIOD_NS;
+                    if self.drawing_sbout_counter >= DRAWING_SBOUT_PERIOD_NS {
+                        self.reg_drawing_control_sbout = false;
+                    }
+                }
             }
         }
 
@@ -590,11 +647,35 @@ impl Vip {
     fn begin_drawing_process(&mut self) {
         logln!("Begin drawing process");
         self.drawing_state = DrawingState::Drawing;
+
+        self.reg_drawing_control_sbcount = 0;
+
+        self.drawing_block_counter = 0;
+
+        self.begin_drawing_block();
+    }
+
+    fn begin_drawing_block(&mut self) {
+        logln!("Begin drawing block {}", self.reg_drawing_control_sbcount);
+    }
+
+    fn end_drawing_block(&mut self, raise_interrupt: &mut bool) {
+        logln!("End drawing block {}", self.reg_drawing_control_sbcount);
+
+        self.draw_current_block();
+
+        if self.reg_drawing_control_sbcount == self.reg_drawing_control_sbcmp {
+            self.reg_drawing_control_sbout = true;
+            self.drawing_sbout_counter = 0;
+
+            self.reg_interrupt_pending_sbhit = true;
+            if self.reg_interrupt_enable_sbhit {
+                *raise_interrupt = true;
+            }
+        }
     }
 
     fn end_drawing_process(&mut self) {
-        self.draw();
-
         logln!("End drawing process");
         self.drawing_state = DrawingState::Idle;
     }
@@ -619,20 +700,13 @@ impl Vip {
         self.display_state = DisplayState::Finished;
     }
 
-    fn draw(&mut self) {
-        for index in 0..28 {
-            self.draw_block(index);
-        }
-    }
-
-    fn draw_block(&mut self, index: usize) {
+    fn draw_current_block(&mut self) {
         let draw_to_first_framebuffers = !self.display_first_framebuffers;
         let left_framebuffer_offset = if draw_to_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
-        let block_height = 8;
-        let block_start_y = (index * 8) as u32;
-        let block_end_y = block_start_y + block_height;
+        let block_start_y = (self.reg_drawing_control_sbcount as u32) * 8;
+        let block_end_y = block_start_y + (DRAWING_BLOCK_HEIGHT as u32);
 
         let clear_pixels = (self.last_clear_color << 6) | (self.last_clear_color << 4) | (self.last_clear_color << 2) | self.last_clear_color;
         for x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
@@ -667,12 +741,12 @@ impl Vip {
                 let mode = ((header >> 12) & 0x03) as usize;
                 let right_on = (header & 0x4000) != 0;
                 let left_on = (header & 0x8000) != 0;
-                logln!("  base: 0x{:02x}", base);
+                /*logln!("  base: 0x{:02x}", base);
                 logln!("  stop: {}", stop);
                 logln!("  out of bounds: {}", out_of_bounds);
                 logln!("  w, h: {}, {}", bg_width, bg_height);
                 logln!("  mode: {}", mode);
-                logln!("  l, r: {}, {}", left_on, right_on);
+                logln!("  l, r: {}, {}", left_on, right_on);*/
 
                 let x = self.read_vram_halfword(window_offset + 2) as i16;
                 let parallax = self.read_vram_halfword(window_offset + 4) as i16;
@@ -684,7 +758,7 @@ impl Vip {
                 let height = self.read_vram_halfword(window_offset + 16);
                 let param_base = self.read_vram_halfword(window_offset + 18) as u32;
                 let out_of_bounds_char = self.read_vram_halfword(window_offset + 20);
-                logln!(" X: {}", x);
+                /*logln!(" X: {}", x);
                 logln!(" Parallax: {}", parallax);
                 logln!(" Y: {}", y);
                 logln!(" BG X: {}", bg_x);
@@ -693,7 +767,7 @@ impl Vip {
                 logln!(" Width: {}", width);
                 logln!(" Height: {}", height);
                 logln!(" Param base: 0x{:04x}", param_base);
-                logln!(" Out of bounds char: 0x{:04x}", out_of_bounds_char);
+                logln!(" Out of bounds char: 0x{:04x}", out_of_bounds_char);*/
 
                 if stop {
                     break;
@@ -740,7 +814,7 @@ impl Vip {
 
                     match mode {
                         WindowMode::Obj => {
-                            logln!("Current obj group: {:?}", current_obj_group);
+                            //logln!("Current obj group: {:?}", current_obj_group);
 
                             match current_obj_group {
                                 Some(obj_group) => {
