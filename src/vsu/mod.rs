@@ -1,3 +1,5 @@
+use audio_driver::*;
+
 pub struct Vsu {
     // TODO
 }
@@ -27,5 +29,9 @@ impl Vsu {
     pub fn write_halfword(&mut self, addr: u32, value: u16) {
         let addr = addr & 0xfffffffe;
         logln!("VSU write halfword not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
+    }
+
+    pub fn cycles(&mut self, cycles: usize, audio_driver: &mut AudioDriver) {
+        // TODO
     }
 }

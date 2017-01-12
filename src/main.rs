@@ -8,6 +8,7 @@ extern crate minifb;
 #[macro_use]
 mod logging;
 mod video_driver;
+mod audio_driver;
 mod rom;
 mod wram;
 mod sram;
@@ -20,6 +21,7 @@ mod interconnect;
 mod instruction;
 mod nvc;
 mod virtual_boy;
+mod wave_file_audio_driver;
 mod command;
 mod emulator;
 

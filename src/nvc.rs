@@ -1,4 +1,5 @@
 use video_driver::*;
+use audio_driver::*;
 use instruction::*;
 use interconnect::*;
 
@@ -156,7 +157,7 @@ impl Nvc {
         self.psw_interrupt_mask_level = ((value as usize) >> 16) & 0x0f;
     }
 
-    pub fn step(&mut self, interconnect: &mut Interconnect, video_driver: &mut VideoDriver) -> (usize, bool) {
+    pub fn step(&mut self, interconnect: &mut Interconnect, video_driver: &mut VideoDriver, audio_driver: &mut AudioDriver) -> (usize, bool) {
         let original_pc = self.reg_pc;
 
         let first_halfword = interconnect.read_halfword(original_pc);
@@ -721,7 +722,7 @@ impl Nvc {
 
         self.reg_pc = next_pc;
 
-        if let Some(exception_code) = interconnect.cycles(num_cycles, video_driver) {
+        if let Some(exception_code) = interconnect.cycles(num_cycles, video_driver, audio_driver) {
             self.request_exception(exception_code);
         }
 
