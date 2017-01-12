@@ -1,0 +1,1 @@
+pub const SOUND_DISABLE_REG: u32 = 0x00000580;
