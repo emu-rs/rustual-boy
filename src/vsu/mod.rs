@@ -18,6 +18,8 @@ const SAMPLE_PERIOD_NS: u64 = S_TO_NS / SAMPLE_RATE;
 
 const CPU_CYCLE_PERIOD_NS: u64 = 50;
 
+const PHASE_CLOCK_PERIOD_NS: u64 = S_TO_NS / 5000000;
+
 #[derive(Default, Clone)]
 struct Voice {
     reg_play_control_enable: bool,
@@ -40,8 +42,8 @@ struct Voice {
 
     reg_pcm_wave: usize,
 
-    sample_clock_counter: u64,
-
+    phase_clock_counter: u64,
+    phase_counter: usize,
     phase: usize,
 }
 
@@ -115,11 +117,15 @@ impl Voice {
     }
 
     fn cycle(&mut self) {
-        self.sample_clock_counter += CPU_CYCLE_PERIOD_NS;
-        if self.sample_clock_counter >= SAMPLE_PERIOD_NS {
-            self.sample_clock_counter -= SAMPLE_PERIOD_NS;
+        self.phase_clock_counter += CPU_CYCLE_PERIOD_NS;
+        if self.phase_clock_counter >= PHASE_CLOCK_PERIOD_NS {
+            self.phase_clock_counter -= PHASE_CLOCK_PERIOD_NS;
 
-            self.phase = (self.phase + 1) & (NUM_WAVE_TABLE_WORDS - 1);
+            self.phase_counter += 1;
+            if self.phase_counter >= 2048 - ((self.reg_frequency_high << 8) | self.reg_frequency_low) {
+                self.phase_counter = 0;
+                self.phase = (self.phase + 1) & (NUM_WAVE_TABLE_WORDS - 1);
+            }
         }
     }
 
