@@ -3,8 +3,9 @@ mod mem_map;
 use audio_driver::*;
 use self::mem_map::*;
 
+const NUM_WAVE_TABLE_WORDS: usize = 32;
 const NUM_WAVE_TABLES: usize = 5;
-const TOTAL_WAVE_TABLE_SIZE: usize = (PCM_WAVE_TABLE_LENGTH as usize) / 2 * NUM_WAVE_TABLES;
+const TOTAL_WAVE_TABLE_SIZE: usize = NUM_WAVE_TABLE_WORDS * NUM_WAVE_TABLES;
 
 #[derive(Default, Clone)]
 struct Voice {
@@ -30,43 +31,43 @@ struct Voice {
 }
 
 impl Voice {
-    fn read_play_control_reg(&self) -> u16 {
+    fn read_play_control_reg(&self) -> u8 {
         (if self.reg_play_control_enable { 1 } else { 0 } << 7) |
         (if self.reg_play_control_use_duration { 1 } else { 0 } << 5) |
-        (self.reg_play_control_duration as u16)
+        (self.reg_play_control_duration as u8)
     }
 
-    fn read_volume_reg(&self) -> u16 {
-        ((self.reg_volume_left as u16) << 4) |
-        (self.reg_volume_right as u16)
+    fn read_volume_reg(&self) -> u8 {
+        ((self.reg_volume_left as u8) << 4) |
+        (self.reg_volume_right as u8)
     }
 
-    fn read_frequency_low_reg(&self) -> u16 {
+    fn read_frequency_low_reg(&self) -> u8 {
         self.reg_frequency_low as _
     }
 
-    fn read_frequency_high_reg(&self) -> u16 {
+    fn read_frequency_high_reg(&self) -> u8 {
         self.reg_frequency_high as _
     }
 
-    fn read_envelope_data_reg(&self) -> u16 {
-        ((self.reg_envelope_data_reload as u16) << 4) |
+    fn read_envelope_data_reg(&self) -> u8 {
+        ((self.reg_envelope_data_reload as u8) << 4) |
         (if self.reg_envelope_data_direction { 1 } else { 0 } << 3) |
-        (self.reg_envelope_data_step_interval as u16)
+        (self.reg_envelope_data_step_interval as u8)
     }
 
-    fn read_envelope_control_reg(&self) -> u16 {
+    fn read_envelope_control_reg(&self) -> u8 {
         (if self.reg_envelope_control_repeat { 1 } else { 0 } << 1) |
         (if self.reg_envelope_control_enable { 1 } else { 0 })
     }
 
-    fn read_pcm_wave_reg(&self) -> u16 {
+    fn read_pcm_wave_reg(&self) -> u8 {
         self.reg_pcm_wave as _
     }
 }
 
 pub struct Vsu {
-    wave_tables: Box<[u16]>,
+    wave_tables: Box<[u8]>,
 
     voices: Box<[Voice]>,
 
@@ -85,31 +86,12 @@ impl Vsu {
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {
-        let halfword = self.read_halfword(addr & 0xfffffffe);
-        if (addr & 0x01) == 0 {
-            halfword as _
-        } else {
-            (halfword >> 8) as _
-        }
-    }
-
-    pub fn write_byte(&mut self, addr: u32, value: u8) {
-        let halfword = if (addr & 0x01) == 0 {
-            value as _
-        } else {
-            (value as u16) << 8
-        };
-        self.write_halfword(addr & 0xfffffffe, halfword);
-    }
-
-    pub fn read_halfword(&self, addr: u32) -> u16 {
-        let addr = addr & 0xfffffffe;
         match addr {
-            PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => self.wave_tables[(addr - PCM_WAVE_TABLE_0_START) as usize],
-            PCM_WAVE_TABLE_1_START ... PCM_WAVE_TABLE_1_END => self.wave_tables[(addr - PCM_WAVE_TABLE_1_START) as usize],
-            PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => self.wave_tables[(addr - PCM_WAVE_TABLE_2_START) as usize],
-            PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => self.wave_tables[(addr - PCM_WAVE_TABLE_3_START) as usize],
-            PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => self.wave_tables[(addr - PCM_WAVE_TABLE_4_START) as usize],
+            PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => self.wave_tables[((addr - PCM_WAVE_TABLE_0_START) / 4) as usize],
+            PCM_WAVE_TABLE_1_START ... PCM_WAVE_TABLE_1_END => self.wave_tables[((addr - PCM_WAVE_TABLE_1_START) / 4) as usize],
+            PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => self.wave_tables[((addr - PCM_WAVE_TABLE_2_START) / 4) as usize],
+            PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => self.wave_tables[((addr - PCM_WAVE_TABLE_3_START) / 4) as usize],
+            PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => self.wave_tables[((addr - PCM_WAVE_TABLE_4_START) / 4) as usize],
             VOICE_1_PLAY_CONTROL => self.voices[0].read_play_control_reg(),
             VOICE_1_VOLUME => self.voices[0].read_volume_reg(),
             VOICE_1_FREQUENCY_LOW => self.voices[0].read_frequency_low_reg(),
@@ -140,25 +122,34 @@ impl Vsu {
             VOICE_4_PCM_WAVE => self.voices[3].read_pcm_wave_reg(),
             SOUND_DISABLE_REG => if self.reg_sound_disable { 1 } else { 0 },
             _ => {
-                logln!("VSU read halfword not yet implemented (addr: 0x{:08x})", addr);
+                logln!("VSU read byte not yet implemented (addr: 0x{:08x})", addr);
                 0
             }
         }
     }
 
-    pub fn write_halfword(&mut self, addr: u32, value: u16) {
-        let addr = addr & 0xfffffffe;
+    pub fn write_byte(&mut self, addr: u32, value: u8) {
         match addr {
-            PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => self.wave_tables[(addr - PCM_WAVE_TABLE_0_START) as usize] = value,
-            PCM_WAVE_TABLE_1_START ... PCM_WAVE_TABLE_1_END => self.wave_tables[(addr - PCM_WAVE_TABLE_1_START) as usize] = value,
-            PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => self.wave_tables[(addr - PCM_WAVE_TABLE_2_START) as usize] = value,
-            PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => self.wave_tables[(addr - PCM_WAVE_TABLE_3_START) as usize] = value,
-            PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => self.wave_tables[(addr - PCM_WAVE_TABLE_4_START) as usize] = value,
+            PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => self.wave_tables[((addr - PCM_WAVE_TABLE_0_START) / 4) as usize] = value,
+            PCM_WAVE_TABLE_1_START ... PCM_WAVE_TABLE_1_END => self.wave_tables[((addr - PCM_WAVE_TABLE_1_START) / 4) as usize] = value,
+            PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => self.wave_tables[((addr - PCM_WAVE_TABLE_2_START) / 4) as usize] = value,
+            PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => self.wave_tables[((addr - PCM_WAVE_TABLE_3_START) / 4) as usize] = value,
+            PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => self.wave_tables[((addr - PCM_WAVE_TABLE_4_START) / 4) as usize] = value,
             SOUND_DISABLE_REG => {
                 self.reg_sound_disable = (value & 0x01) != 0;
             }
-            _ => logln!("VSU write halfword not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value)
+            _ => logln!("VSU write byte not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value)
         }
+    }
+
+    pub fn read_halfword(&self, addr: u32) -> u16 {
+        let addr = addr & 0xfffffffe;
+        self.read_byte(addr) as _
+    }
+
+    pub fn write_halfword(&mut self, addr: u32, value: u16) {
+        let addr = addr & 0xfffffffe;
+        self.write_byte(addr, value as _);
     }
 
     pub fn cycles(&mut self, cycles: usize, audio_driver: &mut AudioDriver) {
