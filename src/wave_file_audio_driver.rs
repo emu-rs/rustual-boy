@@ -42,12 +42,6 @@ impl WaveFileAudioDriver {
         ret.write_str("data")?;
         ret.write_u32(0)?; // Data size; will be written properly later
 
-        for i in 0..SAMPLE_RATE * 5 {
-            let phase = (i as f64) / (SAMPLE_RATE as f64) * 1000.0;
-            let sample = (phase.sin() * 32767.0) as i16;
-            ret.output_frame((sample, sample));
-        }
-
         Ok(ret)
     }
 

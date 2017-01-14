@@ -7,6 +7,17 @@ const NUM_WAVE_TABLE_WORDS: usize = 32;
 const NUM_WAVE_TABLES: usize = 5;
 const TOTAL_WAVE_TABLE_SIZE: usize = NUM_WAVE_TABLE_WORDS * NUM_WAVE_TABLES;
 
+const S_TO_NS: u64 = 1000000000;
+
+// Assuming the sound unit runs off of a 20mhz clock, I did some math to check this sample rate,
+//  and the closest sample rate with an integral clock rate division from 20mhz should actually be
+//  41666.66 repeating (20 mhz / 480). This is most likely the real sample rate, but effectively
+//  it won't make much practical difference.
+const SAMPLE_RATE: u64 = 41700;
+const SAMPLE_PERIOD_NS: u64 = S_TO_NS / SAMPLE_RATE;
+
+const CPU_CYCLE_PERIOD_NS: u64 = 50;
+
 #[derive(Default, Clone)]
 struct Voice {
     reg_play_control_enable: bool,
@@ -28,6 +39,10 @@ struct Voice {
     reg_envelope_control_enable: bool,
 
     reg_pcm_wave: usize,
+
+    sample_clock_counter: u64,
+
+    phase: usize,
 }
 
 impl Voice {
@@ -37,17 +52,36 @@ impl Voice {
         (self.reg_play_control_duration as u8)
     }
 
+    fn write_play_control_reg(&mut self, value: u8) {
+        self.reg_play_control_enable = (value & 0x80) != 0;
+        self.reg_play_control_use_duration = (value & 0x20) != 0;
+        self.reg_play_control_duration = (value & 0xff) as _;
+    }
+
     fn read_volume_reg(&self) -> u8 {
         ((self.reg_volume_left as u8) << 4) |
         (self.reg_volume_right as u8)
+    }
+
+    fn write_volume_reg(&mut self, value: u8) {
+        self.reg_volume_left = (value >> 4) as _;
+        self.reg_volume_right = (value & 0x0f) as _;
     }
 
     fn read_frequency_low_reg(&self) -> u8 {
         self.reg_frequency_low as _
     }
 
+    fn write_frequency_low_reg(&mut self, value: u8) {
+        self.reg_frequency_low = value as _;
+    }
+
     fn read_frequency_high_reg(&self) -> u8 {
         self.reg_frequency_high as _
+    }
+
+    fn write_frequency_high_reg(&mut self, value: u8) {
+        self.reg_frequency_high = (value & 0x07) as _;
     }
 
     fn read_envelope_data_reg(&self) -> u8 {
@@ -56,13 +90,59 @@ impl Voice {
         (self.reg_envelope_data_step_interval as u8)
     }
 
+    fn write_envelope_data_reg(&mut self, value: u8) {
+        self.reg_envelope_data_reload = (value >> 4) as _;
+        self.reg_envelope_data_direction = (value & 0x80) != 0;
+        self.reg_envelope_data_step_interval = (value & 0x07) as _;
+    }
+
     fn read_envelope_control_reg(&self) -> u8 {
         (if self.reg_envelope_control_repeat { 1 } else { 0 } << 1) |
         (if self.reg_envelope_control_enable { 1 } else { 0 })
     }
 
+    fn write_envelope_control_reg(&mut self, value: u8) {
+        self.reg_envelope_control_repeat = (value & 0x02) != 0;
+        self.reg_envelope_control_enable = (value & 0x01) != 0;
+    }
+
     fn read_pcm_wave_reg(&self) -> u8 {
         self.reg_pcm_wave as _
+    }
+
+    fn write_pcm_wave_reg(&mut self, value: u8) {
+        self.reg_pcm_wave = (value & 0x07) as _;
+    }
+
+    fn cycle(&mut self) {
+        self.sample_clock_counter += CPU_CYCLE_PERIOD_NS;
+        if self.sample_clock_counter >= SAMPLE_PERIOD_NS {
+            self.sample_clock_counter -= SAMPLE_PERIOD_NS;
+
+            self.phase = (self.phase + 1) & (NUM_WAVE_TABLE_WORDS - 1);
+        }
+    }
+
+    fn sample(&self, wave_tables: &[u8]) -> (usize, usize) {
+        let envelope_level = 0x0f;//if self.reg_envelope_control_enable { 0x08 } else { 0x00 };
+
+        let left_level = if self.reg_volume_left != 0 && envelope_level != 0 {
+            ((self.reg_volume_left * envelope_level) >> 3) + 1
+        } else {
+            0
+        };
+        let right_level = if self.reg_volume_right != 0 && envelope_level != 0 {
+            ((self.reg_volume_right * envelope_level) >> 3) + 1
+        } else {
+            0
+        };
+
+        let wave_level = wave_tables[self.reg_pcm_wave * NUM_WAVE_TABLE_WORDS + self.phase] as usize;
+
+        let output_left = (wave_level * left_level) >> 1;
+        let output_right = (wave_level * right_level) >> 1;
+
+        (output_left, output_right)
     }
 }
 
@@ -72,6 +152,8 @@ pub struct Vsu {
     voices: Box<[Voice]>,
 
     reg_sound_disable: bool,
+
+    sample_clock_counter: u64,
 }
 
 impl Vsu {
@@ -82,6 +164,8 @@ impl Vsu {
             voices: vec![Voice::default(); 4].into_boxed_slice(),
 
             reg_sound_disable: false,
+
+            sample_clock_counter: 0,
         }
     }
 
@@ -135,6 +219,34 @@ impl Vsu {
             PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => self.wave_tables[((addr - PCM_WAVE_TABLE_2_START) / 4) as usize] = value,
             PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => self.wave_tables[((addr - PCM_WAVE_TABLE_3_START) / 4) as usize] = value,
             PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => self.wave_tables[((addr - PCM_WAVE_TABLE_4_START) / 4) as usize] = value,
+            VOICE_1_PLAY_CONTROL => self.voices[0].write_play_control_reg(value),
+            VOICE_1_VOLUME => self.voices[0].write_volume_reg(value),
+            VOICE_1_FREQUENCY_LOW => self.voices[0].write_frequency_low_reg(value),
+            VOICE_1_FREQUENCY_HIGH => self.voices[0].write_frequency_high_reg(value),
+            VOICE_1_ENVELOPE_DATA => self.voices[0].write_envelope_data_reg(value),
+            VOICE_1_ENVELOPE_CONTROL => self.voices[0].write_envelope_control_reg(value),
+            VOICE_1_PCM_WAVE => self.voices[0].write_pcm_wave_reg(value),
+            VOICE_2_PLAY_CONTROL => self.voices[1].write_play_control_reg(value),
+            VOICE_2_VOLUME => self.voices[1].write_volume_reg(value),
+            VOICE_2_FREQUENCY_LOW => self.voices[1].write_frequency_low_reg(value),
+            VOICE_2_FREQUENCY_HIGH => self.voices[1].write_frequency_high_reg(value),
+            VOICE_2_ENVELOPE_DATA => self.voices[1].write_envelope_data_reg(value),
+            VOICE_2_ENVELOPE_CONTROL => self.voices[1].write_envelope_control_reg(value),
+            VOICE_2_PCM_WAVE => self.voices[1].write_pcm_wave_reg(value),
+            VOICE_3_PLAY_CONTROL => self.voices[2].write_play_control_reg(value),
+            VOICE_3_VOLUME => self.voices[2].write_volume_reg(value),
+            VOICE_3_FREQUENCY_LOW => self.voices[2].write_frequency_low_reg(value),
+            VOICE_3_FREQUENCY_HIGH => self.voices[2].write_frequency_high_reg(value),
+            VOICE_3_ENVELOPE_DATA => self.voices[2].write_envelope_data_reg(value),
+            VOICE_3_ENVELOPE_CONTROL => self.voices[2].write_envelope_control_reg(value),
+            VOICE_3_PCM_WAVE => self.voices[2].write_pcm_wave_reg(value),
+            VOICE_4_PLAY_CONTROL => self.voices[3].write_play_control_reg(value),
+            VOICE_4_VOLUME => self.voices[3].write_volume_reg(value),
+            VOICE_4_FREQUENCY_LOW => self.voices[3].write_frequency_low_reg(value),
+            VOICE_4_FREQUENCY_HIGH => self.voices[3].write_frequency_high_reg(value),
+            VOICE_4_ENVELOPE_DATA => self.voices[3].write_envelope_data_reg(value),
+            VOICE_4_ENVELOPE_CONTROL => self.voices[3].write_envelope_control_reg(value),
+            VOICE_4_PCM_WAVE => self.voices[3].write_pcm_wave_reg(value),
             SOUND_DISABLE_REG => {
                 self.reg_sound_disable = (value & 0x01) != 0;
             }
@@ -153,6 +265,31 @@ impl Vsu {
     }
 
     pub fn cycles(&mut self, cycles: usize, audio_driver: &mut AudioDriver) {
-        // TODO
+        for _ in 0..cycles {
+            for voice in self.voices.iter_mut() {
+                voice.cycle();
+            }
+
+            self.sample_clock_counter += CPU_CYCLE_PERIOD_NS;
+            if self.sample_clock_counter >= SAMPLE_PERIOD_NS {
+                self.sample_clock_counter -= SAMPLE_PERIOD_NS;
+
+                /*if self.reg_sound_disable {
+                    audio_driver.output_frame((0, 0));
+                } else {*/
+                    let mut voice_acc_left = 0;
+                    let mut voice_acc_right = 0;
+                    for voice in self.voices.iter() {
+                        let (left, right) = voice.sample(&self.wave_tables);
+                        voice_acc_left += left;
+                        voice_acc_right += right;
+                    }
+                    let output_left = ((voice_acc_left & 0xfffffff8) as i16) << 2;
+                    let output_right = ((voice_acc_right & 0xfffffff8) as i16) << 2;
+
+                    audio_driver.output_frame((output_left, output_right));
+                //}
+            }
+        }
     }
 }
