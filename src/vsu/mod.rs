@@ -58,6 +58,11 @@ impl Voice {
         self.reg_play_control_enable = (value & 0x80) != 0;
         self.reg_play_control_use_duration = (value & 0x20) != 0;
         self.reg_play_control_duration = (value & 0xff) as _;
+
+        if self.reg_play_control_enable {
+            self.phase_clock_counter = 0;
+            self.phase_counter = 0;
+        }
     }
 
     fn read_volume_reg(&self) -> u8 {
@@ -130,25 +135,29 @@ impl Voice {
     }
 
     fn sample(&self, wave_tables: &[u8]) -> (usize, usize) {
-        let envelope_level = 0x0f;//if self.reg_envelope_control_enable { 0x08 } else { 0x00 };
+        if self.reg_play_control_enable {
+            let envelope_level = 0x0f;//if self.reg_envelope_control_enable { 0x08 } else { 0x00 };
 
-        let left_level = if self.reg_volume_left != 0 && envelope_level != 0 {
-            ((self.reg_volume_left * envelope_level) >> 3) + 1
+            let left_level = if self.reg_volume_left == 0 || envelope_level == 0 {
+                0
+            } else {
+                (self.reg_volume_left * envelope_level) + 1
+            };
+            let right_level = if self.reg_volume_right == 0 || envelope_level == 0 {
+                0
+            } else {
+                (self.reg_volume_right * envelope_level) + 1
+            };
+
+            let wave_level = wave_tables[self.reg_pcm_wave * NUM_WAVE_TABLE_WORDS + self.phase] as usize;
+
+            let output_left = (wave_level * left_level) >> 1;
+            let output_right = (wave_level * right_level) >> 1;
+
+            (output_left, output_right)
         } else {
-            0
-        };
-        let right_level = if self.reg_volume_right != 0 && envelope_level != 0 {
-            ((self.reg_volume_right * envelope_level) >> 3) + 1
-        } else {
-            0
-        };
-
-        let wave_level = wave_tables[self.reg_pcm_wave * NUM_WAVE_TABLE_WORDS + self.phase] as usize;
-
-        let output_left = (wave_level * left_level) >> 1;
-        let output_right = (wave_level * right_level) >> 1;
-
-        (output_left, output_right)
+            (0, 0)
+        }
     }
 }
 
@@ -167,7 +176,7 @@ impl Vsu {
         Vsu {
             wave_tables: vec![0; TOTAL_WAVE_TABLE_SIZE].into_boxed_slice(),
 
-            voices: vec![Voice::default(); 4].into_boxed_slice(),
+            voices: vec![Voice::default(); 5].into_boxed_slice(),
 
             reg_sound_disable: false,
 
@@ -177,11 +186,11 @@ impl Vsu {
 
     pub fn read_byte(&self, addr: u32) -> u8 {
         match addr {
-            PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => self.wave_tables[((addr - PCM_WAVE_TABLE_0_START) / 4) as usize],
-            PCM_WAVE_TABLE_1_START ... PCM_WAVE_TABLE_1_END => self.wave_tables[((addr - PCM_WAVE_TABLE_1_START) / 4) as usize],
-            PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => self.wave_tables[((addr - PCM_WAVE_TABLE_2_START) / 4) as usize],
-            PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => self.wave_tables[((addr - PCM_WAVE_TABLE_3_START) / 4) as usize],
-            PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => self.wave_tables[((addr - PCM_WAVE_TABLE_4_START) / 4) as usize],
+            PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => self.wave_tables[((addr - PCM_WAVE_TABLE_0_START) / 4 + 0x00) as usize],
+            PCM_WAVE_TABLE_1_START ... PCM_WAVE_TABLE_1_END => self.wave_tables[((addr - PCM_WAVE_TABLE_1_START) / 4 + 0x20) as usize],
+            PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => self.wave_tables[((addr - PCM_WAVE_TABLE_2_START) / 4 + 0x40) as usize],
+            PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => self.wave_tables[((addr - PCM_WAVE_TABLE_3_START) / 4 + 0x60) as usize],
+            PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => self.wave_tables[((addr - PCM_WAVE_TABLE_4_START) / 4 + 0x80) as usize],
             VOICE_1_PLAY_CONTROL => self.voices[0].read_play_control_reg(),
             VOICE_1_VOLUME => self.voices[0].read_volume_reg(),
             VOICE_1_FREQUENCY_LOW => self.voices[0].read_frequency_low_reg(),
@@ -210,6 +219,13 @@ impl Vsu {
             VOICE_4_ENVELOPE_DATA => self.voices[3].read_envelope_data_reg(),
             VOICE_4_ENVELOPE_CONTROL => self.voices[3].read_envelope_control_reg(),
             VOICE_4_PCM_WAVE => self.voices[3].read_pcm_wave_reg(),
+            VOICE_5_PLAY_CONTROL => self.voices[4].read_play_control_reg(),
+            VOICE_5_VOLUME => self.voices[4].read_volume_reg(),
+            VOICE_5_FREQUENCY_LOW => self.voices[4].read_frequency_low_reg(),
+            VOICE_5_FREQUENCY_HIGH => self.voices[4].read_frequency_high_reg(),
+            VOICE_5_ENVELOPE_DATA => self.voices[4].read_envelope_data_reg(),
+            VOICE_5_ENVELOPE_CONTROL => self.voices[4].read_envelope_control_reg(),
+            VOICE_5_PCM_WAVE => self.voices[4].read_pcm_wave_reg(),
             SOUND_DISABLE_REG => if self.reg_sound_disable { 1 } else { 0 },
             _ => {
                 logln!("VSU read byte not yet implemented (addr: 0x{:08x})", addr);
@@ -220,11 +236,11 @@ impl Vsu {
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         match addr {
-            PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => self.wave_tables[((addr - PCM_WAVE_TABLE_0_START) / 4) as usize] = value,
-            PCM_WAVE_TABLE_1_START ... PCM_WAVE_TABLE_1_END => self.wave_tables[((addr - PCM_WAVE_TABLE_1_START) / 4) as usize] = value,
-            PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => self.wave_tables[((addr - PCM_WAVE_TABLE_2_START) / 4) as usize] = value,
-            PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => self.wave_tables[((addr - PCM_WAVE_TABLE_3_START) / 4) as usize] = value,
-            PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => self.wave_tables[((addr - PCM_WAVE_TABLE_4_START) / 4) as usize] = value,
+            PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => self.wave_tables[((addr - PCM_WAVE_TABLE_0_START) / 4 + 0x00) as usize] = value & 0x3f,
+            PCM_WAVE_TABLE_1_START ... PCM_WAVE_TABLE_1_END => self.wave_tables[((addr - PCM_WAVE_TABLE_1_START) / 4 + 0x20) as usize] = value & 0x3f,
+            PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => self.wave_tables[((addr - PCM_WAVE_TABLE_2_START) / 4 + 0x40) as usize] = value & 0x3f,
+            PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => self.wave_tables[((addr - PCM_WAVE_TABLE_3_START) / 4 + 0x60) as usize] = value & 0x3f,
+            PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => self.wave_tables[((addr - PCM_WAVE_TABLE_4_START) / 4 + 0x80) as usize] = value & 0x3f,
             VOICE_1_PLAY_CONTROL => self.voices[0].write_play_control_reg(value),
             VOICE_1_VOLUME => self.voices[0].write_volume_reg(value),
             VOICE_1_FREQUENCY_LOW => self.voices[0].write_frequency_low_reg(value),
@@ -253,7 +269,15 @@ impl Vsu {
             VOICE_4_ENVELOPE_DATA => self.voices[3].write_envelope_data_reg(value),
             VOICE_4_ENVELOPE_CONTROL => self.voices[3].write_envelope_control_reg(value),
             VOICE_4_PCM_WAVE => self.voices[3].write_pcm_wave_reg(value),
+            VOICE_5_PLAY_CONTROL => self.voices[4].write_play_control_reg(value),
+            VOICE_5_VOLUME => self.voices[4].write_volume_reg(value),
+            VOICE_5_FREQUENCY_LOW => self.voices[4].write_frequency_low_reg(value),
+            VOICE_5_FREQUENCY_HIGH => self.voices[4].write_frequency_high_reg(value),
+            VOICE_5_ENVELOPE_DATA => self.voices[4].write_envelope_data_reg(value),
+            VOICE_5_ENVELOPE_CONTROL => self.voices[4].write_envelope_control_reg(value),
+            VOICE_5_PCM_WAVE => self.voices[4].write_pcm_wave_reg(value),
             SOUND_DISABLE_REG => {
+                // This might actually be a strobe register
                 self.reg_sound_disable = (value & 0x01) != 0;
             }
             _ => logln!("VSU write byte not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value)
@@ -290,8 +314,8 @@ impl Vsu {
                         voice_acc_left += left;
                         voice_acc_right += right;
                     }
-                    let output_left = ((voice_acc_left & 0xfffffff8) as i16) << 2;
-                    let output_right = ((voice_acc_right & 0xfffffff8) as i16) << 2;
+                    let output_left = voice_acc_left as i16;
+                    let output_right = voice_acc_right as i16;
 
                     audio_driver.output_frame((output_left, output_right));
                 //}
