@@ -20,6 +20,8 @@ const CPU_CYCLE_PERIOD_NS: u64 = 50;
 
 const FREQUENCY_CLOCK_PERIOD_NS: u64 = S_TO_NS / 5000000;
 
+const NOISE_CLOCK_PERIOD_NS: u64 = S_TO_NS / 500000;
+
 #[derive(Default)]
 struct PlayControlReg {
     enable: bool,
@@ -217,6 +219,155 @@ impl Voice for StandardVoice {
     }
 }
 
+struct NoiseVoice {
+    reg_play_control: PlayControlReg,
+
+    reg_volume: VolumeReg,
+
+    reg_frequency_low: usize,
+    reg_frequency_high: usize,
+
+    envelope: Envelope,
+
+    reg_noise_control: usize,
+
+    frequency_clock_counter: u64,
+    frequency_counter: usize,
+    shift: usize,
+    output: usize,
+}
+
+impl NoiseVoice {
+    fn new() -> NoiseVoice {
+        NoiseVoice {
+            reg_play_control: PlayControlReg::default(),
+
+            reg_volume: VolumeReg::default(),
+
+            reg_frequency_low: 0,
+            reg_frequency_high: 0,
+
+            reg_noise_control: 0,
+
+            envelope: Envelope::default(),
+
+            frequency_clock_counter: 0,
+            frequency_counter: 0,
+            shift: 0x7fff,
+            output: 0,
+        }
+    }
+
+    fn read_play_control_reg(&self) -> u8 {
+        self.reg_play_control.read()
+    }
+
+    fn write_play_control_reg(&mut self, value: u8) {
+        self.reg_play_control.write(value);
+
+        if self.reg_play_control.enable {
+            self.frequency_clock_counter = 0;
+            self.frequency_counter = 0;
+            // TODO: Reset shift?
+        }
+    }
+
+    fn read_volume_reg(&self) -> u8 {
+        self.reg_volume.read()
+    }
+
+    fn write_volume_reg(&mut self, value: u8) {
+        self.reg_volume.write(value);
+    }
+
+    fn read_frequency_low_reg(&self) -> u8 {
+        self.reg_frequency_low as _
+    }
+
+    fn write_frequency_low_reg(&mut self, value: u8) {
+        self.reg_frequency_low = value as _;
+    }
+
+    fn read_frequency_high_reg(&self) -> u8 {
+        self.reg_frequency_high as _
+    }
+
+    fn write_frequency_high_reg(&mut self, value: u8) {
+        self.reg_frequency_high = (value & 0x07) as _;
+    }
+
+    fn read_envelope_data_reg(&self) -> u8 {
+        self.envelope.read_data_reg()
+    }
+
+    fn write_envelope_data_reg(&mut self, value: u8) {
+        self.envelope.write_data_reg(value);
+    }
+
+    fn read_envelope_noise_control_reg(&self) -> u8 {
+        ((self.reg_noise_control << 4) as u8) | self.envelope.read_control_reg()
+    }
+
+    fn write_envelope_noise_control_reg(&mut self, value: u8) {
+        self.reg_noise_control = ((value >> 4) & 0x07) as _;
+        self.envelope.write_control_reg(value);
+    }
+
+    fn cycle(&mut self) {
+        self.frequency_clock_counter += CPU_CYCLE_PERIOD_NS;
+        if self.frequency_clock_counter >= NOISE_CLOCK_PERIOD_NS {
+            self.frequency_clock_counter -= NOISE_CLOCK_PERIOD_NS;
+
+            self.frequency_counter += 1;
+            if self.frequency_counter >= 2048 - ((self.reg_frequency_high << 8) | self.reg_frequency_low) {
+                self.frequency_counter = 0;
+
+                let lhs = self.shift >> 7;
+
+                let rhs_bit_index = match self.reg_noise_control {
+                    0 => 14,
+                    1 => 10,
+                    2 => 13,
+                    3 => 4,
+                    4 => 8,
+                    5 => 6,
+                    6 => 9,
+                    _ => 11
+                };
+                let rhs = self.shift >> rhs_bit_index;
+
+                let xor_bit = (lhs ^ rhs) & 0x01;
+
+                self.shift = (self.shift << 1) | xor_bit;
+
+                let output_bit = (!xor_bit) & 0x01;
+                self.output = match output_bit {
+                    0 => 0,
+                    _ => 0x3f
+                };
+            }
+        }
+    }
+
+    fn output(&self) -> usize {
+        self.output
+    }
+}
+
+impl Voice for NoiseVoice {
+    fn reg_play_control(&self) -> &PlayControlReg {
+        &self.reg_play_control
+    }
+
+    fn reg_volume(&self) -> &VolumeReg {
+        &self.reg_volume
+    }
+
+    fn envelope(&self) -> &Envelope {
+        &self.envelope
+    }
+}
+
 pub struct Vsu {
     wave_tables: Box<[u8]>,
 
@@ -225,6 +376,7 @@ pub struct Vsu {
     voice3: StandardVoice,
     voice4: StandardVoice,
     voice5: StandardVoice,
+    voice6: NoiseVoice,
 
     reg_sound_disable: bool,
 
@@ -241,6 +393,7 @@ impl Vsu {
             voice3: StandardVoice::default(),
             voice4: StandardVoice::default(),
             voice5: StandardVoice::default(),
+            voice6: NoiseVoice::new(),
 
             reg_sound_disable: false,
 
@@ -290,6 +443,12 @@ impl Vsu {
             VOICE_5_ENVELOPE_DATA => self.voice5.read_envelope_data_reg(),
             VOICE_5_ENVELOPE_CONTROL => self.voice5.read_envelope_control_reg(),
             VOICE_5_PCM_WAVE => self.voice5.read_pcm_wave_reg(),
+            VOICE_6_PLAY_CONTROL => self.voice6.read_play_control_reg(),
+            VOICE_6_VOLUME => self.voice6.read_volume_reg(),
+            VOICE_6_FREQUENCY_LOW => self.voice6.read_frequency_low_reg(),
+            VOICE_6_FREQUENCY_HIGH => self.voice6.read_frequency_high_reg(),
+            VOICE_6_ENVELOPE_DATA => self.voice6.read_envelope_data_reg(),
+            VOICE_6_ENVELOPE_NOISE_CONTROL => self.voice6.read_envelope_noise_control_reg(),
             SOUND_DISABLE_REG => if self.reg_sound_disable { 1 } else { 0 },
             _ => {
                 logln!("VSU read byte not yet implemented (addr: 0x{:08x})", addr);
@@ -340,6 +499,12 @@ impl Vsu {
             VOICE_5_ENVELOPE_DATA => self.voice5.write_envelope_data_reg(value),
             VOICE_5_ENVELOPE_CONTROL => self.voice5.write_envelope_control_reg(value),
             VOICE_5_PCM_WAVE => self.voice5.write_pcm_wave_reg(value),
+            VOICE_6_PLAY_CONTROL => self.voice6.write_play_control_reg(value),
+            VOICE_6_VOLUME => self.voice6.write_volume_reg(value),
+            VOICE_6_FREQUENCY_LOW => self.voice6.write_frequency_low_reg(value),
+            VOICE_6_FREQUENCY_HIGH => self.voice6.write_frequency_high_reg(value),
+            VOICE_6_ENVELOPE_DATA => self.voice6.write_envelope_data_reg(value),
+            VOICE_6_ENVELOPE_NOISE_CONTROL => self.voice6.write_envelope_noise_control_reg(value),
             SOUND_DISABLE_REG => {
                 // This might actually be a strobe register
                 self.reg_sound_disable = (value & 0x01) != 0;
@@ -365,6 +530,7 @@ impl Vsu {
             self.voice3.cycle();
             self.voice4.cycle();
             self.voice5.cycle();
+            self.voice6.cycle();
 
             self.sample_clock_counter += CPU_CYCLE_PERIOD_NS;
             if self.sample_clock_counter >= SAMPLE_PERIOD_NS {
@@ -387,6 +553,7 @@ impl Vsu {
             mix_sample(&mut acc_left, &mut acc_right, &self.voice3, self.voice3.output(&self.wave_tables));
             mix_sample(&mut acc_left, &mut acc_right, &self.voice4, self.voice4.output(&self.wave_tables));
             mix_sample(&mut acc_left, &mut acc_right, &self.voice5, self.voice5.output(&self.wave_tables));
+            mix_sample(&mut acc_left, &mut acc_right, &self.voice6, self.voice6.output());
 
             let output_left = (acc_left & 0xfff8) as i16;
             let output_right = (acc_right & 0xfff8) as i16;
