@@ -18,7 +18,7 @@ const SAMPLE_PERIOD_NS: u64 = S_TO_NS / SAMPLE_RATE;
 
 const CPU_CYCLE_PERIOD_NS: u64 = 50;
 
-const PHASE_CLOCK_PERIOD_NS: u64 = S_TO_NS / 5000000;
+const FREQUENCY_CLOCK_PERIOD_NS: u64 = S_TO_NS / 5000000;
 
 #[derive(Default, Clone)]
 struct Voice {
@@ -42,8 +42,8 @@ struct Voice {
 
     reg_pcm_wave: usize,
 
-    phase_clock_counter: u64,
-    phase_counter: usize,
+    frequency_clock_counter: u64,
+    frequency_counter: usize,
     phase: usize,
 }
 
@@ -60,8 +60,8 @@ impl Voice {
         self.reg_play_control_duration = (value & 0xff) as _;
 
         if self.reg_play_control_enable {
-            self.phase_clock_counter = 0;
-            self.phase_counter = 0;
+            self.frequency_clock_counter = 0;
+            self.frequency_counter = 0;
         }
     }
 
@@ -122,13 +122,13 @@ impl Voice {
     }
 
     fn cycle(&mut self) {
-        self.phase_clock_counter += CPU_CYCLE_PERIOD_NS;
-        if self.phase_clock_counter >= PHASE_CLOCK_PERIOD_NS {
-            self.phase_clock_counter -= PHASE_CLOCK_PERIOD_NS;
+        self.frequency_clock_counter += CPU_CYCLE_PERIOD_NS;
+        if self.frequency_clock_counter >= FREQUENCY_CLOCK_PERIOD_NS {
+            self.frequency_clock_counter -= FREQUENCY_CLOCK_PERIOD_NS;
 
-            self.phase_counter += 1;
-            if self.phase_counter >= 2048 - ((self.reg_frequency_high << 8) | self.reg_frequency_low) {
-                self.phase_counter = 0;
+            self.frequency_counter += 1;
+            if self.frequency_counter >= 2048 - ((self.reg_frequency_high << 8) | self.reg_frequency_low) {
+                self.frequency_counter = 0;
                 self.phase = (self.phase + 1) & (NUM_WAVE_TABLE_WORDS - 1);
             }
         }
