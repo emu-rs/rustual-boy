@@ -21,6 +21,45 @@ const CPU_CYCLE_PERIOD_NS: u64 = 50;
 const FREQUENCY_CLOCK_PERIOD_NS: u64 = S_TO_NS / 5000000;
 
 #[derive(Default)]
+struct PlayControlReg {
+    enable: bool,
+    use_duration: bool,
+    duration: usize,
+}
+
+impl PlayControlReg {
+    fn read(&self) -> u8 {
+        (if self.enable { 1 } else { 0 } << 7) |
+        (if self.use_duration { 1 } else { 0 } << 5) |
+        (self.duration as u8)
+    }
+
+    fn write(&mut self, value: u8) {
+        self.enable = (value & 0x80) != 0;
+        self.use_duration = (value & 0x20) != 0;
+        self.duration = (value & 0xff) as _;
+    }
+}
+
+#[derive(Default)]
+struct VolumeReg {
+    left: usize,
+    right: usize,
+}
+
+impl VolumeReg {
+    fn read(&self) -> u8 {
+        ((self.left as u8) << 4) |
+        (self.right as u8)
+    }
+
+    fn write(&mut self, value: u8) {
+        self.left = (value >> 4) as _;
+        self.right = (value & 0x0f) as _;
+    }
+}
+
+#[derive(Default)]
 struct Envelope {
     reg_data_reload: usize,
     reg_data_direction: bool,
@@ -52,19 +91,25 @@ impl Envelope {
         self.reg_control_repeat = (value & 0x02) != 0;
         self.reg_control_enable = (value & 0x01) != 0;
     }
+
+    fn level(&self) -> usize {
+        0x0f//if self.reg_control_enable { 0x08 } else { 0x00 }
+    }
+}
+
+trait Voice {
+    fn reg_play_control(&self) -> &PlayControlReg;
+    fn reg_volume(&self) -> &VolumeReg;
+    fn envelope(&self) -> &Envelope;
 }
 
 #[derive(Default)]
 struct StandardVoice {
-    reg_play_control_enable: bool,
-    reg_play_control_use_duration: bool,
-    reg_play_control_duration: usize,
+    reg_play_control: PlayControlReg,
 
-    reg_volume_left: usize,
-    reg_volume_right: usize,
+    reg_volume: VolumeReg,
 
     reg_frequency_low: usize,
-
     reg_frequency_high: usize,
 
     envelope: Envelope,
@@ -78,17 +123,13 @@ struct StandardVoice {
 
 impl StandardVoice {
     fn read_play_control_reg(&self) -> u8 {
-        (if self.reg_play_control_enable { 1 } else { 0 } << 7) |
-        (if self.reg_play_control_use_duration { 1 } else { 0 } << 5) |
-        (self.reg_play_control_duration as u8)
+        self.reg_play_control.read()
     }
 
     fn write_play_control_reg(&mut self, value: u8) {
-        self.reg_play_control_enable = (value & 0x80) != 0;
-        self.reg_play_control_use_duration = (value & 0x20) != 0;
-        self.reg_play_control_duration = (value & 0xff) as _;
+        self.reg_play_control.write(value);
 
-        if self.reg_play_control_enable {
+        if self.reg_play_control.enable {
             self.frequency_clock_counter = 0;
             self.frequency_counter = 0;
             self.phase = 0;
@@ -96,13 +137,11 @@ impl StandardVoice {
     }
 
     fn read_volume_reg(&self) -> u8 {
-        ((self.reg_volume_left as u8) << 4) |
-        (self.reg_volume_right as u8)
+        self.reg_volume.read()
     }
 
     fn write_volume_reg(&mut self, value: u8) {
-        self.reg_volume_left = (value >> 4) as _;
-        self.reg_volume_right = (value & 0x0f) as _;
+        self.reg_volume.write(value);
     }
 
     fn read_frequency_low_reg(&self) -> u8 {
@@ -154,43 +193,27 @@ impl StandardVoice {
             if self.frequency_counter >= 2048 - ((self.reg_frequency_high << 8) | self.reg_frequency_low) {
                 self.frequency_counter = 0;
 
-                self.frequency_clock();
+                self.phase = (self.phase + 1) & (NUM_WAVE_TABLE_WORDS - 1);
             }
         }
     }
 
-    fn frequency_clock(&mut self) {
-        self.phase = (self.phase + 1) & (NUM_WAVE_TABLE_WORDS - 1);
+    fn output(&self, wave_tables: &[u8]) -> usize {
+        wave_tables[self.reg_pcm_wave * NUM_WAVE_TABLE_WORDS + self.phase] as _
+    }
+}
+
+impl Voice for StandardVoice {
+    fn reg_play_control(&self) -> &PlayControlReg {
+        &self.reg_play_control
     }
 
-    fn sample(&self, wave_tables: &[u8]) -> (usize, usize) {
-        let wave_level = wave_tables[self.reg_pcm_wave * NUM_WAVE_TABLE_WORDS + self.phase] as usize;
-
-        self.mix_sample(wave_level)
+    fn reg_volume(&self) -> &VolumeReg {
+        &self.reg_volume
     }
 
-    fn mix_sample(&self, sound_data: usize) -> (usize, usize) {
-        if self.reg_play_control_enable {
-            let envelope_level = 0x0f;//if self.envelope.reg_control_enable { 0x08 } else { 0x00 };
-
-            let left_level = if self.reg_volume_left == 0 || envelope_level == 0 {
-                0
-            } else {
-                (self.reg_volume_left * envelope_level) + 1
-            };
-            let right_level = if self.reg_volume_right == 0 || envelope_level == 0 {
-                0
-            } else {
-                (self.reg_volume_right * envelope_level) + 1
-            };
-
-            let output_left = (sound_data * left_level) >> 1;
-            let output_right = (sound_data * right_level) >> 1;
-
-            (output_left, output_right)
-        } else {
-            (0, 0)
-        }
+    fn envelope(&self) -> &Envelope {
+        &self.envelope
     }
 }
 
@@ -347,34 +370,55 @@ impl Vsu {
             if self.sample_clock_counter >= SAMPLE_PERIOD_NS {
                 self.sample_clock_counter -= SAMPLE_PERIOD_NS;
 
-                /*if self.reg_sound_disable {
-                    audio_driver.output_frame((0, 0));
-                } else {*/
-                    let mut voice_acc_left = 0;
-                    let mut voice_acc_right = 0;
-
-                    let (voice_left, voice_right) = self.voice1.sample(&self.wave_tables);
-                    voice_acc_left += voice_left;
-                    voice_acc_right += voice_right;
-                    let (voice_left, voice_right) = self.voice2.sample(&self.wave_tables);
-                    voice_acc_left += voice_left;
-                    voice_acc_right += voice_right;
-                    let (voice_left, voice_right) = self.voice3.sample(&self.wave_tables);
-                    voice_acc_left += voice_left;
-                    voice_acc_right += voice_right;
-                    let (voice_left, voice_right) = self.voice4.sample(&self.wave_tables);
-                    voice_acc_left += voice_left;
-                    voice_acc_right += voice_right;
-                    let (voice_left, voice_right) = self.voice5.sample(&self.wave_tables);
-                    voice_acc_left += voice_left;
-                    voice_acc_right += voice_right;
-
-                    let output_left = (voice_acc_left & 0xfff8) as i16;
-                    let output_right = (voice_acc_right & 0xfff8) as i16;
-
-                    audio_driver.output_frame((output_left, output_right));
-                //}
+                self.sample_clock(audio_driver);
             }
         }
     }
+
+    fn sample_clock(&mut self, audio_driver: &mut AudioDriver) {
+        /*if self.reg_sound_disable {
+            audio_driver.output_frame((0, 0));
+        } else {*/
+            let mut acc_left = 0;
+            let mut acc_right = 0;
+
+            mix_sample(&mut acc_left, &mut acc_right, &self.voice1, self.voice1.output(&self.wave_tables));
+            mix_sample(&mut acc_left, &mut acc_right, &self.voice2, self.voice2.output(&self.wave_tables));
+            mix_sample(&mut acc_left, &mut acc_right, &self.voice3, self.voice3.output(&self.wave_tables));
+            mix_sample(&mut acc_left, &mut acc_right, &self.voice4, self.voice4.output(&self.wave_tables));
+            mix_sample(&mut acc_left, &mut acc_right, &self.voice5, self.voice5.output(&self.wave_tables));
+
+            let output_left = (acc_left & 0xfff8) as i16;
+            let output_right = (acc_right & 0xfff8) as i16;
+
+            audio_driver.output_frame((output_left, output_right));
+        //}
+    }
+}
+
+fn mix_sample<V: Voice>(acc_left: &mut usize, acc_right: &mut usize, voice: &V, voice_output: usize) {
+    let (left, right) = if voice.reg_play_control().enable {
+        let envelope_level = voice.envelope().level();
+
+        let left_level = if voice.reg_volume().left == 0 || envelope_level == 0 {
+            0
+        } else {
+            (voice.reg_volume().left * envelope_level) + 1
+        };
+        let right_level = if voice.reg_volume().right == 0 || envelope_level == 0 {
+            0
+        } else {
+            (voice.reg_volume().right * envelope_level) + 1
+        };
+
+        let output_left = (voice_output * left_level) >> 1;
+        let output_right = (voice_output * right_level) >> 1;
+
+        (output_left, output_right)
+    } else {
+        (0, 0)
+    };
+
+    *acc_left += left;
+    *acc_right += right;
 }
