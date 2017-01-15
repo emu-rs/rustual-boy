@@ -314,8 +314,8 @@ impl Vsu {
                         voice_acc_left += left;
                         voice_acc_right += right;
                     }
-                    let output_left = voice_acc_left as i16;
-                    let output_right = voice_acc_right as i16;
+                    let output_left = (voice_acc_left & 0xfff8) as i16;
+                    let output_right = (voice_acc_right & 0xfff8) as i16;
 
                     audio_driver.output_frame((output_left, output_right));
                 //}
