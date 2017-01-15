@@ -338,7 +338,7 @@ impl NoiseVoice {
 
                 let xor_bit = (lhs ^ rhs) & 0x01;
 
-                self.shift = (self.shift << 1) | xor_bit;
+                self.shift = ((self.shift << 1) | xor_bit) & 0x7fff;
 
                 let output_bit = (!xor_bit) & 0x01;
                 self.output = match output_bit {
@@ -555,8 +555,8 @@ impl Vsu {
             mix_sample(&mut acc_left, &mut acc_right, &self.voice5, self.voice5.output(&self.wave_tables));
             mix_sample(&mut acc_left, &mut acc_right, &self.voice6, self.voice6.output());
 
-            let output_left = (acc_left & 0xfff8) as i16;
-            let output_right = (acc_right & 0xfff8) as i16;
+            let output_left = ((acc_left & 0xfff8) as i16) << 2;
+            let output_right = ((acc_right & 0xfff8) as i16) << 2;
 
             audio_driver.output_frame((output_left, output_right));
         //}
@@ -570,12 +570,12 @@ fn mix_sample<V: Voice>(acc_left: &mut usize, acc_right: &mut usize, voice: &V, 
         let left_level = if voice.reg_volume().left == 0 || envelope_level == 0 {
             0
         } else {
-            (voice.reg_volume().left * envelope_level) + 1
+            ((voice.reg_volume().left * envelope_level) >> 3) + 1
         };
         let right_level = if voice.reg_volume().right == 0 || envelope_level == 0 {
             0
         } else {
-            (voice.reg_volume().right * envelope_level) + 1
+            ((voice.reg_volume().right * envelope_level) >> 3) + 1
         };
 
         let output_left = (voice_output * left_level) >> 1;
