@@ -5,6 +5,8 @@ extern crate nom;
 
 extern crate minifb;
 
+extern crate rodio;
+
 #[macro_use]
 mod logging;
 mod video_driver;
@@ -21,7 +23,7 @@ mod interconnect;
 mod instruction;
 mod nvc;
 mod virtual_boy;
-mod wave_file_audio_driver;
+mod rodio_driver;
 mod command;
 mod emulator;
 

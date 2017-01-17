@@ -5,8 +5,6 @@ use sram::*;
 use interconnect::*;
 use nvc::*;
 
-pub const CPU_CYCLES_PER_FRAME: usize = 400000;
-
 pub struct VirtualBoy {
     pub interconnect: Interconnect,
     pub cpu: Nvc,

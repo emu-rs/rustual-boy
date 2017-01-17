@@ -13,7 +13,7 @@ const S_TO_NS: u64 = 1000000000;
 //  and the closest sample rate with an integral clock rate division from 20mhz should actually be
 //  41666.66 repeating (20 mhz / 480). This is most likely the real sample rate, but effectively
 //  it won't make much practical difference.
-const SAMPLE_RATE: u64 = 41700;
+pub const SAMPLE_RATE: u64 = 41700;
 const SAMPLE_PERIOD_NS: u64 = S_TO_NS / SAMPLE_RATE;
 
 const CPU_CYCLE_PERIOD_NS: u64 = 50;
@@ -543,7 +543,7 @@ impl Vsu {
 
     fn sample_clock(&mut self, audio_driver: &mut AudioDriver) {
         /*if self.reg_sound_disable {
-            audio_driver.output_frame((0, 0));
+            audio_driver.append_frame((0, 0));
         } else {*/
             let mut acc_left = 0;
             let mut acc_right = 0;
@@ -558,7 +558,7 @@ impl Vsu {
             let output_left = ((acc_left & 0xfff8) as i16) << 2;
             let output_right = ((acc_right & 0xfff8) as i16) << 2;
 
-            audio_driver.output_frame((output_left, output_right));
+            audio_driver.append_frame((output_left, output_right));
         //}
     }
 }

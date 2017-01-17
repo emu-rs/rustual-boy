@@ -10,3 +10,4 @@ logging = []
 encoding = "0.2"
 nom = "^1.2.3"
 minifb = "0.9.0"
+rodio = "0.4.2"

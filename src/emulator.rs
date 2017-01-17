@@ -1,12 +1,14 @@
 use minifb::{WindowOptions, Window, Key, KeyRepeat};
 
 use video_driver::*;
+use audio_driver::*;
 use rom::*;
 use sram::*;
 use instruction::*;
+use vsu::*;
 use game_pad::*;
 use virtual_boy::*;
-use wave_file_audio_driver::*;
+use rodio_driver::*;
 use command::*;
 
 use std::time;
@@ -14,8 +16,6 @@ use std::thread::{self, JoinHandle};
 use std::io::{stdin, stdout, Write};
 use std::collections::{HashSet, HashMap};
 use std::sync::mpsc::{channel, Receiver};
-
-const NS_TO_MS: u32 = 1000000;
 
 struct SimpleVideoDriver {
     next: Option<(Box<[u8]>, Box<[u8]>)>,
@@ -48,9 +48,7 @@ pub struct Emulator {
     stdin_receiver: Receiver<String>,
     _stdin_thread: JoinHandle<()>,
 
-    frame_cycles: usize,
-
-    audio_driver: WaveFileAudioDriver,
+    audio_driver: RodioDriver,
 }
 
 impl Emulator {
@@ -77,84 +75,87 @@ impl Emulator {
             stdin_receiver: stdin_receiver,
             _stdin_thread: stdin_thread,
 
-            frame_cycles: 0,
-
-            audio_driver: WaveFileAudioDriver::new("out.wav").unwrap(),
+            audio_driver: RodioDriver::new(SAMPLE_RATE as _, 100).unwrap(),
         }
     }
 
     pub fn run(&mut self) {
         while self.window.is_open() && !self.window.is_key_down(Key::Escape) {
-            let frame_start_time = time::Instant::now();
-
             let mut video_driver = SimpleVideoDriver {
                 next: None
             };
 
+            const MIN_AUDIO_FRAMES_TO_RENDER: usize = 100;
+            let (read_pos, write_pos) = self.audio_driver.read_write_pos();
+            let audio_frames_to_render = if read_pos >= write_pos {
+                read_pos - write_pos
+            } else {
+                read_pos + (self.audio_driver.len() - write_pos)
+            };
+
             match self.mode {
                 Mode::Running => {
-                    self.run_frame(&mut video_driver);
+                    let mut start_debugger = false;
+
+                    if audio_frames_to_render >= MIN_AUDIO_FRAMES_TO_RENDER {
+                        const CPU_CYCLES_PER_AUDIO_FRAME: usize = 20000000 / (SAMPLE_RATE as usize);
+
+                        let cycles_to_run = audio_frames_to_render * CPU_CYCLES_PER_AUDIO_FRAME;
+
+                        let mut audio_frame_cycles = 0;
+                        while audio_frame_cycles < cycles_to_run {
+                            let (num_cycles, trigger_watchpoint) = self.virtual_boy.step(&mut video_driver, &mut self.audio_driver);
+                            audio_frame_cycles += num_cycles;
+                            if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
+                                start_debugger = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if start_debugger {
+                        self.start_debugger();
+                    }
                 }
                 Mode::Debugging => {
                     if self.run_debugger_commands(&mut video_driver) {
                         break;
                     }
-                }
-            }
 
-            match video_driver.next {
-                Some((left_buffer, right_buffer)) => {
-                    let mut buffer = vec![0; 384 * 224];
-                    unsafe {
-                        let left_buffer_ptr = left_buffer.as_ptr();
-                        let right_buffer_ptr = right_buffer.as_ptr();
-                        let buffer_ptr = buffer.as_mut_ptr();
-                        for i in 0..384 * 224 {
-                            let left = *left_buffer_ptr.offset(i) as u32;
-                            let right = *right_buffer_ptr.offset(i) as u32;
-                            *buffer_ptr.offset(i) = (right << 16) | (left << 8) | left;
+                    if audio_frames_to_render >= MIN_AUDIO_FRAMES_TO_RENDER {
+                        for _ in 0..audio_frames_to_render {
+                            self.audio_driver.append_frame((0, 0));
                         }
                     }
-                    self.window.update_with_buffer(&buffer);
+
+                    self.window.update();
                 }
-                _ => self.window.update()
             }
 
-            let frame_duration = frame_start_time.elapsed();
-            if self.mode == Mode::Running {
-                logln!("Frame duration: {}ms", frame_duration.subsec_nanos() / NS_TO_MS);
+            if let Some((left_buffer, right_buffer)) = video_driver.next {
+                let mut buffer = vec![0; 384 * 224];
+                unsafe {
+                    let left_buffer_ptr = left_buffer.as_ptr();
+                    let right_buffer_ptr = right_buffer.as_ptr();
+                    let buffer_ptr = buffer.as_mut_ptr();
+                    for i in 0..384 * 224 {
+                        let left = *left_buffer_ptr.offset(i) as u32;
+                        let right = *right_buffer_ptr.offset(i) as u32;
+                        *buffer_ptr.offset(i) = (right << 16) | (left << 8) | left;
+                    }
+                }
+                self.window.update_with_buffer(&buffer);
+
+                if let Mode::Running = self.mode {
+                    self.read_input_keys();
+
+                    if self.window.is_key_pressed(Key::F12, KeyRepeat::No) {
+                        self.start_debugger();
+                    }
+                }
             }
-            let target_frame_duration = time::Duration::from_millis(20);
-            if frame_duration < target_frame_duration {
-                let sleep_ms = (target_frame_duration - frame_duration).subsec_nanos() / NS_TO_MS;
-                thread::sleep(time::Duration::from_millis(sleep_ms as _));
-            }
-        }
-    }
 
-    fn run_frame(&mut self, video_driver: &mut VideoDriver) {
-        let mut start_debugger = false;
-
-        if self.window.is_key_pressed(Key::F12, KeyRepeat::No) {
-            start_debugger = true;
-        }
-
-        self.read_input_keys();
-
-        while self.frame_cycles < CPU_CYCLES_PER_FRAME {
-            let (num_cycles, trigger_watchpoint) = self.virtual_boy.step(video_driver, &mut self.audio_driver);
-            self.frame_cycles += num_cycles;
-            if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
-                start_debugger = true;
-                break;
-            }
-        }
-        if self.frame_cycles >= CPU_CYCLES_PER_FRAME {
-            self.frame_cycles -= CPU_CYCLES_PER_FRAME;
-        }
-
-        if start_debugger {
-            self.start_debugger();
+            thread::sleep(time::Duration::from_millis(3));
         }
     }
 
@@ -206,11 +207,7 @@ impl Emulator {
                     println!("ecr: 0x{:08x}", self.virtual_boy.cpu.reg_ecr());
                 }
                 Ok(Command::Step) => {
-                    let (num_cycles, _) = self.virtual_boy.step(video_driver, &mut self.audio_driver);
-                    self.frame_cycles += num_cycles;
-                    if self.frame_cycles >= CPU_CYCLES_PER_FRAME {
-                        self.frame_cycles -= CPU_CYCLES_PER_FRAME;
-                    }
+                    let _ = self.virtual_boy.step(video_driver, &mut self.audio_driver);
                     self.cursor = self.virtual_boy.cpu.reg_pc();
                     self.disassemble_instruction();
                 }
