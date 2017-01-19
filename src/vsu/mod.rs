@@ -48,7 +48,7 @@ impl PlayControlReg {
     fn write(&mut self, value: u8) {
         self.enable = (value & 0x80) != 0;
         self.use_duration = (value & 0x20) != 0;
-        self.duration = (value & 0xff) as _;
+        self.duration = (value & 0x1f) as _;
 
         if self.use_duration {
             self.duration_counter = 0;
