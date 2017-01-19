@@ -18,6 +18,9 @@ const SAMPLE_PERIOD_NS: u64 = S_TO_NS / SAMPLE_RATE;
 
 const CPU_CYCLE_PERIOD_NS: u64 = 50;
 
+// S_TO_NS / 260.4hz
+const DURATION_CLOCK_PERIOD_NS: u64 = 3840246;
+
 // S_TO_NS / 65.1hz
 const ENVELOPE_CLOCK_PERIOD_NS: u64 = 15360983;
 
@@ -30,6 +33,9 @@ struct PlayControlReg {
     enable: bool,
     use_duration: bool,
     duration: usize,
+
+    duration_clock_counter: u64,
+    duration_counter: usize,
 }
 
 impl PlayControlReg {
@@ -43,6 +49,24 @@ impl PlayControlReg {
         self.enable = (value & 0x80) != 0;
         self.use_duration = (value & 0x20) != 0;
         self.duration = (value & 0xff) as _;
+
+        if self.use_duration {
+            self.duration_counter = 0;
+        }
+    }
+
+    fn cycle(&mut self) {
+        self.duration_clock_counter += CPU_CYCLE_PERIOD_NS;
+        if self.duration_clock_counter >= DURATION_CLOCK_PERIOD_NS {
+            self.duration_clock_counter -= DURATION_CLOCK_PERIOD_NS;
+
+            if self.enable && self.use_duration {
+                self.duration_counter += 1;
+                if self.duration_counter > self.duration {
+                    self.enable = false;
+                }
+            }
+        }
     }
 }
 
@@ -225,6 +249,7 @@ impl StandardVoice {
     }
 
     fn cycle(&mut self) {
+        self.reg_play_control.cycle();
         self.envelope.cycle();
 
         self.frequency_clock_counter += CPU_CYCLE_PERIOD_NS;
@@ -354,6 +379,9 @@ impl NoiseVoice {
     }
 
     fn cycle(&mut self) {
+        self.reg_play_control.cycle();
+        self.envelope.cycle();
+
         self.frequency_clock_counter += CPU_CYCLE_PERIOD_NS;
         if self.frequency_clock_counter >= NOISE_CLOCK_PERIOD_NS {
             self.frequency_clock_counter -= NOISE_CLOCK_PERIOD_NS;
