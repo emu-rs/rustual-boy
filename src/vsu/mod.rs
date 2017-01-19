@@ -143,18 +143,12 @@ impl Envelope {
                 if self.envelope_counter > self.reg_data_step_interval {
                     self.envelope_counter = 0;
 
-                    self.level = if self.reg_data_direction {
-                        self.level + 1
-                    } else {
-                        self.level.wrapping_sub(1)
-                    } & 0x0f;
-
-                    if self.level == 0 {
-                        if self.reg_control_repeat {
-                            self.level = self.reg_data_reload;
-                        } else {
-                            self.reg_control_enable = false;
-                        }
+                    if self.reg_data_direction && self.level < 15 {
+                        self.level += 1;
+                    } else if !self.reg_data_direction && self.level > 0 {
+                        self.level -= 1;
+                    } else if self.reg_control_repeat {
+                        self.level = self.reg_data_reload;
                     }
                 }
             }
