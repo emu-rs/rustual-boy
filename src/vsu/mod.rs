@@ -18,6 +18,9 @@ const SAMPLE_PERIOD_NS: u64 = S_TO_NS / SAMPLE_RATE;
 
 const CPU_CYCLE_PERIOD_NS: u64 = 50;
 
+// S_TO_NS / 65.1hz
+const ENVELOPE_CLOCK_PERIOD_NS: u64 = 15360983;
+
 const FREQUENCY_CLOCK_PERIOD_NS: u64 = S_TO_NS / 5000000;
 
 const NOISE_CLOCK_PERIOD_NS: u64 = S_TO_NS / 500000;
@@ -69,6 +72,11 @@ struct Envelope {
 
     reg_control_repeat: bool,
     reg_control_enable: bool,
+
+    level: usize,
+
+    envelope_clock_counter: u64,
+    envelope_counter: usize,
 }
 
 impl Envelope {
@@ -82,6 +90,8 @@ impl Envelope {
         self.reg_data_reload = (value >> 4) as _;
         self.reg_data_direction = (value & 0x80) != 0;
         self.reg_data_step_interval = (value & 0x07) as _;
+
+        self.level = self.reg_data_reload;
     }
 
     fn read_control_reg(&self) -> u8 {
@@ -95,7 +105,35 @@ impl Envelope {
     }
 
     fn level(&self) -> usize {
-        0x0f//if self.reg_control_enable { 0x08 } else { 0x00 }
+        self.level
+    }
+
+    fn cycle(&mut self) {
+        self.envelope_clock_counter += CPU_CYCLE_PERIOD_NS;
+        if self.envelope_clock_counter >= ENVELOPE_CLOCK_PERIOD_NS {
+            self.envelope_clock_counter -= ENVELOPE_CLOCK_PERIOD_NS;
+
+            self.envelope_counter += 1;
+            if self.envelope_counter > self.reg_data_step_interval {
+                self.envelope_counter = 0;
+
+                if self.reg_control_enable {
+                    self.level = if self.reg_data_direction {
+                        self.level + 1
+                    } else {
+                        self.level.wrapping_sub(1)
+                    } & 0x0f;
+
+                    if self.level == 0 {
+                        if self.reg_control_repeat {
+                            self.level = self.reg_data_reload;
+                        } else {
+                            self.reg_control_enable = false;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -187,6 +225,8 @@ impl StandardVoice {
     }
 
     fn cycle(&mut self) {
+        self.envelope.cycle();
+
         self.frequency_clock_counter += CPU_CYCLE_PERIOD_NS;
         if self.frequency_clock_counter >= FREQUENCY_CLOCK_PERIOD_NS {
             self.frequency_clock_counter -= FREQUENCY_CLOCK_PERIOD_NS;
