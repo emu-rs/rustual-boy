@@ -116,6 +116,7 @@ impl Envelope {
         self.reg_data_step_interval = (value & 0x07) as _;
 
         self.level = self.reg_data_reload;
+        self.envelope_counter = 0;
     }
 
     fn read_control_reg(&self) -> u8 {
@@ -137,11 +138,11 @@ impl Envelope {
         if self.envelope_clock_counter >= ENVELOPE_CLOCK_PERIOD_NS {
             self.envelope_clock_counter -= ENVELOPE_CLOCK_PERIOD_NS;
 
-            self.envelope_counter += 1;
-            if self.envelope_counter > self.reg_data_step_interval {
-                self.envelope_counter = 0;
+            if self.reg_control_enable {
+                self.envelope_counter += 1;
+                if self.envelope_counter > self.reg_data_step_interval {
+                    self.envelope_counter = 0;
 
-                if self.reg_control_enable {
                     self.level = if self.reg_data_direction {
                         self.level + 1
                     } else {
