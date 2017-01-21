@@ -618,8 +618,8 @@ impl Vsu {
             mix_sample(&mut acc_left, &mut acc_right, &self.voice5, self.voice5.output(&self.wave_tables));
             mix_sample(&mut acc_left, &mut acc_right, &self.voice6, self.voice6.output());
 
-            let output_left = ((((acc_left & 0xfff8) << 3) as isize) - 32768) as i16;
-            let output_right = ((((acc_right & 0xfff8) << 3) as isize) - 32768) as i16;
+            let output_left = ((acc_left & 0xfff8) << 2) as i16;
+            let output_right = ((acc_right & 0xfff8) << 2) as i16;
 
             audio_driver.append_frame((output_left, output_right));
         //}
