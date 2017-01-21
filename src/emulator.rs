@@ -8,7 +8,7 @@ use instruction::*;
 use vsu::*;
 use game_pad::*;
 use virtual_boy::*;
-use cpal_driver::*;
+use cpal_engine::*;
 use command::*;
 
 use std::time;
@@ -48,7 +48,7 @@ pub struct Emulator {
     stdin_receiver: Receiver<String>,
     _stdin_thread: JoinHandle<()>,
 
-    audio_driver: CpalDriver,
+    audio_engine: CpalEngine,
 }
 
 impl Emulator {
@@ -75,7 +75,7 @@ impl Emulator {
             stdin_receiver: stdin_receiver,
             _stdin_thread: stdin_thread,
 
-            audio_driver: CpalDriver::new(SAMPLE_RATE as _, 100).unwrap(),
+            audio_engine: CpalEngine::new(SAMPLE_RATE as _, 100).unwrap(),
         }
     }
 
@@ -85,50 +85,43 @@ impl Emulator {
                 next: None
             };
 
-            const MIN_AUDIO_FRAMES_TO_RENDER: usize = 100;
-            let (read_pos, write_pos) = self.audio_driver.read_write_pos();
-            let audio_frames_to_render = if read_pos >= write_pos {
-                read_pos - write_pos
-            } else {
-                read_pos + (self.audio_driver.len() - write_pos)
-            };
+            {
+                let audio_driver_mutex = self.audio_engine.driver();
+                let mut audio_driver = audio_driver_mutex.lock().unwrap();
 
-            match self.mode {
-                Mode::Running => {
-                    let mut start_debugger = false;
+                const MIN_AUDIO_FRAMES_TO_RENDER: usize = 100;
 
-                    if audio_frames_to_render >= MIN_AUDIO_FRAMES_TO_RENDER {
-                        const CPU_CYCLES_PER_AUDIO_FRAME: usize = 20000000 / (SAMPLE_RATE as usize);
+                match self.mode {
+                    Mode::Running => {
+                        let mut start_debugger = false;
 
-                        let cycles_to_run = audio_frames_to_render * CPU_CYCLES_PER_AUDIO_FRAME;
-
-                        let mut audio_frame_cycles = 0;
-                        while audio_frame_cycles < cycles_to_run {
-                            let (num_cycles, trigger_watchpoint) = self.virtual_boy.step(&mut video_driver, &mut self.audio_driver);
-                            audio_frame_cycles += num_cycles;
-                            if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
-                                start_debugger = true;
-                                break;
+                        if audio_driver.desired_frames() >= MIN_AUDIO_FRAMES_TO_RENDER {
+                            while audio_driver.desired_frames() > 0 {
+                                let trigger_watchpoint = self.virtual_boy.step(&mut video_driver, &mut *audio_driver);
+                                if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
+                                    start_debugger = true;
+                                    break;
+                                }
                             }
                         }
-                    }
 
-                    if start_debugger {
-                        self.start_debugger();
-                    }
-                }
-                Mode::Debugging => {
-                    if self.run_debugger_commands(&mut video_driver) {
-                        break;
-                    }
-
-                    if audio_frames_to_render >= MIN_AUDIO_FRAMES_TO_RENDER {
-                        for _ in 0..audio_frames_to_render {
-                            self.audio_driver.append_frame((0, 0));
+                        if start_debugger {
+                            self.start_debugger();
                         }
                     }
+                    Mode::Debugging => {
+                        if self.run_debugger_commands(&mut video_driver) {
+                            break;
+                        }
 
-                    self.window.update();
+                        if audio_driver.desired_frames() >= MIN_AUDIO_FRAMES_TO_RENDER {
+                            while audio_driver.desired_frames() > 0 {
+                                audio_driver.append_frame((0, 0));
+                            }
+                        }
+
+                        self.window.update();
+                    }
                 }
             }
 
@@ -207,7 +200,9 @@ impl Emulator {
                     println!("ecr: 0x{:08x}", self.virtual_boy.cpu.reg_ecr());
                 }
                 Ok(Command::Step) => {
-                    let _ = self.virtual_boy.step(video_driver, &mut self.audio_driver);
+                    let audio_driver_mutex = self.audio_engine.driver();
+                    let mut audio_driver = audio_driver_mutex.lock().unwrap();
+                    let _ = self.virtual_boy.step(video_driver, &mut *audio_driver);
                     self.cursor = self.virtual_boy.cpu.reg_pc();
                     self.disassemble_instruction();
                 }

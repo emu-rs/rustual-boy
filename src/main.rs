@@ -25,7 +25,7 @@ mod interconnect;
 mod instruction;
 mod nvc;
 mod virtual_boy;
-mod cpal_driver;
+mod cpal_engine;
 mod command;
 mod emulator;
 

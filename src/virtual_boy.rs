@@ -18,7 +18,7 @@ impl VirtualBoy {
         }
     }
 
-    pub fn step(&mut self, video_driver: &mut VideoDriver, audio_driver: &mut AudioDriver) -> (usize, bool) {
-        self.cpu.step(&mut self.interconnect, video_driver, audio_driver)
+    pub fn step(&mut self, video_driver: &mut VideoDriver, audio_driver: &mut AudioDriver) -> bool {
+        self.cpu.step(&mut self.interconnect, video_driver, audio_driver).1
     }
 }
