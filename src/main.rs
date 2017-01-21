@@ -5,7 +5,9 @@ extern crate nom;
 
 extern crate minifb;
 
-extern crate rodio;
+extern crate cpal;
+
+extern crate futures;
 
 #[macro_use]
 mod logging;
@@ -23,7 +25,7 @@ mod interconnect;
 mod instruction;
 mod nvc;
 mod virtual_boy;
-mod rodio_driver;
+mod cpal_driver;
 mod command;
 mod emulator;
 

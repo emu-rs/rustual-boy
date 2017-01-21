@@ -8,7 +8,7 @@ use instruction::*;
 use vsu::*;
 use game_pad::*;
 use virtual_boy::*;
-use rodio_driver::*;
+use cpal_driver::*;
 use command::*;
 
 use std::time;
@@ -48,7 +48,7 @@ pub struct Emulator {
     stdin_receiver: Receiver<String>,
     _stdin_thread: JoinHandle<()>,
 
-    audio_driver: RodioDriver,
+    audio_driver: CpalDriver,
 }
 
 impl Emulator {
@@ -75,7 +75,7 @@ impl Emulator {
             stdin_receiver: stdin_receiver,
             _stdin_thread: stdin_thread,
 
-            audio_driver: RodioDriver::new(SAMPLE_RATE as _, 100).unwrap(),
+            audio_driver: CpalDriver::new(SAMPLE_RATE as _, 100).unwrap(),
         }
     }
 
