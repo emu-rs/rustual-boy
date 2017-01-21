@@ -112,7 +112,7 @@ impl Envelope {
 
     fn write_data_reg(&mut self, value: u8) {
         self.reg_data_reload = (value >> 4) as _;
-        self.reg_data_direction = (value & 0x80) != 0;
+        self.reg_data_direction = (value & 0x08) != 0;
         self.reg_data_step_interval = (value & 0x07) as _;
 
         self.level = self.reg_data_reload;
