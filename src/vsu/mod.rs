@@ -140,7 +140,6 @@ struct StandardVoice {
 
     reg_pcm_wave: usize,
 
-    frequency_clock_counter: u64,
     frequency_counter: usize,
     phase: usize,
 }
@@ -152,7 +151,6 @@ impl StandardVoice {
         if self.reg_play_control.enable {
             self.envelope.envelope_counter = 0;
 
-            self.frequency_clock_counter = 0;
             self.frequency_counter = 0;
             self.phase = 0;
         }
@@ -182,17 +180,12 @@ impl StandardVoice {
         self.reg_pcm_wave = (value & 0x07) as _;
     }
 
-    fn cycle(&mut self) {
-        self.frequency_clock_counter += CPU_CYCLE_PERIOD_NS;
-        if self.frequency_clock_counter >= FREQUENCY_CLOCK_PERIOD_NS {
-            self.frequency_clock_counter -= FREQUENCY_CLOCK_PERIOD_NS;
+    fn frequency_clock(&mut self) {
+        self.frequency_counter += 1;
+        if self.frequency_counter >= 2048 - ((self.reg_frequency_high << 8) | self.reg_frequency_low) {
+            self.frequency_counter = 0;
 
-            self.frequency_counter += 1;
-            if self.frequency_counter >= 2048 - ((self.reg_frequency_high << 8) | self.reg_frequency_low) {
-                self.frequency_counter = 0;
-
-                self.phase = (self.phase + 1) & (NUM_WAVE_TABLE_WORDS - 1);
-            }
+            self.phase = (self.phase + 1) & (NUM_WAVE_TABLE_WORDS - 1);
         }
     }
 
@@ -227,7 +220,6 @@ struct NoiseVoice {
 
     reg_noise_control: usize,
 
-    frequency_clock_counter: u64,
     frequency_counter: usize,
     shift: usize,
     output: usize,
@@ -247,7 +239,6 @@ impl NoiseVoice {
 
             envelope: Envelope::default(),
 
-            frequency_clock_counter: 0,
             frequency_counter: 0,
             shift: 0x7fff,
             output: 0,
@@ -260,7 +251,6 @@ impl NoiseVoice {
         if self.reg_play_control.enable {
             self.envelope.envelope_counter = 0;
 
-            self.frequency_clock_counter = 0;
             self.frequency_counter = 0;
             self.shift = 0x7fff;
         }
@@ -287,39 +277,34 @@ impl NoiseVoice {
         self.envelope.write_control_reg(value);
     }
 
-    fn cycle(&mut self) {
-        self.frequency_clock_counter += CPU_CYCLE_PERIOD_NS;
-        if self.frequency_clock_counter >= NOISE_CLOCK_PERIOD_NS {
-            self.frequency_clock_counter -= NOISE_CLOCK_PERIOD_NS;
+    fn noise_clock(&mut self) {
+        self.frequency_counter += 1;
+        if self.frequency_counter >= 2048 - ((self.reg_frequency_high << 8) | self.reg_frequency_low) {
+            self.frequency_counter = 0;
 
-            self.frequency_counter += 1;
-            if self.frequency_counter >= 2048 - ((self.reg_frequency_high << 8) | self.reg_frequency_low) {
-                self.frequency_counter = 0;
+            let lhs = self.shift >> 7;
 
-                let lhs = self.shift >> 7;
+            let rhs_bit_index = match self.reg_noise_control {
+                0 => 14,
+                1 => 10,
+                2 => 13,
+                3 => 4,
+                4 => 8,
+                5 => 6,
+                6 => 9,
+                _ => 11
+            };
+            let rhs = self.shift >> rhs_bit_index;
 
-                let rhs_bit_index = match self.reg_noise_control {
-                    0 => 14,
-                    1 => 10,
-                    2 => 13,
-                    3 => 4,
-                    4 => 8,
-                    5 => 6,
-                    6 => 9,
-                    _ => 11
-                };
-                let rhs = self.shift >> rhs_bit_index;
+            let xor_bit = (lhs ^ rhs) & 0x01;
 
-                let xor_bit = (lhs ^ rhs) & 0x01;
+            self.shift = ((self.shift << 1) | xor_bit) & 0x7fff;
 
-                self.shift = ((self.shift << 1) | xor_bit) & 0x7fff;
-
-                let output_bit = (!xor_bit) & 0x01;
-                self.output = match output_bit {
-                    0 => 0,
-                    _ => 0x3f
-                };
-            }
+            let output_bit = (!xor_bit) & 0x01;
+            self.output = match output_bit {
+                0 => 0,
+                _ => 0x3f
+            };
         }
     }
 
@@ -354,6 +339,8 @@ pub struct Vsu {
 
     duration_clock_counter: u64,
     envelope_clock_counter: u64,
+    frequency_clock_counter: u64,
+    noise_clock_counter: u64,
     sample_clock_counter: u64,
 }
 
@@ -371,6 +358,8 @@ impl Vsu {
 
             duration_clock_counter: 0,
             envelope_clock_counter: 0,
+            frequency_clock_counter: 0,
+            noise_clock_counter: 0,
             sample_clock_counter: 0,
         }
     }
@@ -476,13 +465,6 @@ impl Vsu {
 
     pub fn cycles(&mut self, cycles: usize, audio_driver: &mut AudioDriver) {
         for _ in 0..cycles {
-            self.voice1.cycle();
-            self.voice2.cycle();
-            self.voice3.cycle();
-            self.voice4.cycle();
-            self.voice5.cycle();
-            self.voice6.cycle();
-
             self.duration_clock_counter += CPU_CYCLE_PERIOD_NS;
             if self.duration_clock_counter >= DURATION_CLOCK_PERIOD_NS {
                 self.duration_clock_counter -= DURATION_CLOCK_PERIOD_NS;
@@ -505,6 +487,24 @@ impl Vsu {
                 self.voice4.envelope.envelope_clock();
                 self.voice5.envelope.envelope_clock();
                 self.voice6.envelope.envelope_clock();
+            }
+
+            self.frequency_clock_counter += CPU_CYCLE_PERIOD_NS;
+            if self.frequency_clock_counter >= FREQUENCY_CLOCK_PERIOD_NS {
+                self.frequency_clock_counter -= FREQUENCY_CLOCK_PERIOD_NS;
+
+                self.voice1.frequency_clock();
+                self.voice2.frequency_clock();
+                self.voice3.frequency_clock();
+                self.voice4.frequency_clock();
+                self.voice5.frequency_clock();
+            }
+
+            self.noise_clock_counter += CPU_CYCLE_PERIOD_NS;
+            if self.noise_clock_counter >= NOISE_CLOCK_PERIOD_NS {
+                self.noise_clock_counter -= NOISE_CLOCK_PERIOD_NS;
+
+                self.voice6.noise_clock();
             }
 
             self.sample_clock_counter += CPU_CYCLE_PERIOD_NS;
