@@ -19,6 +19,14 @@ pub struct RingBuffer {
     inner: VecDeque<i16>,
 }
 
+impl Iterator for RingBuffer {
+    type Item = i16;
+
+    fn next(&mut self) -> Option<i16> {
+        self.inner.pop_front()
+    }
+}
+
 impl AudioDriver for RingBuffer {
     fn desired_frames(&self) -> usize {
         if self.inner.len() < self.desired_len {
@@ -61,7 +69,7 @@ impl CpalEngine {
             panic!("Endpoint format must be 2-channel");
         }
 
-        let desired_len = (sample_rate * desired_latency_ms / 1000 * 2) as usize; // * 2 for stereo
+        let desired_len = (sample_rate * desired_latency_ms / 1000 * 2) as usize;
         let ring_buffer = Arc::new(Mutex::new(RingBuffer {
             desired_len: desired_len,
 
@@ -161,7 +169,7 @@ impl LinearResampler {
         }
     }
 
-    fn next(&mut self, input: &mut RingBuffer) -> i16 {
+    fn next(&mut self, input: &mut Iterator<Item = i16>) -> i16 {
         fn interpolate(a: i16, b: i16, num: usize, denom: usize) -> i16 {
             (((a as isize) * ((denom - num) as isize) + (b as isize) * (num as isize)) / (denom as isize)) as _
         }
@@ -181,8 +189,8 @@ impl LinearResampler {
 
                 self.current_from_frame = self.next_from_frame;
 
-                let left = input.inner.pop_front().unwrap_or(0);
-                let right = input.inner.pop_front().unwrap_or(0);
+                let left = input.next().unwrap_or(0);
+                let right = input.next().unwrap_or(0);
                 self.next_from_frame = (left, right);
             }
         }
