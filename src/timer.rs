@@ -1,8 +1,13 @@
 // 20mhz / (1s / 100us) = 2000
 const LARGE_INTERVAL_PERIOD: usize = 2000;
 
-// 20mhz / (1s / 20us) = 400
-const SMALL_INTERVAL_PERIOD: usize = 400;
+// 20mhz / (1s / 16.66us repeating) = ~333
+//  Note that the docs claim this interval is 20us rather than 16.66us repeating, but
+//  it could be just rounding, as is often the case. This particular value comes from
+//  extensive testing/tweaking comparing recordings of the the vocal sample in the
+//  intro of Galactic Pinball from both the real hw and the emu with slightly different
+//  intervals in the range of ~16-20ms.
+const SMALL_INTERVAL_PERIOD: usize = 333;
 
 enum Interval {
     Large,
@@ -98,7 +103,7 @@ impl Timer {
                                 self.zero_interrupt = true;
                             }
                             self.reload
-                        },
+                        }
                         _ => self.counter - 1
                     };
                 }
