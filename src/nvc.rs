@@ -1,5 +1,3 @@
-use video_driver::*;
-use audio_driver::*;
 use instruction::*;
 use interconnect::*;
 
@@ -157,7 +155,7 @@ impl Nvc {
         self.psw_interrupt_mask_level = ((value as usize) >> 16) & 0x0f;
     }
 
-    pub fn step(&mut self, interconnect: &mut Interconnect, video_driver: &mut VideoDriver, audio_driver: &mut AudioDriver) -> (usize, bool) {
+    pub fn step(&mut self, interconnect: &mut Interconnect) -> (usize, bool) {
         let original_pc = self.reg_pc;
 
         let first_halfword = interconnect.read_halfword(original_pc);
@@ -722,10 +720,6 @@ impl Nvc {
 
         self.reg_pc = next_pc;
 
-        if let Some(exception_code) = interconnect.cycles(num_cycles, video_driver, audio_driver) {
-            self.request_exception(exception_code);
-        }
-
         (num_cycles, trigger_watchpoint)
     }
 
@@ -804,11 +798,15 @@ impl Nvc {
         self.psw_zero = value == 0.0;
     }
 
-    fn request_exception(&mut self, exception_code: u16) {
+    pub fn request_interrupt(&mut self, exception_code: u16) {
         if self.psw_nmi_pending || self.psw_exception_pending || self.psw_interrupt_disable {
             return;
         }
 
+        self.enter_exception(exception_code);
+    }
+
+    fn enter_exception(&mut self, exception_code: u16) {
         logln!("Entering exception (code: 0x{:04x})", exception_code);
         self.reg_eipc = self.reg_pc;
         self.reg_eipsw = self.reg_psw();
