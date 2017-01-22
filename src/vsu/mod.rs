@@ -34,7 +34,6 @@ struct PlayControlReg {
     use_duration: bool,
     duration: usize,
 
-    duration_clock_counter: u64,
     duration_counter: usize,
 }
 
@@ -49,16 +48,11 @@ impl PlayControlReg {
         }
     }
 
-    fn cycle(&mut self) {
-        self.duration_clock_counter += CPU_CYCLE_PERIOD_NS;
-        if self.duration_clock_counter >= DURATION_CLOCK_PERIOD_NS {
-            self.duration_clock_counter -= DURATION_CLOCK_PERIOD_NS;
-
-            if self.enable && self.use_duration {
-                self.duration_counter += 1;
-                if self.duration_counter > self.duration {
-                    self.enable = false;
-                }
+    fn duration_clock(&mut self) {
+        if self.enable && self.use_duration {
+            self.duration_counter += 1;
+            if self.duration_counter > self.duration {
+                self.enable = false;
             }
         }
     }
@@ -88,7 +82,6 @@ struct Envelope {
 
     level: usize,
 
-    envelope_clock_counter: u64,
     envelope_counter: usize,
 }
 
@@ -111,23 +104,18 @@ impl Envelope {
         self.level
     }
 
-    fn cycle(&mut self) {
-        self.envelope_clock_counter += CPU_CYCLE_PERIOD_NS;
-        if self.envelope_clock_counter >= ENVELOPE_CLOCK_PERIOD_NS {
-            self.envelope_clock_counter -= ENVELOPE_CLOCK_PERIOD_NS;
+    fn envelope_clock(&mut self) {
+        if self.reg_control_enable {
+            self.envelope_counter += 1;
+            if self.envelope_counter > self.reg_data_step_interval {
+                self.envelope_counter = 0;
 
-            if self.reg_control_enable {
-                self.envelope_counter += 1;
-                if self.envelope_counter > self.reg_data_step_interval {
-                    self.envelope_counter = 0;
-
-                    if self.reg_data_direction && self.level < 15 {
-                        self.level += 1;
-                    } else if !self.reg_data_direction && self.level > 0 {
-                        self.level -= 1;
-                    } else if self.reg_control_repeat {
-                        self.level = self.reg_data_reload;
-                    }
+                if self.reg_data_direction && self.level < 15 {
+                    self.level += 1;
+                } else if !self.reg_data_direction && self.level > 0 {
+                    self.level -= 1;
+                } else if self.reg_control_repeat {
+                    self.level = self.reg_data_reload;
                 }
             }
         }
@@ -194,9 +182,6 @@ impl StandardVoice {
     }
 
     fn cycle(&mut self) {
-        self.reg_play_control.cycle();
-        self.envelope.cycle();
-
         self.frequency_clock_counter += CPU_CYCLE_PERIOD_NS;
         if self.frequency_clock_counter >= FREQUENCY_CLOCK_PERIOD_NS {
             self.frequency_clock_counter -= FREQUENCY_CLOCK_PERIOD_NS;
@@ -300,9 +285,6 @@ impl NoiseVoice {
     }
 
     fn cycle(&mut self) {
-        self.reg_play_control.cycle();
-        self.envelope.cycle();
-
         self.frequency_clock_counter += CPU_CYCLE_PERIOD_NS;
         if self.frequency_clock_counter >= NOISE_CLOCK_PERIOD_NS {
             self.frequency_clock_counter -= NOISE_CLOCK_PERIOD_NS;
@@ -367,6 +349,8 @@ pub struct Vsu {
     voice5: StandardVoice,
     voice6: NoiseVoice,
 
+    duration_clock_counter: u64,
+    envelope_clock_counter: u64,
     sample_clock_counter: u64,
 }
 
@@ -382,6 +366,8 @@ impl Vsu {
             voice5: StandardVoice::default(),
             voice6: NoiseVoice::new(),
 
+            duration_clock_counter: 0,
+            envelope_clock_counter: 0,
             sample_clock_counter: 0,
         }
     }
@@ -493,6 +479,30 @@ impl Vsu {
             self.voice4.cycle();
             self.voice5.cycle();
             self.voice6.cycle();
+
+            self.duration_clock_counter += CPU_CYCLE_PERIOD_NS;
+            if self.duration_clock_counter >= DURATION_CLOCK_PERIOD_NS {
+                self.duration_clock_counter -= DURATION_CLOCK_PERIOD_NS;
+
+                self.voice1.reg_play_control.duration_clock();
+                self.voice2.reg_play_control.duration_clock();
+                self.voice3.reg_play_control.duration_clock();
+                self.voice4.reg_play_control.duration_clock();
+                self.voice5.reg_play_control.duration_clock();
+                self.voice6.reg_play_control.duration_clock();
+            }
+
+            self.envelope_clock_counter += CPU_CYCLE_PERIOD_NS;
+            if self.envelope_clock_counter >= ENVELOPE_CLOCK_PERIOD_NS {
+                self.envelope_clock_counter -= ENVELOPE_CLOCK_PERIOD_NS;
+
+                self.voice1.envelope.envelope_clock();
+                self.voice2.envelope.envelope_clock();
+                self.voice3.envelope.envelope_clock();
+                self.voice4.envelope.envelope_clock();
+                self.voice5.envelope.envelope_clock();
+                self.voice6.envelope.envelope_clock();
+            }
 
             self.sample_clock_counter += CPU_CYCLE_PERIOD_NS;
             if self.sample_clock_counter >= SAMPLE_PERIOD_NS {
