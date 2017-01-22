@@ -11,19 +11,14 @@ const DISPLAY_RESOLUTION_Y: usize = 224;
 const DRAWING_BLOCK_HEIGHT: usize = 8;
 const DRAWING_BLOCK_COUNT: usize = DISPLAY_RESOLUTION_Y / DRAWING_BLOCK_HEIGHT;
 
-const MS_TO_NS: u64 = 1000000;
-const US_TO_NS: u64 = 1000;
+// 20mhz / (1s / 5ms) = 100000 clocks
+const DISPLAY_FRAME_QUARTER_PERIOD: usize = 100000;
 
-const CPU_CYCLE_PERIOD_NS: u64 = 50;
+const DRAWING_PERIOD: usize = DISPLAY_FRAME_QUARTER_PERIOD * 2;
+const DRAWING_BLOCK_PERIOD: usize = DRAWING_PERIOD / DRAWING_BLOCK_COUNT;
 
-const DISPLAY_FRAME_QUARTER_PERIOD_MS: u64 = 5;
-const DISPLAY_FRAME_QUARTER_PERIOD_NS: u64 = DISPLAY_FRAME_QUARTER_PERIOD_MS * MS_TO_NS;
-
-const DRAWING_PERIOD_NS: u64 = DISPLAY_FRAME_QUARTER_PERIOD_NS * 2;
-const DRAWING_BLOCK_PERIOD_NS: u64 = DRAWING_PERIOD_NS / (DRAWING_BLOCK_COUNT as u64);
-
-const DRAWING_SBOUT_PERIOD_US: u64 = 56;
-const DRAWING_SBOUT_PERIOD_NS: u64 = DRAWING_SBOUT_PERIOD_US * US_TO_NS;
+// 20mhz / (1s / 56us) = 1120 clocks
+const DRAWING_SBOUT_PERIOD: usize = 1120;
 
 enum DisplayState {
     Idle,
@@ -110,11 +105,11 @@ pub struct Vip {
 
     reg_clear_color: u8,
 
-    display_frame_quarter_clock_counter: u64,
+    display_frame_quarter_clock_counter: usize,
     display_frame_quarter_counter: usize,
 
-    drawing_block_counter: u64,
-    drawing_sbout_counter: u64,
+    drawing_block_counter: usize,
+    drawing_sbout_counter: usize,
 
     game_frame_counter: usize,
 
@@ -519,9 +514,9 @@ impl Vip {
         let mut raise_interrupt = false;
 
         for _ in 0..cycles {
-            self.display_frame_quarter_clock_counter += CPU_CYCLE_PERIOD_NS;
-            if self.display_frame_quarter_clock_counter >= DISPLAY_FRAME_QUARTER_PERIOD_NS {
-                self.display_frame_quarter_clock_counter -= DISPLAY_FRAME_QUARTER_PERIOD_NS;
+            self.display_frame_quarter_clock_counter += 1;
+            if self.display_frame_quarter_clock_counter >= DISPLAY_FRAME_QUARTER_PERIOD {
+                self.display_frame_quarter_clock_counter = 0;
 
                 match self.display_frame_quarter_counter {
                     0 => {
@@ -569,9 +564,9 @@ impl Vip {
             }
 
             if let DrawingState::Drawing = self.drawing_state {
-                self.drawing_block_counter += CPU_CYCLE_PERIOD_NS;
-                if self.drawing_block_counter >= DRAWING_BLOCK_PERIOD_NS {
-                    self.drawing_block_counter -= DRAWING_BLOCK_PERIOD_NS;
+                self.drawing_block_counter += 1;
+                if self.drawing_block_counter >= DRAWING_BLOCK_PERIOD {
+                    self.drawing_block_counter = 0;
 
                     if self.reg_drawing_control_sbcount < DRAWING_BLOCK_COUNT {
                         self.end_drawing_block(&mut raise_interrupt);
@@ -594,8 +589,8 @@ impl Vip {
                 }
 
                 if self.reg_drawing_control_sbout {
-                    self.drawing_sbout_counter += CPU_CYCLE_PERIOD_NS;
-                    if self.drawing_sbout_counter >= DRAWING_SBOUT_PERIOD_NS {
+                    self.drawing_sbout_counter += 1;
+                    if self.drawing_sbout_counter >= DRAWING_SBOUT_PERIOD {
                         self.reg_drawing_control_sbout = false;
                     }
                 }
