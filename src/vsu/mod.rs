@@ -441,8 +441,6 @@ pub struct Vsu {
     voice5: StandardVoice,
     voice6: NoiseVoice,
 
-    reg_sound_disable: bool,
-
     sample_clock_counter: u64,
 }
 
@@ -457,8 +455,6 @@ impl Vsu {
             voice4: StandardVoice::default(),
             voice5: StandardVoice::default(),
             voice6: NoiseVoice::new(),
-
-            reg_sound_disable: false,
 
             sample_clock_counter: 0,
         }
@@ -512,7 +508,7 @@ impl Vsu {
             VOICE_6_FREQUENCY_HIGH => self.voice6.read_frequency_high_reg(),
             VOICE_6_ENVELOPE_DATA => self.voice6.read_envelope_data_reg(),
             VOICE_6_ENVELOPE_NOISE_CONTROL => self.voice6.read_envelope_noise_control_reg(),
-            SOUND_DISABLE_REG => if self.reg_sound_disable { 1 } else { 0 },
+            SOUND_DISABLE_REG => 0,
             _ => {
                 logln!("VSU read byte not yet implemented (addr: 0x{:08x})", addr);
                 0
@@ -522,11 +518,31 @@ impl Vsu {
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         match addr {
-            PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => self.wave_tables[((addr - PCM_WAVE_TABLE_0_START) / 4 + 0x00) as usize] = value & 0x3f,
-            PCM_WAVE_TABLE_1_START ... PCM_WAVE_TABLE_1_END => self.wave_tables[((addr - PCM_WAVE_TABLE_1_START) / 4 + 0x20) as usize] = value & 0x3f,
-            PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => self.wave_tables[((addr - PCM_WAVE_TABLE_2_START) / 4 + 0x40) as usize] = value & 0x3f,
-            PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => self.wave_tables[((addr - PCM_WAVE_TABLE_3_START) / 4 + 0x60) as usize] = value & 0x3f,
-            PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => self.wave_tables[((addr - PCM_WAVE_TABLE_4_START) / 4 + 0x80) as usize] = value & 0x3f,
+            PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => {
+                if !self.are_channels_active() {
+                    self.wave_tables[((addr - PCM_WAVE_TABLE_0_START) / 4 + 0x00) as usize] = value & 0x3f;
+                }
+            }
+            PCM_WAVE_TABLE_1_START ... PCM_WAVE_TABLE_1_END => {
+                if !self.are_channels_active() {
+                    self.wave_tables[((addr - PCM_WAVE_TABLE_1_START) / 4 + 0x20) as usize] = value & 0x3f;
+                }
+            }
+            PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => {
+                if !self.are_channels_active() {
+                    self.wave_tables[((addr - PCM_WAVE_TABLE_2_START) / 4 + 0x40) as usize] = value & 0x3f;
+                }
+            }
+            PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => {
+                if !self.are_channels_active() {
+                    self.wave_tables[((addr - PCM_WAVE_TABLE_3_START) / 4 + 0x60) as usize] = value & 0x3f;
+                }
+            }
+            PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => {
+                if !self.are_channels_active() {
+                    self.wave_tables[((addr - PCM_WAVE_TABLE_4_START) / 4 + 0x80) as usize] = value & 0x3f;
+                }
+            }
             VOICE_1_PLAY_CONTROL => self.voice1.write_play_control_reg(value),
             VOICE_1_VOLUME => self.voice1.write_volume_reg(value),
             VOICE_1_FREQUENCY_LOW => self.voice1.write_frequency_low_reg(value),
@@ -569,8 +585,14 @@ impl Vsu {
             VOICE_6_ENVELOPE_DATA => self.voice6.write_envelope_data_reg(value),
             VOICE_6_ENVELOPE_NOISE_CONTROL => self.voice6.write_envelope_noise_control_reg(value),
             SOUND_DISABLE_REG => {
-                // This might actually be a strobe register
-                self.reg_sound_disable = (value & 0x01) != 0;
+                if (value & 0x01) != 0 {
+                    self.voice1.reg_play_control.enable = false;
+                    self.voice2.reg_play_control.enable = false;
+                    self.voice3.reg_play_control.enable = false;
+                    self.voice4.reg_play_control.enable = false;
+                    self.voice5.reg_play_control.enable = false;
+                    self.voice6.reg_play_control.enable = false;
+                }
             }
             _ => logln!("VSU write byte not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value)
         }
@@ -605,50 +627,55 @@ impl Vsu {
     }
 
     fn sample_clock(&mut self, audio_driver: &mut AudioDriver) {
-        /*if self.reg_sound_disable {
-            audio_driver.append_frame((0, 0));
-        } else {*/
-            let mut acc_left = 0;
-            let mut acc_right = 0;
+        let mut acc_left = 0;
+        let mut acc_right = 0;
 
-            mix_sample(&mut acc_left, &mut acc_right, &self.voice1, self.voice1.output(&self.wave_tables));
-            mix_sample(&mut acc_left, &mut acc_right, &self.voice2, self.voice2.output(&self.wave_tables));
-            mix_sample(&mut acc_left, &mut acc_right, &self.voice3, self.voice3.output(&self.wave_tables));
-            mix_sample(&mut acc_left, &mut acc_right, &self.voice4, self.voice4.output(&self.wave_tables));
-            mix_sample(&mut acc_left, &mut acc_right, &self.voice5, self.voice5.output(&self.wave_tables));
-            mix_sample(&mut acc_left, &mut acc_right, &self.voice6, self.voice6.output());
+        fn mix_sample<V: Voice>(acc_left: &mut usize, acc_right: &mut usize, voice: &V, voice_output: usize) {
+            let (left, right) = if voice.reg_play_control().enable {
+                let envelope_level = voice.envelope().level();
 
-            let output_left = ((acc_left & 0xfff8) << 2) as i16;
-            let output_right = ((acc_right & 0xfff8) << 2) as i16;
+                let left_level = if voice.reg_volume().left == 0 || envelope_level == 0 {
+                    0
+                } else {
+                    ((voice.reg_volume().left * envelope_level) >> 3) + 1
+                };
+                let right_level = if voice.reg_volume().right == 0 || envelope_level == 0 {
+                    0
+                } else {
+                    ((voice.reg_volume().right * envelope_level) >> 3) + 1
+                };
 
-            audio_driver.append_frame((output_left, output_right));
-        //}
+                let output_left = (voice_output * left_level) >> 1;
+                let output_right = (voice_output * right_level) >> 1;
+
+                (output_left, output_right)
+            } else {
+                (0, 0)
+            };
+
+            *acc_left += left;
+            *acc_right += right;
+        }
+
+        mix_sample(&mut acc_left, &mut acc_right, &self.voice1, self.voice1.output(&self.wave_tables));
+        mix_sample(&mut acc_left, &mut acc_right, &self.voice2, self.voice2.output(&self.wave_tables));
+        mix_sample(&mut acc_left, &mut acc_right, &self.voice3, self.voice3.output(&self.wave_tables));
+        mix_sample(&mut acc_left, &mut acc_right, &self.voice4, self.voice4.output(&self.wave_tables));
+        mix_sample(&mut acc_left, &mut acc_right, &self.voice5, self.voice5.output(&self.wave_tables));
+        mix_sample(&mut acc_left, &mut acc_right, &self.voice6, self.voice6.output());
+
+        let output_left = ((acc_left & 0xfff8) << 2) as i16;
+        let output_right = ((acc_right & 0xfff8) << 2) as i16;
+
+        audio_driver.append_frame((output_left, output_right));
     }
-}
 
-fn mix_sample<V: Voice>(acc_left: &mut usize, acc_right: &mut usize, voice: &V, voice_output: usize) {
-    let (left, right) = if voice.reg_play_control().enable {
-        let envelope_level = voice.envelope().level();
-
-        let left_level = if voice.reg_volume().left == 0 || envelope_level == 0 {
-            0
-        } else {
-            ((voice.reg_volume().left * envelope_level) >> 3) + 1
-        };
-        let right_level = if voice.reg_volume().right == 0 || envelope_level == 0 {
-            0
-        } else {
-            ((voice.reg_volume().right * envelope_level) >> 3) + 1
-        };
-
-        let output_left = (voice_output * left_level) >> 1;
-        let output_right = (voice_output * right_level) >> 1;
-
-        (output_left, output_right)
-    } else {
-        (0, 0)
-    };
-
-    *acc_left += left;
-    *acc_right += right;
+    fn are_channels_active(&self) -> bool {
+        self.voice1.reg_play_control.enable ||
+        self.voice2.reg_play_control.enable ||
+        self.voice3.reg_play_control.enable ||
+        self.voice4.reg_play_control.enable ||
+        self.voice5.reg_play_control.enable ||
+        self.voice6.reg_play_control.enable
+    }
 }
