@@ -73,7 +73,7 @@ impl CpalEngine {
         let (mut voice, stream) = Voice::new(&endpoint, &format, &event_loop).expect("Failed to create voice");
         voice.play();
 
-        let mut resampler = Resampler::new(sample_rate as _, format.samples_rate.0 as _);
+        let mut resampler = LinearResampler::new(sample_rate as _, format.samples_rate.0 as _);
 
         let read_ring_buffer = ring_buffer.clone();
         task::spawn(stream.for_each(move |output_buffer| {
@@ -124,31 +124,51 @@ impl CpalEngine {
     }
 }
 
-struct Resampler {
+struct LinearResampler {
     from_sample_rate: usize,
     to_sample_rate: usize,
 
     current_from_frame: (i16, i16),
-    current_frame_channel_offset: usize,
+    next_from_frame: (i16, i16),
     from_fract_pos: usize,
+
+    current_frame_channel_offset: usize,
 }
 
-impl Resampler {
-    fn new(from_sample_rate: usize, to_sample_rate: usize) -> Resampler {
-        Resampler {
-            from_sample_rate: from_sample_rate,
-            to_sample_rate: to_sample_rate,
+impl LinearResampler {
+    fn new(from_sample_rate: usize, to_sample_rate: usize) -> LinearResampler {
+        let sample_rate_gcd = {
+            fn gcd(a: usize, b: usize) -> usize {
+                if b == 0 {
+                    a
+                } else {
+                    gcd(b, a % b)
+                }
+            }
+
+            gcd(from_sample_rate, to_sample_rate)
+        };
+
+        LinearResampler {
+            from_sample_rate: from_sample_rate / sample_rate_gcd,
+            to_sample_rate: to_sample_rate / sample_rate_gcd,
 
             current_from_frame: (0, 0),
-            current_frame_channel_offset: 0,
+            next_from_frame: (0, 0),
             from_fract_pos: 0,
+
+            current_frame_channel_offset: 0,
         }
     }
 
     fn next(&mut self, input: &mut RingBuffer) -> i16 {
+        fn interpolate(a: i16, b: i16, num: usize, denom: usize) -> i16 {
+            (((a as isize) * ((denom - num) as isize) + (b as isize) * (num as isize)) / (denom as isize)) as _
+        }
+
         let ret = match self.current_frame_channel_offset {
-            0 => self.current_from_frame.0,
-            _ => self.current_from_frame.1
+            0 => interpolate(self.current_from_frame.0, self.next_from_frame.0, self.from_fract_pos, self.to_sample_rate),
+            _ => interpolate(self.current_from_frame.1, self.next_from_frame.1, self.from_fract_pos, self.to_sample_rate)
         };
 
         self.current_frame_channel_offset += 1;
@@ -159,9 +179,11 @@ impl Resampler {
             while self.from_fract_pos > self.to_sample_rate {
                 self.from_fract_pos -= self.to_sample_rate;
 
+                self.current_from_frame = self.next_from_frame;
+
                 let left = input.inner.pop_front().unwrap_or(0);
                 let right = input.inner.pop_front().unwrap_or(0);
-                self.current_from_frame = (left, right);
+                self.next_from_frame = (left, right);
             }
         }
 
