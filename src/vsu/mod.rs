@@ -92,7 +92,6 @@ impl Envelope {
         self.reg_data_step_interval = (value & 0x07) as _;
 
         self.level = self.reg_data_reload;
-        self.envelope_counter = 0;
     }
 
     fn write_control_reg(&mut self, value: u8) {
@@ -151,6 +150,8 @@ impl StandardVoice {
         self.reg_play_control.write(value);
 
         if self.reg_play_control.enable {
+            self.envelope.envelope_counter = 0;
+
             self.frequency_clock_counter = 0;
             self.frequency_counter = 0;
             self.phase = 0;
@@ -257,9 +258,11 @@ impl NoiseVoice {
         self.reg_play_control.write(value);
 
         if self.reg_play_control.enable {
+            self.envelope.envelope_counter = 0;
+
             self.frequency_clock_counter = 0;
             self.frequency_counter = 0;
-            // TODO: Reset shift?
+            self.shift = 0x7fff;
         }
     }
 
