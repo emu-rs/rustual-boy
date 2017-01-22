@@ -110,7 +110,7 @@ impl Emulator {
                         }
                     }
                     Mode::Debugging => {
-                        if self.run_debugger_commands(&mut video_driver) {
+                        if self.run_debugger_commands(&mut video_driver, &mut *audio_driver) {
                             break;
                         }
 
@@ -178,7 +178,7 @@ impl Emulator {
         self.print_cursor();
     }
 
-    fn run_debugger_commands(&mut self, video_driver: &mut VideoDriver) -> bool {
+    fn run_debugger_commands(&mut self, video_driver: &mut VideoDriver, audio_driver: &mut AudioDriver) -> bool {
         while let Ok(command_string) = self.stdin_receiver.try_recv() {
             let command = match (command_string.parse(), self.last_command.clone()) {
                 (Ok(Command::Repeat), Some(c)) => Ok(c),
@@ -200,8 +200,6 @@ impl Emulator {
                     println!("ecr: 0x{:08x}", self.virtual_boy.cpu.reg_ecr());
                 }
                 Ok(Command::Step) => {
-                    let audio_driver_mutex = self.audio_engine.driver();
-                    let mut audio_driver = audio_driver_mutex.lock().unwrap();
                     let _ = self.virtual_boy.step(video_driver, &mut *audio_driver);
                     self.cursor = self.virtual_boy.cpu.reg_pc();
                     self.disassemble_instruction();
