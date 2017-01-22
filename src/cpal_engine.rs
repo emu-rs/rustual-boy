@@ -73,29 +73,32 @@ impl CpalEngine {
         let (mut voice, stream) = Voice::new(&endpoint, &format, &event_loop).expect("Failed to create voice");
         voice.play();
 
+        let mut resampler = Resampler::new(sample_rate as _, format.samples_rate.0 as _);
+
         let read_ring_buffer = ring_buffer.clone();
         task::spawn(stream.for_each(move |output_buffer| {
-            let mut read_ring_buffer = read_ring_buffer.lock().unwrap();
+            let mut read_ring_buffer_guard = read_ring_buffer.lock().unwrap();
+            let read_ring_buffer = &mut *read_ring_buffer_guard;
 
             match output_buffer {
                 UnknownTypeBuffer::I16(mut buffer) => {
                     for sample in buffer.chunks_mut(format.channels.len()) {
                         for out in sample.iter_mut() {
-                            *out = read_ring_buffer.inner.pop_front().unwrap_or(0);
+                            *out = resampler.next(read_ring_buffer);
                         }
                     }
                 },
                 UnknownTypeBuffer::U16(mut buffer) => {
                     for sample in buffer.chunks_mut(format.channels.len()) {
                         for out in sample.iter_mut() {
-                            *out = ((read_ring_buffer.inner.pop_front().unwrap_or(0) as isize) + 32768) as u16;
+                            *out = ((resampler.next(read_ring_buffer) as isize) + 32768) as u16;
                         }
                     }
                 },
                 UnknownTypeBuffer::F32(mut buffer) => {
                     for sample in buffer.chunks_mut(format.channels.len()) {
                         for out in sample.iter_mut() {
-                            *out = (read_ring_buffer.inner.pop_front().unwrap_or(0) as f32) / 32768.0;
+                            *out = (resampler.next(read_ring_buffer) as f32) / 32768.0;
                         }
                     }
                 },
@@ -118,5 +121,50 @@ impl CpalEngine {
 
     pub fn driver(&self) -> Arc<Mutex<RingBuffer>> {
         self.ring_buffer.clone()
+    }
+}
+
+struct Resampler {
+    from_sample_rate: usize,
+    to_sample_rate: usize,
+
+    current_from_frame: (i16, i16),
+    current_frame_channel_offset: usize,
+    from_fract_pos: usize,
+}
+
+impl Resampler {
+    fn new(from_sample_rate: usize, to_sample_rate: usize) -> Resampler {
+        Resampler {
+            from_sample_rate: from_sample_rate,
+            to_sample_rate: to_sample_rate,
+
+            current_from_frame: (0, 0),
+            current_frame_channel_offset: 0,
+            from_fract_pos: 0,
+        }
+    }
+
+    fn next(&mut self, input: &mut RingBuffer) -> i16 {
+        let ret = match self.current_frame_channel_offset {
+            0 => self.current_from_frame.0,
+            _ => self.current_from_frame.1
+        };
+
+        self.current_frame_channel_offset += 1;
+        if self.current_frame_channel_offset >= 2 {
+            self.current_frame_channel_offset = 0;
+
+            self.from_fract_pos += self.from_sample_rate;
+            while self.from_fract_pos > self.to_sample_rate {
+                self.from_fract_pos -= self.to_sample_rate;
+
+                let left = input.inner.pop_front().unwrap_or(0);
+                let right = input.inner.pop_front().unwrap_or(0);
+                self.current_from_frame = (left, right);
+            }
+        }
+
+        ret
     }
 }
