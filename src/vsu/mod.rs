@@ -208,6 +208,7 @@ impl Voice for StandardVoice {
     }
 }
 
+#[derive(Default)]
 struct NoiseVoice {
     reg_play_control: PlayControlReg,
 
@@ -226,25 +227,6 @@ struct NoiseVoice {
 }
 
 impl NoiseVoice {
-    fn new() -> NoiseVoice {
-        NoiseVoice {
-            reg_play_control: PlayControlReg::default(),
-
-            reg_volume: VolumeReg::default(),
-
-            reg_frequency_low: 0,
-            reg_frequency_high: 0,
-
-            reg_noise_control: 0,
-
-            envelope: Envelope::default(),
-
-            frequency_counter: 0,
-            shift: 0x7fff,
-            output: 0,
-        }
-    }
-
     fn write_play_control_reg(&mut self, value: u8) {
         self.reg_play_control.write(value);
 
@@ -354,7 +336,7 @@ impl Vsu {
             voice3: StandardVoice::default(),
             voice4: StandardVoice::default(),
             voice5: StandardVoice::default(),
-            voice6: NoiseVoice::new(),
+            voice6: NoiseVoice::default(),
 
             duration_clock_counter: 0,
             envelope_clock_counter: 0,
