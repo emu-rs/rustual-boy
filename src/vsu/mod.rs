@@ -39,12 +39,6 @@ struct PlayControlReg {
 }
 
 impl PlayControlReg {
-    fn read(&self) -> u8 {
-        (if self.enable { 1 } else { 0 } << 7) |
-        (if self.use_duration { 1 } else { 0 } << 5) |
-        (self.duration as u8)
-    }
-
     fn write(&mut self, value: u8) {
         self.enable = (value & 0x80) != 0;
         self.use_duration = (value & 0x20) != 0;
@@ -77,11 +71,6 @@ struct VolumeReg {
 }
 
 impl VolumeReg {
-    fn read(&self) -> u8 {
-        ((self.left as u8) << 4) |
-        (self.right as u8)
-    }
-
     fn write(&mut self, value: u8) {
         self.left = (value >> 4) as _;
         self.right = (value & 0x0f) as _;
@@ -104,12 +93,6 @@ struct Envelope {
 }
 
 impl Envelope {
-    fn read_data_reg(&self) -> u8 {
-        ((self.reg_data_reload as u8) << 4) |
-        (if self.reg_data_direction { 1 } else { 0 } << 3) |
-        (self.reg_data_step_interval as u8)
-    }
-
     fn write_data_reg(&mut self, value: u8) {
         self.reg_data_reload = (value >> 4) as _;
         self.reg_data_direction = (value & 0x08) != 0;
@@ -117,11 +100,6 @@ impl Envelope {
 
         self.level = self.reg_data_reload;
         self.envelope_counter = 0;
-    }
-
-    fn read_control_reg(&self) -> u8 {
-        (if self.reg_control_repeat { 1 } else { 0 } << 1) |
-        (if self.reg_control_enable { 1 } else { 0 })
     }
 
     fn write_control_reg(&mut self, value: u8) {
@@ -181,10 +159,6 @@ struct StandardVoice {
 }
 
 impl StandardVoice {
-    fn read_play_control_reg(&self) -> u8 {
-        self.reg_play_control.read()
-    }
-
     fn write_play_control_reg(&mut self, value: u8) {
         self.reg_play_control.write(value);
 
@@ -195,48 +169,24 @@ impl StandardVoice {
         }
     }
 
-    fn read_volume_reg(&self) -> u8 {
-        self.reg_volume.read()
-    }
-
     fn write_volume_reg(&mut self, value: u8) {
         self.reg_volume.write(value);
-    }
-
-    fn read_frequency_low_reg(&self) -> u8 {
-        self.reg_frequency_low as _
     }
 
     fn write_frequency_low_reg(&mut self, value: u8) {
         self.reg_frequency_low = value as _;
     }
 
-    fn read_frequency_high_reg(&self) -> u8 {
-        self.reg_frequency_high as _
-    }
-
     fn write_frequency_high_reg(&mut self, value: u8) {
         self.reg_frequency_high = (value & 0x07) as _;
-    }
-
-    fn read_envelope_data_reg(&self) -> u8 {
-        self.envelope.read_data_reg()
     }
 
     fn write_envelope_data_reg(&mut self, value: u8) {
         self.envelope.write_data_reg(value);
     }
 
-    fn read_envelope_control_reg(&self) -> u8 {
-        self.envelope.read_control_reg()
-    }
-
     fn write_envelope_control_reg(&mut self, value: u8) {
         self.envelope.write_control_reg(value);
-    }
-
-    fn read_pcm_wave_reg(&self) -> u8 {
-        self.reg_pcm_wave as _
     }
 
     fn write_pcm_wave_reg(&mut self, value: u8) {
@@ -318,10 +268,6 @@ impl NoiseVoice {
         }
     }
 
-    fn read_play_control_reg(&self) -> u8 {
-        self.reg_play_control.read()
-    }
-
     fn write_play_control_reg(&mut self, value: u8) {
         self.reg_play_control.write(value);
 
@@ -332,40 +278,20 @@ impl NoiseVoice {
         }
     }
 
-    fn read_volume_reg(&self) -> u8 {
-        self.reg_volume.read()
-    }
-
     fn write_volume_reg(&mut self, value: u8) {
         self.reg_volume.write(value);
-    }
-
-    fn read_frequency_low_reg(&self) -> u8 {
-        self.reg_frequency_low as _
     }
 
     fn write_frequency_low_reg(&mut self, value: u8) {
         self.reg_frequency_low = value as _;
     }
 
-    fn read_frequency_high_reg(&self) -> u8 {
-        self.reg_frequency_high as _
-    }
-
     fn write_frequency_high_reg(&mut self, value: u8) {
         self.reg_frequency_high = (value & 0x07) as _;
     }
 
-    fn read_envelope_data_reg(&self) -> u8 {
-        self.envelope.read_data_reg()
-    }
-
     fn write_envelope_data_reg(&mut self, value: u8) {
         self.envelope.write_data_reg(value);
-    }
-
-    fn read_envelope_noise_control_reg(&self) -> u8 {
-        ((self.reg_noise_control << 4) as u8) | self.envelope.read_control_reg()
     }
 
     fn write_envelope_noise_control_reg(&mut self, value: u8) {
@@ -461,59 +387,9 @@ impl Vsu {
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {
-        match addr {
-            PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => self.wave_tables[((addr - PCM_WAVE_TABLE_0_START) / 4 + 0x00) as usize],
-            PCM_WAVE_TABLE_1_START ... PCM_WAVE_TABLE_1_END => self.wave_tables[((addr - PCM_WAVE_TABLE_1_START) / 4 + 0x20) as usize],
-            PCM_WAVE_TABLE_2_START ... PCM_WAVE_TABLE_2_END => self.wave_tables[((addr - PCM_WAVE_TABLE_2_START) / 4 + 0x40) as usize],
-            PCM_WAVE_TABLE_3_START ... PCM_WAVE_TABLE_3_END => self.wave_tables[((addr - PCM_WAVE_TABLE_3_START) / 4 + 0x60) as usize],
-            PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => self.wave_tables[((addr - PCM_WAVE_TABLE_4_START) / 4 + 0x80) as usize],
-            VOICE_1_PLAY_CONTROL => self.voice1.read_play_control_reg(),
-            VOICE_1_VOLUME => self.voice1.read_volume_reg(),
-            VOICE_1_FREQUENCY_LOW => self.voice1.read_frequency_low_reg(),
-            VOICE_1_FREQUENCY_HIGH => self.voice1.read_frequency_high_reg(),
-            VOICE_1_ENVELOPE_DATA => self.voice1.read_envelope_data_reg(),
-            VOICE_1_ENVELOPE_CONTROL => self.voice1.read_envelope_control_reg(),
-            VOICE_1_PCM_WAVE => self.voice1.read_pcm_wave_reg(),
-            VOICE_2_PLAY_CONTROL => self.voice2.read_play_control_reg(),
-            VOICE_2_VOLUME => self.voice2.read_volume_reg(),
-            VOICE_2_FREQUENCY_LOW => self.voice2.read_frequency_low_reg(),
-            VOICE_2_FREQUENCY_HIGH => self.voice2.read_frequency_high_reg(),
-            VOICE_2_ENVELOPE_DATA => self.voice2.read_envelope_data_reg(),
-            VOICE_2_ENVELOPE_CONTROL => self.voice2.read_envelope_control_reg(),
-            VOICE_2_PCM_WAVE => self.voice2.read_pcm_wave_reg(),
-            VOICE_3_PLAY_CONTROL => self.voice3.read_play_control_reg(),
-            VOICE_3_VOLUME => self.voice3.read_volume_reg(),
-            VOICE_3_FREQUENCY_LOW => self.voice3.read_frequency_low_reg(),
-            VOICE_3_FREQUENCY_HIGH => self.voice3.read_frequency_high_reg(),
-            VOICE_3_ENVELOPE_DATA => self.voice3.read_envelope_data_reg(),
-            VOICE_3_ENVELOPE_CONTROL => self.voice3.read_envelope_control_reg(),
-            VOICE_3_PCM_WAVE => self.voice3.read_pcm_wave_reg(),
-            VOICE_4_PLAY_CONTROL => self.voice4.read_play_control_reg(),
-            VOICE_4_VOLUME => self.voice4.read_volume_reg(),
-            VOICE_4_FREQUENCY_LOW => self.voice4.read_frequency_low_reg(),
-            VOICE_4_FREQUENCY_HIGH => self.voice4.read_frequency_high_reg(),
-            VOICE_4_ENVELOPE_DATA => self.voice4.read_envelope_data_reg(),
-            VOICE_4_ENVELOPE_CONTROL => self.voice4.read_envelope_control_reg(),
-            VOICE_4_PCM_WAVE => self.voice4.read_pcm_wave_reg(),
-            VOICE_5_PLAY_CONTROL => self.voice5.read_play_control_reg(),
-            VOICE_5_VOLUME => self.voice5.read_volume_reg(),
-            VOICE_5_FREQUENCY_LOW => self.voice5.read_frequency_low_reg(),
-            VOICE_5_FREQUENCY_HIGH => self.voice5.read_frequency_high_reg(),
-            VOICE_5_ENVELOPE_DATA => self.voice5.read_envelope_data_reg(),
-            VOICE_5_ENVELOPE_CONTROL => self.voice5.read_envelope_control_reg(),
-            VOICE_5_PCM_WAVE => self.voice5.read_pcm_wave_reg(),
-            VOICE_6_PLAY_CONTROL => self.voice6.read_play_control_reg(),
-            VOICE_6_VOLUME => self.voice6.read_volume_reg(),
-            VOICE_6_FREQUENCY_LOW => self.voice6.read_frequency_low_reg(),
-            VOICE_6_FREQUENCY_HIGH => self.voice6.read_frequency_high_reg(),
-            VOICE_6_ENVELOPE_DATA => self.voice6.read_envelope_data_reg(),
-            VOICE_6_ENVELOPE_NOISE_CONTROL => self.voice6.read_envelope_noise_control_reg(),
-            SOUND_DISABLE_REG => 0,
-            _ => {
-                logln!("VSU read byte not yet implemented (addr: 0x{:08x})", addr);
-                0
-            }
-        }
+        logln!("WARNING: Attempted read byte from VSU (addr: 0x{:08x})", addr);
+
+        0
     }
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
@@ -599,8 +475,9 @@ impl Vsu {
     }
 
     pub fn read_halfword(&self, addr: u32) -> u16 {
-        let addr = addr & 0xfffffffe;
-        self.read_byte(addr) as _
+        logln!("WARNING: Attempted read halfword from VSU (addr: 0x{:08x})", addr);
+
+        0
     }
 
     pub fn write_halfword(&mut self, addr: u32, value: u16) {
