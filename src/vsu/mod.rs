@@ -3,30 +3,29 @@ mod mem_map;
 use audio_driver::*;
 use self::mem_map::*;
 
+// Docs claim the sample rate is 41.7khz, but my calculations indicate it should be 41666.66hz repeating
+//  (see SAMPLE_CLOCK_PERIOD calculation below), so we take the nearest whole-number sample rate to that.
+//  Note that the documentation rounds values in a lot of places, so that's probably what happened here.
+pub const SAMPLE_RATE: usize = 41667;
+
+// 20mhz / 41.7khz = ~480 clocks
+const SAMPLE_CLOCK_PERIOD: usize = 480;
+
+// 20mhz / 260.4hz = ~76805 clocks
+const DURATION_CLOCK_PERIOD: usize = 76805;
+
+// 20mhz / 65.1hz = ~307218 clocks
+const ENVELOPE_CLOCK_PERIOD: usize = 307218;
+
+// 20mhz / 5mhz = 4 clocks
+const FREQUENCY_CLOCK_PERIOD: usize = 4;
+
+// 20mhz / 500khz = 40 clocks
+const NOISE_CLOCK_PERIOD: usize = 40;
+
 const NUM_WAVE_TABLE_WORDS: usize = 32;
 const NUM_WAVE_TABLES: usize = 5;
 const TOTAL_WAVE_TABLE_SIZE: usize = NUM_WAVE_TABLE_WORDS * NUM_WAVE_TABLES;
-
-const S_TO_NS: u64 = 1000000000;
-
-// Assuming the sound unit runs off of a 20mhz clock, I did some math to check this sample rate,
-//  and the closest sample rate with an integral clock rate division from 20mhz should actually be
-//  41666.66 repeating (20 mhz / 480). This is most likely the real sample rate, but effectively
-//  it won't make much practical difference.
-pub const SAMPLE_RATE: u64 = 41700;
-const SAMPLE_PERIOD_NS: u64 = S_TO_NS / SAMPLE_RATE;
-
-const CPU_CYCLE_PERIOD_NS: u64 = 50;
-
-// S_TO_NS / 260.4hz
-const DURATION_CLOCK_PERIOD_NS: u64 = 3840246;
-
-// S_TO_NS / 65.1hz
-const ENVELOPE_CLOCK_PERIOD_NS: u64 = 15360983;
-
-const FREQUENCY_CLOCK_PERIOD_NS: u64 = S_TO_NS / 5000000;
-
-const NOISE_CLOCK_PERIOD_NS: u64 = S_TO_NS / 500000;
 
 #[derive(Default)]
 struct PlayControlReg {
@@ -319,11 +318,11 @@ pub struct Vsu {
     voice5: StandardVoice,
     voice6: NoiseVoice,
 
-    duration_clock_counter: u64,
-    envelope_clock_counter: u64,
-    frequency_clock_counter: u64,
-    noise_clock_counter: u64,
-    sample_clock_counter: u64,
+    duration_clock_counter: usize,
+    envelope_clock_counter: usize,
+    frequency_clock_counter: usize,
+    noise_clock_counter: usize,
+    sample_clock_counter: usize,
 }
 
 impl Vsu {
@@ -445,11 +444,11 @@ impl Vsu {
         self.write_byte(addr, value as _);
     }
 
-    pub fn cycles(&mut self, cycles: usize, audio_driver: &mut AudioDriver) {
-        for _ in 0..cycles {
-            self.duration_clock_counter += CPU_CYCLE_PERIOD_NS;
-            if self.duration_clock_counter >= DURATION_CLOCK_PERIOD_NS {
-                self.duration_clock_counter -= DURATION_CLOCK_PERIOD_NS;
+    pub fn cycles(&mut self, num_cycles: usize, audio_driver: &mut AudioDriver) {
+        for _ in 0..num_cycles {
+            self.duration_clock_counter += 1;
+            if self.duration_clock_counter >= DURATION_CLOCK_PERIOD {
+                self.duration_clock_counter = 0;
 
                 self.voice1.reg_play_control.duration_clock();
                 self.voice2.reg_play_control.duration_clock();
@@ -459,9 +458,9 @@ impl Vsu {
                 self.voice6.reg_play_control.duration_clock();
             }
 
-            self.envelope_clock_counter += CPU_CYCLE_PERIOD_NS;
-            if self.envelope_clock_counter >= ENVELOPE_CLOCK_PERIOD_NS {
-                self.envelope_clock_counter -= ENVELOPE_CLOCK_PERIOD_NS;
+            self.envelope_clock_counter += 1;
+            if self.envelope_clock_counter >= ENVELOPE_CLOCK_PERIOD {
+                self.envelope_clock_counter = 0;
 
                 self.voice1.envelope.envelope_clock();
                 self.voice2.envelope.envelope_clock();
@@ -471,9 +470,9 @@ impl Vsu {
                 self.voice6.envelope.envelope_clock();
             }
 
-            self.frequency_clock_counter += CPU_CYCLE_PERIOD_NS;
-            if self.frequency_clock_counter >= FREQUENCY_CLOCK_PERIOD_NS {
-                self.frequency_clock_counter -= FREQUENCY_CLOCK_PERIOD_NS;
+            self.frequency_clock_counter += 1;
+            if self.frequency_clock_counter >= FREQUENCY_CLOCK_PERIOD {
+                self.frequency_clock_counter = 0;
 
                 self.voice1.frequency_clock();
                 self.voice2.frequency_clock();
@@ -482,16 +481,16 @@ impl Vsu {
                 self.voice5.frequency_clock();
             }
 
-            self.noise_clock_counter += CPU_CYCLE_PERIOD_NS;
-            if self.noise_clock_counter >= NOISE_CLOCK_PERIOD_NS {
-                self.noise_clock_counter -= NOISE_CLOCK_PERIOD_NS;
+            self.noise_clock_counter += 1;
+            if self.noise_clock_counter >= NOISE_CLOCK_PERIOD {
+                self.noise_clock_counter = 0;
 
                 self.voice6.noise_clock();
             }
 
-            self.sample_clock_counter += CPU_CYCLE_PERIOD_NS;
-            if self.sample_clock_counter >= SAMPLE_PERIOD_NS {
-                self.sample_clock_counter -= SAMPLE_PERIOD_NS;
+            self.sample_clock_counter += 1;
+            if self.sample_clock_counter >= SAMPLE_CLOCK_PERIOD {
+                self.sample_clock_counter = 0;
 
                 self.sample_clock(audio_driver);
             }
