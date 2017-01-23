@@ -3,7 +3,8 @@ use cpal::{EventLoop, Voice, UnknownTypeBuffer, get_default_endpoint};
 use futures::stream::Stream;
 use futures::task::{self, Executor, Run};
 
-use audio_frame_sink::*;
+use audio_buffer_sink::*;
+use time_source::*;
 
 use std::borrow::Cow;
 use std::collections::VecDeque;
@@ -11,54 +12,68 @@ use std::sync::{Arc, Mutex};
 use std::iter::Iterator;
 use std::thread::{self, JoinHandle};
 
-pub type CpalEngineError = Cow<'static, str>;
+pub type CpalDriverError = Cow<'static, str>;
 
 pub struct RingBuffer {
-    desired_len: usize,
-
     inner: VecDeque<i16>,
+    samples_read: u64,
 }
 
 impl Iterator for RingBuffer {
     type Item = i16;
 
     fn next(&mut self) -> Option<i16> {
-        self.inner.pop_front()
-    }
-}
-
-impl AudioFrameSink for RingBuffer {
-    fn desired_frames(&self) -> usize {
-        if self.inner.len() < self.desired_len {
-            (self.desired_len - self.inner.len()) / 2
-        } else {
-            0
+        match self.inner.pop_front() {
+            Some(x) => {
+                self.samples_read += 1;
+                Some(x)
+            }
+            _ => None
         }
     }
+}
 
-    fn append_frame(&mut self, (left, right): (i16, i16)) {
-        self.inner.push_back(left);
-        self.inner.push_back(right);
+struct CpalDriverBufferSink {
+    ring_buffer: Arc<Mutex<RingBuffer>>,
+}
+
+impl AudioBufferSink for CpalDriverBufferSink {
+    fn append(&mut self, buffer: &[(i16, i16)]) {
+        let mut ring_buffer = self.ring_buffer.lock().unwrap();
+        ring_buffer.inner.extend(buffer.into_iter().flat_map(|&(left, right)| vec![left, right].into_iter()));
     }
 }
 
-struct CpalEngineExecutor;
+struct CpalDriverTimeSource {
+    ring_buffer: Arc<Mutex<RingBuffer>>,
+    sample_rate: usize,
+}
 
-impl Executor for CpalEngineExecutor {
+impl TimeSource for CpalDriverTimeSource {
+    fn time_ns(&self) -> u64 {
+        let ring_buffer = self.ring_buffer.lock().unwrap();
+        1_000_000_000 * (ring_buffer.samples_read / 2) / (self.sample_rate as u64)
+    }
+}
+
+struct CpalDriverExecutor;
+
+impl Executor for CpalDriverExecutor {
     fn execute(&self, r: Run) {
         r.run();
     }
 }
 
-pub struct CpalEngine {
+pub struct CpalDriver {
     ring_buffer: Arc<Mutex<RingBuffer>>,
+    sample_rate: usize,
 
     _voice: Voice,
     _join_handle: JoinHandle<()>,
 }
 
-impl CpalEngine {
-    pub fn new(sample_rate: u32, desired_latency_ms: u32) -> Result<CpalEngine, CpalEngineError> {
+impl CpalDriver {
+    pub fn new(sample_rate: u32, desired_latency_ms: u32) -> Result<CpalDriver, CpalDriverError> {
         if desired_latency_ms == 0 {
             return Err(format!("desired_latency_ms must be greater than 0").into());
         }
@@ -70,11 +85,10 @@ impl CpalEngine {
             .find(|format| format.channels.len() == 2)
             .expect("Failed to find format with 2 channels");
 
-        let desired_len = (sample_rate * desired_latency_ms / 1000 * 2) as usize;
+        let buffer_frames = (sample_rate * desired_latency_ms / 1000 * 2) as usize;
         let ring_buffer = Arc::new(Mutex::new(RingBuffer {
-            desired_len: desired_len,
-
-            inner: vec![0; desired_len].into_iter().collect::<VecDeque<_>>(),
+            inner: vec![0; buffer_frames].into_iter().collect::<VecDeque<_>>(),
+            samples_read: 0,
         }));
 
         let event_loop = EventLoop::new();
@@ -86,50 +100,59 @@ impl CpalEngine {
 
         let read_ring_buffer = ring_buffer.clone();
         task::spawn(stream.for_each(move |output_buffer| {
-            let mut read_ring_buffer_guard = read_ring_buffer.lock().unwrap();
-            let read_ring_buffer = &mut *read_ring_buffer_guard;
+            let mut read_ring_buffer = read_ring_buffer.lock().unwrap();
 
             match output_buffer {
                 UnknownTypeBuffer::I16(mut buffer) => {
                     for sample in buffer.chunks_mut(format.channels.len()) {
                         for out in sample.iter_mut() {
-                            *out = resampler.next(read_ring_buffer);
+                            *out = resampler.next(&mut *read_ring_buffer);
                         }
                     }
                 },
                 UnknownTypeBuffer::U16(mut buffer) => {
                     for sample in buffer.chunks_mut(format.channels.len()) {
                         for out in sample.iter_mut() {
-                            *out = ((resampler.next(read_ring_buffer) as isize) + 32768) as u16;
+                            *out = ((resampler.next(&mut *read_ring_buffer) as isize) + 32768) as u16;
                         }
                     }
                 },
                 UnknownTypeBuffer::F32(mut buffer) => {
                     for sample in buffer.chunks_mut(format.channels.len()) {
                         for out in sample.iter_mut() {
-                            *out = (resampler.next(read_ring_buffer) as f32) / 32768.0;
+                            *out = (resampler.next(&mut *read_ring_buffer) as f32) / 32768.0;
                         }
                     }
                 },
             }
 
             Ok(())
-        })).execute(Arc::new(CpalEngineExecutor));
+        })).execute(Arc::new(CpalDriverExecutor));
 
         let join_handle = thread::spawn(move || {
             event_loop.run();
         });
 
-        Ok(CpalEngine {
+        Ok(CpalDriver {
             ring_buffer: ring_buffer,
+            sample_rate: sample_rate as _,
 
             _voice: voice,
             _join_handle: join_handle,
         })
     }
 
-    pub fn driver(&self) -> Arc<Mutex<RingBuffer>> {
-        self.ring_buffer.clone()
+    pub fn sink(&self) -> Box<AudioBufferSink> {
+        Box::new(CpalDriverBufferSink {
+            ring_buffer: self.ring_buffer.clone(),
+        })
+    }
+
+    pub fn time_source(&self) -> Box<TimeSource> {
+        Box::new(CpalDriverTimeSource {
+            ring_buffer: self.ring_buffer.clone(),
+            sample_rate: self.sample_rate,
+        })
     }
 }
 

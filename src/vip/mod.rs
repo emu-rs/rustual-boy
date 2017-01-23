@@ -1154,6 +1154,6 @@ impl Vip {
             }
         }
 
-        video_frame_sink.append_frame((left_buffer, right_buffer));
+        video_frame_sink.append((left_buffer, right_buffer));
     }
 }

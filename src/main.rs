@@ -12,7 +12,9 @@ extern crate futures;
 #[macro_use]
 mod logging;
 mod video_frame_sink;
+mod audio_buffer_sink;
 mod audio_frame_sink;
+mod time_source;
 mod rom;
 mod wram;
 mod sram;
@@ -25,12 +27,14 @@ mod interconnect;
 mod instruction;
 mod nvc;
 mod virtual_boy;
-mod cpal_engine;
+mod cpal_driver;
 mod command;
 mod emulator;
 
 use rom::*;
 use sram::*;
+use vsu::*;
+use cpal_driver::*;
 use emulator::*;
 
 use std::env;
@@ -70,7 +74,12 @@ fn main() {
         }
     };
 
-    let mut emulator = Emulator::new(rom, sram);
+    let audio_driver = CpalDriver::new(SAMPLE_RATE as _, 100).unwrap();
+
+    let audio_buffer_sink = audio_driver.sink();
+    let time_source = audio_driver.time_source();
+
+    let mut emulator = Emulator::new(rom, sram, audio_buffer_sink, time_source);
     emulator.run();
 
     if emulator.virtual_boy.interconnect.sram.size() > 0 {

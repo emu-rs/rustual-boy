@@ -18,13 +18,13 @@ impl VirtualBoy {
         }
     }
 
-    pub fn step(&mut self, video_frame_sink: &mut VideoFrameSink, audio_frame_sink: &mut AudioFrameSink) -> bool {
-        let (num_cycles, trigger_watchpoint) = self.cpu.step(&mut self.interconnect);
+    pub fn step(&mut self, video_frame_sink: &mut VideoFrameSink, audio_frame_sink: &mut AudioFrameSink) -> (usize, bool) {
+        let ret = self.cpu.step(&mut self.interconnect);
 
-        if let Some(exception_code) = self.interconnect.cycles(num_cycles, video_frame_sink, audio_frame_sink) {
+        if let Some(exception_code) = self.interconnect.cycles(ret.0, video_frame_sink, audio_frame_sink) {
             self.cpu.request_interrupt(exception_code);
         }
 
-        trigger_watchpoint
+        ret
     }
 }

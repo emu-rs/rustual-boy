@@ -538,7 +538,7 @@ impl Vsu {
         let output_left = ((acc_left & 0xfff8) << 2) as i16;
         let output_right = ((acc_right & 0xfff8) << 2) as i16;
 
-        audio_frame_sink.append_frame((output_left, output_right));
+        audio_frame_sink.append((output_left, output_right));
     }
 
     fn are_channels_active(&self) -> bool {
