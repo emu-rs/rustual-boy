@@ -65,7 +65,7 @@ pub struct Emulator {
     time_source: Box<TimeSource>,
     time_source_start_time_ns: u64,
 
-    emulated_time_ns: u64,
+    emulated_cycles: u64,
 }
 
 impl Emulator {
@@ -97,7 +97,7 @@ impl Emulator {
             time_source: time_source,
             time_source_start_time_ns: 0,
 
-            emulated_time_ns: 0,
+            emulated_cycles: 0,
         }
     }
 
@@ -114,12 +114,13 @@ impl Emulator {
             };
 
             let target_emulated_time_ns = self.time_source.time_ns() - self.time_source_start_time_ns;
+            let target_emulated_cycles = target_emulated_time_ns / CPU_CYCLE_TIME_NS;
 
             match self.mode {
                 Mode::Running => {
                     let mut start_debugger = false;
 
-                    while self.emulated_time_ns < target_emulated_time_ns {
+                    while self.emulated_cycles < target_emulated_cycles {
                         let (_, trigger_watchpoint) = self.step(&mut video_frame_sink, &mut audio_frame_sink);
                         if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
                             start_debugger = true;
@@ -172,7 +173,7 @@ impl Emulator {
     fn step(&mut self, video_frame_sink: &mut VideoFrameSink, audio_frame_sink: &mut AudioFrameSink) -> (usize, bool) {
         let ret = self.virtual_boy.step(video_frame_sink, audio_frame_sink);
 
-        self.emulated_time_ns += (ret.0 as u64) * CPU_CYCLE_TIME_NS;
+        self.emulated_cycles += ret.0 as _;
 
         ret
     }
