@@ -1,7 +1,7 @@
 use minifb::{WindowOptions, Window, Key, KeyRepeat};
 
-use video_driver::*;
-use audio_driver::*;
+use video_frame_sink::*;
+use audio_frame_sink::*;
 use rom::*;
 use sram::*;
 use instruction::*;
@@ -17,12 +17,12 @@ use std::io::{stdin, stdout, Write};
 use std::collections::{HashSet, HashMap};
 use std::sync::mpsc::{channel, Receiver};
 
-struct SimpleVideoDriver {
+struct SimpleVideoFrameSink {
     next: Option<(Box<[u8]>, Box<[u8]>)>,
 }
 
-impl VideoDriver for SimpleVideoDriver {
-    fn output_frame(&mut self, frame: (Box<[u8]>, Box<[u8]>)) {
+impl VideoFrameSink for SimpleVideoFrameSink {
+    fn append_frame(&mut self, frame: (Box<[u8]>, Box<[u8]>)) {
         self.next = Some(frame);
     }
 }
@@ -81,13 +81,13 @@ impl Emulator {
 
     pub fn run(&mut self) {
         while self.window.is_open() && !self.window.is_key_down(Key::Escape) {
-            let mut video_driver = SimpleVideoDriver {
+            let mut video_frame_sink = SimpleVideoFrameSink {
                 next: None
             };
 
             {
                 let audio_driver_mutex = self.audio_engine.driver();
-                let mut audio_driver = audio_driver_mutex.lock().unwrap();
+                let mut audio_frame_sink = audio_driver_mutex.lock().unwrap();
 
                 const MIN_AUDIO_FRAMES_TO_RENDER: usize = 100;
 
@@ -95,9 +95,9 @@ impl Emulator {
                     Mode::Running => {
                         let mut start_debugger = false;
 
-                        if audio_driver.desired_frames() >= MIN_AUDIO_FRAMES_TO_RENDER {
-                            while audio_driver.desired_frames() > 0 {
-                                let trigger_watchpoint = self.virtual_boy.step(&mut video_driver, &mut *audio_driver);
+                        if audio_frame_sink.desired_frames() >= MIN_AUDIO_FRAMES_TO_RENDER {
+                            while audio_frame_sink.desired_frames() > 0 {
+                                let trigger_watchpoint = self.virtual_boy.step(&mut video_frame_sink, &mut *audio_frame_sink);
                                 if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
                                     start_debugger = true;
                                     break;
@@ -110,13 +110,13 @@ impl Emulator {
                         }
                     }
                     Mode::Debugging => {
-                        if self.run_debugger_commands(&mut video_driver, &mut *audio_driver) {
+                        if self.run_debugger_commands(&mut video_frame_sink, &mut *audio_frame_sink) {
                             break;
                         }
 
-                        if audio_driver.desired_frames() >= MIN_AUDIO_FRAMES_TO_RENDER {
-                            while audio_driver.desired_frames() > 0 {
-                                audio_driver.append_frame((0, 0));
+                        if audio_frame_sink.desired_frames() >= MIN_AUDIO_FRAMES_TO_RENDER {
+                            while audio_frame_sink.desired_frames() > 0 {
+                                audio_frame_sink.append_frame((0, 0));
                             }
                         }
 
@@ -125,7 +125,7 @@ impl Emulator {
                 }
             }
 
-            if let Some((left_buffer, right_buffer)) = video_driver.next {
+            if let Some((left_buffer, right_buffer)) = video_frame_sink.next {
                 let mut buffer = vec![0; 384 * 224];
                 unsafe {
                     let left_buffer_ptr = left_buffer.as_ptr();
@@ -178,7 +178,7 @@ impl Emulator {
         self.print_cursor();
     }
 
-    fn run_debugger_commands(&mut self, video_driver: &mut VideoDriver, audio_driver: &mut AudioDriver) -> bool {
+    fn run_debugger_commands(&mut self, video_frame_sink: &mut VideoFrameSink, audio_frame_sink: &mut AudioFrameSink) -> bool {
         while let Ok(command_string) = self.stdin_receiver.try_recv() {
             let command = match (command_string.parse(), self.last_command.clone()) {
                 (Ok(Command::Repeat), Some(c)) => Ok(c),
@@ -200,7 +200,7 @@ impl Emulator {
                     println!("ecr: 0x{:08x}", self.virtual_boy.cpu.reg_ecr());
                 }
                 Ok(Command::Step) => {
-                    let _ = self.virtual_boy.step(video_driver, &mut *audio_driver);
+                    let _ = self.virtual_boy.step(video_frame_sink, audio_frame_sink);
                     self.cursor = self.virtual_boy.cpu.reg_pc();
                     self.disassemble_instruction();
                 }

@@ -1,5 +1,5 @@
-use video_driver::*;
-use audio_driver::*;
+use video_frame_sink::*;
+use audio_frame_sink::*;
 use rom::*;
 use wram::*;
 use sram::*;
@@ -204,18 +204,18 @@ impl Interconnect {
         }
     }
 
-    pub fn cycles(&mut self, cycles: usize, video_driver: &mut VideoDriver, audio_driver: &mut AudioDriver) -> Option<u16> {
+    pub fn cycles(&mut self, cycles: usize, video_frame_sink: &mut VideoFrameSink, audio_frame_sink: &mut AudioFrameSink) -> Option<u16> {
         let mut interrupt = None;
 
         if self.timer.cycles(cycles) {
             interrupt = Some(0xfe10);
         }
 
-        if self.vip.cycles(cycles, video_driver) {
+        if self.vip.cycles(cycles, video_frame_sink) {
             interrupt = Some(0xfe40);
         }
 
-        self.vsu.cycles(cycles, audio_driver);
+        self.vsu.cycles(cycles, audio_frame_sink);
 
         interrupt
     }

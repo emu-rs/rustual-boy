@@ -3,7 +3,7 @@ use cpal::{EventLoop, Voice, UnknownTypeBuffer, get_default_endpoint};
 use futures::stream::Stream;
 use futures::task::{self, Executor, Run};
 
-use audio_driver::*;
+use audio_frame_sink::*;
 
 use std::borrow::Cow;
 use std::collections::VecDeque;
@@ -27,7 +27,7 @@ impl Iterator for RingBuffer {
     }
 }
 
-impl AudioDriver for RingBuffer {
+impl AudioFrameSink for RingBuffer {
     fn desired_frames(&self) -> usize {
         if self.inner.len() < self.desired_len {
             (self.desired_len - self.inner.len()) / 2

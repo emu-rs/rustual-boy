@@ -1,6 +1,6 @@
 mod mem_map;
 
-use video_driver::*;
+use video_frame_sink::*;
 use self::mem_map::*;
 
 const FRAMEBUFFER_RESOLUTION_X: usize = 384;
@@ -510,7 +510,7 @@ impl Vip {
         }
     }
 
-    pub fn cycles(&mut self, cycles: usize, video_driver: &mut VideoDriver) -> bool {
+    pub fn cycles(&mut self, cycles: usize, video_frame_sink: &mut VideoFrameSink) -> bool {
         let mut raise_interrupt = false;
 
         for _ in 0..cycles {
@@ -523,7 +523,7 @@ impl Vip {
                         self.frame_clock(&mut raise_interrupt);
                     }
                     1 => {
-                        self.display(video_driver);
+                        self.display(video_frame_sink);
 
                         if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
                             self.begin_left_framebuffer_display_process();
@@ -1101,7 +1101,7 @@ impl Vip {
         self.write_vram_byte(framebuffer_offset + framebuffer_byte_index, framebuffer_byte);
     }
 
-    fn display(&mut self, video_driver: &mut VideoDriver) {
+    fn display(&mut self, video_frame_sink: &mut VideoFrameSink) {
         let left_framebuffer_offset = if self.display_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
@@ -1154,6 +1154,6 @@ impl Vip {
             }
         }
 
-        video_driver.output_frame((left_buffer, right_buffer));
+        video_frame_sink.append_frame((left_buffer, right_buffer));
     }
 }

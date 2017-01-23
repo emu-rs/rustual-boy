@@ -1,6 +1,6 @@
 mod mem_map;
 
-use audio_driver::*;
+use audio_frame_sink::*;
 use self::mem_map::*;
 
 // Docs claim the sample rate is 41.7khz, but my calculations indicate it should be 41666.66hz repeating
@@ -444,7 +444,7 @@ impl Vsu {
         self.write_byte(addr, value as _);
     }
 
-    pub fn cycles(&mut self, num_cycles: usize, audio_driver: &mut AudioDriver) {
+    pub fn cycles(&mut self, num_cycles: usize, audio_frame_sink: &mut AudioFrameSink) {
         for _ in 0..num_cycles {
             self.duration_clock_counter += 1;
             if self.duration_clock_counter >= DURATION_CLOCK_PERIOD {
@@ -492,12 +492,12 @@ impl Vsu {
             if self.sample_clock_counter >= SAMPLE_CLOCK_PERIOD {
                 self.sample_clock_counter = 0;
 
-                self.sample_clock(audio_driver);
+                self.sample_clock(audio_frame_sink);
             }
         }
     }
 
-    fn sample_clock(&mut self, audio_driver: &mut AudioDriver) {
+    fn sample_clock(&mut self, audio_frame_sink: &mut AudioFrameSink) {
         let mut acc_left = 0;
         let mut acc_right = 0;
 
@@ -538,7 +538,7 @@ impl Vsu {
         let output_left = ((acc_left & 0xfff8) << 2) as i16;
         let output_right = ((acc_right & 0xfff8) << 2) as i16;
 
-        audio_driver.append_frame((output_left, output_right));
+        audio_frame_sink.append_frame((output_left, output_right));
     }
 
     fn are_channels_active(&self) -> bool {

@@ -1,5 +1,5 @@
-use video_driver::*;
-use audio_driver::*;
+use video_frame_sink::*;
+use audio_frame_sink::*;
 use rom::*;
 use sram::*;
 use interconnect::*;
@@ -18,10 +18,10 @@ impl VirtualBoy {
         }
     }
 
-    pub fn step(&mut self, video_driver: &mut VideoDriver, audio_driver: &mut AudioDriver) -> bool {
+    pub fn step(&mut self, video_frame_sink: &mut VideoFrameSink, audio_frame_sink: &mut AudioFrameSink) -> bool {
         let (num_cycles, trigger_watchpoint) = self.cpu.step(&mut self.interconnect);
 
-        if let Some(exception_code) = self.interconnect.cycles(num_cycles, video_driver, audio_driver) {
+        if let Some(exception_code) = self.interconnect.cycles(num_cycles, video_frame_sink, audio_frame_sink) {
             self.cpu.request_interrupt(exception_code);
         }
 

@@ -11,8 +11,8 @@ extern crate futures;
 
 #[macro_use]
 mod logging;
-mod video_driver;
-mod audio_driver;
+mod video_frame_sink;
+mod audio_frame_sink;
 mod rom;
 mod wram;
 mod sram;
