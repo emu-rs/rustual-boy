@@ -61,7 +61,9 @@ pub struct Emulator {
     _stdin_thread: JoinHandle<()>,
 
     audio_buffer_sink: Box<AudioBufferSink>,
+
     time_source: Box<TimeSource>,
+    time_source_start_time_ns: u64,
 
     emulated_time_ns: u64,
 }
@@ -91,13 +93,17 @@ impl Emulator {
             _stdin_thread: stdin_thread,
 
             audio_buffer_sink: audio_buffer_sink,
+
             time_source: time_source,
+            time_source_start_time_ns: 0,
 
             emulated_time_ns: 0,
         }
     }
 
     pub fn run(&mut self) {
+        self.time_source_start_time_ns = self.time_source.time_ns();
+
         while self.window.is_open() && !self.window.is_key_down(Key::Escape) {
             let mut video_frame_sink = SimpleVideoFrameSink {
                 inner: None,
@@ -107,7 +113,7 @@ impl Emulator {
                 inner: VecDeque::new(),
             };
 
-            let target_emulated_time_ns = self.time_source.time_ns();
+            let target_emulated_time_ns = self.time_source.time_ns() - self.time_source_start_time_ns;
 
             match self.mode {
                 Mode::Running => {
