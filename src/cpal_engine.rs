@@ -64,10 +64,11 @@ impl CpalEngine {
         }
 
         let endpoint = get_default_endpoint().expect("Failed to get audio endpoint");
-        let format = endpoint.get_supported_formats_list().expect("Failed to get supported format list for endpoint").next().expect("Failed to get endpoint format");
-        if format.channels.len() != 2 {
-            panic!("Endpoint format must be 2-channel");
-        }
+
+        let format = endpoint.get_supported_formats_list()
+            .expect("Failed to get supported format list for endpoint")
+            .find(|format| format.channels.len() == 2)
+            .expect("Failed to find format with 2 channels");
 
         let desired_len = (sample_rate * desired_latency_ms / 1000 * 2) as usize;
         let ring_buffer = Arc::new(Mutex::new(RingBuffer {
