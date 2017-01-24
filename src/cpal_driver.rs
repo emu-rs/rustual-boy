@@ -7,7 +7,6 @@ use audio_buffer_sink::*;
 use time_source::*;
 
 use std::borrow::Cow;
-use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::iter::Iterator;
 use std::thread::{self, JoinHandle};
@@ -15,21 +14,39 @@ use std::thread::{self, JoinHandle};
 pub type CpalDriverError = Cow<'static, str>;
 
 pub struct RingBuffer {
-    inner: VecDeque<i16>,
+    inner: Box<[i16]>,
+
+    write_pos: usize,
+    read_pos: usize,
+
     samples_read: u64,
+}
+
+impl RingBuffer {
+    fn push(&mut self, value: i16) {
+        self.inner[self.write_pos] = value;
+
+        self.write_pos += 1;
+        if self.write_pos >= self.inner.len() {
+            self.write_pos = 0;
+        }
+    }
 }
 
 impl Iterator for RingBuffer {
     type Item = i16;
 
     fn next(&mut self) -> Option<i16> {
-        match self.inner.pop_front() {
-            Some(x) => {
-                self.samples_read += 1;
-                Some(x)
-            }
-            _ => None
+        let ret = self.inner[self.read_pos];
+
+        self.read_pos += 1;
+        if self.read_pos >= self.inner.len() {
+            self.read_pos = 0;
         }
+
+        self.samples_read += 1;
+
+        Some(ret)
     }
 }
 
@@ -40,7 +57,10 @@ struct CpalDriverBufferSink {
 impl AudioBufferSink for CpalDriverBufferSink {
     fn append(&mut self, buffer: &[(i16, i16)]) {
         let mut ring_buffer = self.ring_buffer.lock().unwrap();
-        ring_buffer.inner.extend(buffer.into_iter().flat_map(|&(left, right)| vec![left, right].into_iter()));
+        for &(left, right) in buffer {
+            ring_buffer.push(left);
+            ring_buffer.push(right);
+        }
     }
 }
 
@@ -87,7 +107,11 @@ impl CpalDriver {
 
         let buffer_frames = (sample_rate * desired_latency_ms / 1000 * 2) as usize;
         let ring_buffer = Arc::new(Mutex::new(RingBuffer {
-            inner: vec![0; buffer_frames].into_iter().collect::<VecDeque<_>>(),
+            inner: vec![0; buffer_frames].into_boxed_slice(),
+
+            write_pos: 0,
+            read_pos: 0,
+
             samples_read: 0,
         }));
 
