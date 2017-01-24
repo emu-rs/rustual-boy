@@ -141,6 +141,8 @@ impl Emulator {
                     if self.run_debugger_commands(&mut video_frame_sink, &mut audio_frame_sink) {
                         break;
                     }
+
+                    self.window.update();
                 }
             }
 
@@ -168,8 +170,6 @@ impl Emulator {
             }
 
             self.audio_buffer_sink.append(audio_frame_sink.inner.as_slices().0);
-
-            self.window.update();
 
             thread::sleep(time::Duration::from_millis(3));
         }
