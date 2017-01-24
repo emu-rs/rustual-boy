@@ -1,4 +1,4 @@
-use minifb::{WindowOptions, Window, Key, KeyRepeat};
+use minifb::{WindowOptions, Window, Key, KeyRepeat, Scale};
 
 use video_frame_sink::*;
 use audio_buffer_sink::*;
@@ -78,7 +78,12 @@ impl Emulator {
         });
 
         Emulator {
-            window: Window::new("Rustual Boy", 384, 224, WindowOptions::default()).unwrap(),
+            window: Window::new("Rustual Boy", 384, 224, WindowOptions {
+                borderless: false,
+                title: true,
+                resize: false,
+                scale: Scale::X2,
+            }).unwrap(),
 
             virtual_boy: VirtualBoy::new(rom, sram),
             mode: Mode::Running,
