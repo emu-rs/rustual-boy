@@ -1,5 +1,5 @@
 [root]
-name = "rustual_boy"
+name = "rustual-boy"
 version = "0.1.0"
 dependencies = [
  "cpal 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
