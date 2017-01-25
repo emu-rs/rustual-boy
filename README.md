@@ -1,4 +1,4 @@
-# Rustual Boy
+# Rustual Boy [![Build Status](https://travis-ci.org/emu-rs/rustual-boy.svg?branch=master)](https://travis-ci.org/emu-rs/rustual-boy)
 
 ![Rustual Boy](logo.png)
 
