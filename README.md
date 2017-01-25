@@ -19,7 +19,7 @@ A more detailed status/compatibility section will be written when the emu is com
 ![screenie](screenshot3.png)
 ![screenie](screenshot4.png)
 
-## Known Game Compatibility
+## Known game compatibility
 
 | Game | USA | JP | Notes |
 | --- | --- | --- | --- |
@@ -36,7 +36,7 @@ A more detailed status/compatibility section will be written when the emu is com
 | Red Alarm | | | Uses bit string ops |
 | SD Gundam Dimension War | N/A | x | |
 | Space Invaders Virtual Collection | N/A | | Lazers aren't visible on most of the screen in "Virtual 3D" mode |
-| Space Squash | N/A | | Game doesn't start; seems to be waiting on an interrupt (see 74235249a1abfca8d4b3d80e8c3c6b37230679a2 and 0ff9c61efb188832680292a11c1a24c5c4f25360 for some investigation) |
+| Space Squash | N/A | | Game doesn't start; seems to be waiting on an interrupt (see https://github.com/emu-rs/rustual-boy/commit/74235249a1abfca8d4b3d80e8c3c6b37230679a2 and https://github.com/emu-rs/rustual-boy/commit/0ff9c61efb188832680292a11c1a24c5c4f25360 for some investigation) |
 | Teleroboxer | x | x | |
 | V-Tetris | N/A | x | x |
 | Vertical Force | | | Enemies/powerups appear/disappear, first boss disappears and the game softlocks |
