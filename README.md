@@ -8,18 +8,18 @@ Rustual Boy is a [Virtual Boy](https://en.wikipedia.org/wiki/Virtual_Boy) emulat
 
 The name "Rustual Boy" is a [portmanteau](https://en.wikipedia.org/wiki/Portmanteau) of the words "Rust" and "Virtual Boy". Ok, the "Virtual Boy" part was obvious, but why "Rust"? In fact, Rustual Boy is written in the [Rust programming language](https://www.rust-lang.org/en-US/) - a "systems programming language that runs blazingly fast, prevents segfaults, and guarantees thread safety." Rust is a wonderful language with a thriving community, and as such provides a fantastic platform for an emulation project!
 
+## Status
+
+While Rustual Boy's core emulation is nearly complete [compatibility-wise](https://github.com/emu-rs/rustual-boy#known-game-compatibility), the project is still quite young, and needs some time to mature. Particularly, there are currently no binary distributions (only source), its user interface is lacking (read: virtually non-existent), and there are some known (and probably unknown) stability/compatibility issues. Also, performance isn't fantastic yet, but the emulator should be playable at least.
+
+That said, these things are bound to improve with time, and everyone is encouraged to [build the emulator](https://github.com/emu-rs/rustual-boy#building-and-running), give it a shot, and [report any bugs/feature requests](CONTRIBUTING.md)!
+
 ## Screenshots
 
 ![screenie](media/screenshot.png)
 ![screenie](media/screenshot2.png)
 ![screenie](media/screenshot3.png)
 ![screenie](media/screenshot4.png)
-
-## Status
-
-While Rustual Boy's core emulation is nearly complete [compatibility-wise](https://github.com/emu-rs/rustual-boy#known-game-compatibility), the project is still quite young, and needs some time to mature. Particularly, there are currently no binary distributions (only source), its user interface is lacking (read: virtually non-existent), and there are some known (and probably unknown) stability/compatibility issues. Also, performance isn't fantastic yet, but the emulator should be playable at least.
-
-That said, these things are bound to improve with time, and everyone is encouraged to [build the emulator](https://github.com/emu-rs/rustual-boy#building-and-running), give it a shot, and [report any bugs/feature requests](CONTRIBUTING.md)!
 
 ## Known game compatibility
 
