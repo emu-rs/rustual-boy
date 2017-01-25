@@ -14,6 +14,8 @@ Most of the core emulation/known game compatibility for Rustual Boy is nearing c
 
 **User interface**: Currently, Rustual Boy expects a ROM as its first command line arg. That's it! No further options, nothing. Ideally, we'd have both an improved CLI and a GUI would be ideal. This could obviously use a bit of TLC!
 
+**Performance**: As we've primarily focused on nailing the core emulation before spending too much time on this, the emulator is nowhere near as fast as it could be!
+
 **CI/Build artifacts**: While we have rudimentary [travis](https://travis-ci.org/emu-rs/rustual-boy) and [appveyor](https://ci.appveyor.com/project/yupferris/rustual-boy) setups for basic CI, it would be great if we had, for example, binary builds/deployment/distribution as well.
 
 **Documentation**: Both inside and out, this project currently lacks any and all documentation, really.
