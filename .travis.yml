@@ -1,0 +1,17 @@
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+notifications:
+  email:
+    - yupferris@gmail.com
+os:
+  - linux
+  - osx
+before_script:
+  - rustc --version
+  - cargo --version
+branches:
+  only:
+    - master
