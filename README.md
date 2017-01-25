@@ -24,7 +24,7 @@ A more detailed status/compatibility section will be written when the emu is com
 | Game | USA | JP | Notes |
 | --- | --- | --- | --- |
 | 3-D Tetris | | N/A | Uses bit string ops |
-| Bound High! | x | x | ROM is both USA+JP |
+| Bound High! | x | N/A | ROM is both USA+JP |
 | Galactic Pinball | x | x | |
 | Golf | | | Uses bit string ops |
 | Insmouse No Yakata | N/A | x | |
@@ -38,7 +38,7 @@ A more detailed status/compatibility section will be written when the emu is com
 | Space Invaders Virtual Collection | N/A | | Lazers aren't visible on most of the screen in "Virtual 3D" mode |
 | Space Squash | N/A | | Game doesn't start; seems to be waiting on an interrupt (see commits [7423524](https://github.com/emu-rs/rustual-boy/commit/74235249a1abfca8d4b3d80e8c3c6b37230679a2) and [0ff9c61](https://github.com/emu-rs/rustual-boy/commit/0ff9c61efb188832680292a11c1a24c5c4f25360) for some investigation) |
 | Teleroboxer | x | x | |
-| V-Tetris | N/A | x | x |
+| V-Tetris | N/A | x | |
 | Vertical Force | | | Enemies/powerups appear/disappear, first boss disappears and the game softlocks |
 | Virtual Bowling | N/A | | Some graphical glitches and slowdowns in the intro sequence, possibly other bugs |
 | Virtual Boy Wario Land | x | x | |
