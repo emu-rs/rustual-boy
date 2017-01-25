@@ -2,15 +2,11 @@
 
 ![Rustual Boy](media/logo.png)
 
-A WIP Virtual Boy emulator in Rust.
+## Description
 
-## Status
+Rustual Boy is a [Virtual Boy](https://en.wikipedia.org/wiki/Virtual_Boy) emulator. It can be used to play existing Virtual Boy games, as well as be a helpful development/debugging tool for homebrew for this platform.
 
-This emulator is not quite complete, but covers quite a bit of the CPU, memory mapping, and video hardware. It also contains a basic command-line debugger supporting disassembly, mem dump, breakpoints, etc. Many ROM's are fully compatible so far, but there's still some fundamental things that aren't yet implemented, such as some floating point flags/exceptions, bit string op's, etc. There are also a few bugs lurking around :)
-
-Performance isn't fantastic yet, but the emulator should be playable at least. YMMV. Naturally, I'd like to get the core emulation logic in place before focusing too much on that.
-
-A more detailed status/compatibility section will be written when the emu is complete enough for it to be relevant.
+The name "Rustual Boy" is a [portmanteau](https://en.wikipedia.org/wiki/Portmanteau) of the words "Rust" and "Virtual Boy". Ok, the "Virtual Boy" part was obvious, but why "Rust"? In fact, Rustual Boy is written in the [Rust programming language](https://www.rust-lang.org/en-US/) - a "systems programming language that runs blazingly fast, prevents segfaults, and guarantees thread safety." Rust is a wonderful language with a thriving community, and as such provides a fantastic platform for an emulation project!
 
 ## Screenshots
 
@@ -18,6 +14,12 @@ A more detailed status/compatibility section will be written when the emu is com
 ![screenie](media/screenshot2.png)
 ![screenie](media/screenshot3.png)
 ![screenie](media/screenshot4.png)
+
+## Status
+
+While Rustual Boy's core emulation is nearly complete [compatibility-wise](https://github.com/emu-rs/rustual-boy#known-game-compatibility), the project is still quite young, and needs some time to mature. Particularly, there are currently no binary distributions (only source), its user interface is lacking (read: virtually non-existent), and there are some known (and probably unknown) stability/compatibility issues. Also, performance isn't fantastic yet, but the emulator should be playable at least.
+
+That said, these things are bound to improve with time, and everyone is encouraged to [build the emulator](https://github.com/emu-rs/rustual-boy#building-and-running), give it a shot, and [report any bugs/feature requests](CONTRIBUTING.md)!
 
 ## Known game compatibility
 
@@ -46,6 +48,16 @@ A more detailed status/compatibility section will be written when the emu is com
 | Virtual Lab | N/A | x | |
 | Virtual League Baseball | x | x | |
 | Waterworld | x | N/A | |
+
+## Building and running
+
+Currently, the only dependency for building is Rust itself, which can be downloaded [here](https://www.rust-lang.org/downloads.html). Once that's installed, you can clone the repo, and simply `cargo build`/`cargo run` your way to victory! It's recommended to use the `--release` flag as well, as emulation can require a lot of CPU power, so we'll want all the compiler help we can get.
+
+If you're new to using Cargo (Rust's build system), it's recommended to give the [Cargo Guide](http://doc.crates.io/guide.html) a quick skim.
+
+## Contributing
+
+Rustual Boy aims to be an open project where anyone can contribute. If you're interested, check [CONTRIBUTING.md](CONTRIBUTING.md)!
 
 ## License
 
