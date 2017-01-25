@@ -19,6 +19,34 @@ A more detailed status/compatibility section will be written when the emu is com
 ![screenie](screenshot3.png)
 ![screenie](screenshot4.png)
 
+## Known Game Compatibility
+
+| Game | USA | JP | Notes |
+| --- | --- | --- | --- |
+| 3-D Tetris | | N/A | Uses bit string ops |
+| Bound High! | x | x | ROM is both USA+JP |
+| Galactic Pinball | x | x | |
+| Golf | | | Uses bit string ops |
+| Insmouse No Yakata | N/A | x | |
+| Jack Bros. | x | x | |
+| Mario Clash | x | x | |
+| Mario's Tennis | x | x | |
+| Nester's Funky Bowling | | N/A | Uses bit string ops |
+| Panic Bomber | x | x | |
+| Red Alarm | | | Uses bit string ops |
+| SD Gundam Dimension War | N/A | x | |
+| Space Invaders Virtual Collection | N/A | | Lazers aren't visible on most of the screen in "Virtual 3D" mode |
+| Space Squash | N/A | | Game doesn't start; seems to be waiting on an interrupt (see 74235249a1abfca8d4b3d80e8c3c6b37230679a2 and 0ff9c61efb188832680292a11c1a24c5c4f25360 for some investigation) |
+| Teleroboxer | x | x | |
+| V-Tetris | N/A | x | x |
+| Vertical Force | | | Enemies/powerups appear/disappear, first boss disappears and the game softlocks |
+| Virtual Bowling | N/A | | Some graphical glitches and slowdowns in the intro sequence, possibly other bugs |
+| Virtual Boy Wario Land | x | x | |
+| Virtual Fishing | N/A | x | |
+| Virtual Lab | N/A | x | |
+| Virtual League Baseball | x | x | |
+| Waterworld | x | N/A | |
+
 ## License
 
 Licensed under either of
