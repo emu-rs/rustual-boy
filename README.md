@@ -1,6 +1,6 @@
 # Rustual Boy [![Build Status](https://travis-ci.org/emu-rs/rustual-boy.svg?branch=master)](https://travis-ci.org/emu-rs/rustual-boy) [![Build status](https://ci.appveyor.com/api/projects/status/ec29vne6uuh7tjtu/branch/master?svg=true)](https://ci.appveyor.com/project/yupferris/rustual-boy/branch/master) [![Compabitility](https://img.shields.io/badge/compatibility-68%25-orange.svg)](https://github.com/emu-rs/rustual-boy#known-game-compatibility) [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/emu-rs/rustual-boy#license)
 
-![Rustual Boy](logo.png)
+![Rustual Boy](media/logo.png)
 
 A WIP Virtual Boy emulator in Rust.
 
@@ -14,10 +14,10 @@ A more detailed status/compatibility section will be written when the emu is com
 
 ## Screenshots
 
-![screenie](screenshot.png)
-![screenie](screenshot2.png)
-![screenie](screenshot3.png)
-![screenie](screenshot4.png)
+![screenie](media/screenshot.png)
+![screenie](media/screenshot2.png)
+![screenie](media/screenshot3.png)
+![screenie](media/screenshot4.png)
 
 ## Known game compatibility
 
