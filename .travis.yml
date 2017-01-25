@@ -9,6 +9,10 @@ notifications:
 os:
   - linux
   - osx
+addons:
+  apt:
+    packages:
+      - libasound2-dev
 before_script:
   - rustc --version
   - cargo --version
