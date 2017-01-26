@@ -27,7 +27,9 @@ mod interconnect;
 mod instruction;
 mod nvc;
 mod virtual_boy;
+mod system_time_source;
 mod cpal_driver;
+mod wave_file_buffer_sink;
 mod command;
 mod emulator;
 

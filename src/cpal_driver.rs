@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use cpal::{EventLoop, Voice, UnknownTypeBuffer, get_default_endpoint};
 
 use futures::stream::Stream;
