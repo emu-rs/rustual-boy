@@ -27,6 +27,8 @@ const NUM_WAVE_TABLE_WORDS: usize = 32;
 const NUM_WAVE_TABLES: usize = 5;
 const TOTAL_WAVE_TABLE_SIZE: usize = NUM_WAVE_TABLE_WORDS * NUM_WAVE_TABLES;
 
+const NUM_MOD_TABLE_WORDS: usize = 32;
+
 #[derive(Default)]
 struct PlayControlReg {
     enable: bool,
@@ -314,6 +316,7 @@ impl Voice for NoiseVoice {
 
 pub struct Vsu {
     wave_tables: Box<[u8]>,
+    mod_table: Box<[i8]>,
 
     voice1: StandardVoice,
     voice2: StandardVoice,
@@ -333,6 +336,7 @@ impl Vsu {
     pub fn new() -> Vsu {
         Vsu {
             wave_tables: vec![0; TOTAL_WAVE_TABLE_SIZE].into_boxed_slice(),
+            mod_table: vec![0; NUM_MOD_TABLE_WORDS].into_boxed_slice(),
 
             voice1: StandardVoice::default(),
             voice2: StandardVoice::default(),
@@ -380,6 +384,11 @@ impl Vsu {
             PCM_WAVE_TABLE_4_START ... PCM_WAVE_TABLE_4_END => {
                 if !self.are_channels_active() {
                     self.wave_tables[((addr - PCM_WAVE_TABLE_4_START) / 4 + 0x80) as usize] = value & 0x3f;
+                }
+            }
+            MOD_TABLE_START ... MOD_TABLE_END => {
+                if !self.voice5.reg_play_control.enable {
+                    self.mod_table[((addr - MOD_TABLE_START) / 4) as usize] = value as _;
                 }
             }
             VOICE_1_PLAY_CONTROL => self.voice1.write_play_control_reg(value),
