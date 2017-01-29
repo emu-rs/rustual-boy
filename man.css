@@ -1,0 +1,45 @@
+body {
+    background-color: #000000;
+    color: #c00000;
+    font-family: Verdana, Geneva, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #ff0000;
+}
+
+a {
+    color: #d00000;
+}
+
+a:hover {
+    color: #ff0000;
+}
+
+code {
+    background-color: #400000;
+    color: #ff0000;
+}
+
+pre {
+    padding: 0.5em;
+    border-radius: 5px;
+    background-color: #400000;
+    color: #ff0000;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 5px;
+}
+
+tr:nth-child(even) {
+    background-color: #200000;
+}
+
+table, th, td {
+    border: 1px solid #600000;
+}

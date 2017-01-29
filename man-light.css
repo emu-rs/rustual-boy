@@ -1,0 +1,29 @@
+body {
+    font-family: Verdana, Geneva, sans-serif;
+}
+
+code {
+    background-color: #ddd;
+}
+
+pre {
+    padding: 0.5em;
+    border-radius: 5px;
+    background-color: #ddd;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 5px;
+}
+
+tr:nth-child(even) {
+    background-color: #ddd;
+}
+
+table, th, td {
+    border: 1px solid #aaa;
+}
