@@ -189,6 +189,10 @@ impl StandardVoice {
     }
 
     fn output(&self, wave_tables: &[u8]) -> usize {
+        if self.reg_pcm_wave > 4 {
+            return 0;
+        }
+
         wave_tables[self.reg_pcm_wave * NUM_WAVE_TABLE_WORDS + self.phase] as _
     }
 }
