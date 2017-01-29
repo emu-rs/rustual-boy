@@ -63,6 +63,12 @@ Games marked `F` and `P` are all included in the compatibility metric.
 
 Currently, the only dependency for building is Rust itself, which can be downloaded [here](https://www.rust-lang.org/downloads.html). Once that's installed, you can clone the repo, and simply `cargo build`/`cargo run` your way to victory! It's recommended to use the `--release` flag as well, as emulation can require a lot of CPU power, so we'll want all the compiler help we can get.
 
+Rustual Boy currently takes a single argument, which is the ROM image:
+
+```
+rustual-boy bound-high.vb
+```
+
 If you're new to using Cargo (Rust's build system), it's recommended to give the [Cargo Guide](http://doc.crates.io/guide.html) a quick skim.
 
 ## Input keymap
