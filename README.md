@@ -65,6 +65,29 @@ Currently, the only dependency for building is Rust itself, which can be downloa
 
 If you're new to using Cargo (Rust's build system), it's recommended to give the [Cargo Guide](http://doc.crates.io/guide.html) a quick skim.
 
+## Input keymap
+
+The Virtual Boy game pad consists of two d-pads, 4 buttons, and two shoulder buttons. These are mapped to the following keyboard keys:
+
+| Button | Key |
+| --- | --- |
+| Left D-Pad Up | <kbd>W</kbd> |
+| Left D-Pad Down | <kbd>S</kbd> |
+| Left D-Pad Left | <kbd>A</kbd> |
+| Left D-Pad Right | <kbd>D</kbd> |
+| Right D-Pad Up | <kbd>I</kbd> |
+| Right D-Pad Down | <kbd>K</kbd> |
+| Right D-Pad Left | <kbd>J</kbd> |
+| Right D-Pad Right | <kbd>L</kbd> |
+| Select | <kbd>space</kbd> |
+| Start | <kbd>enter/return</kbd> |
+| A | <kbd>F</kbd> |
+| B | <kbd>H</kbd> |
+| Left bumper | <kbd>E</kbd> |
+| Right bumper | <kbd>U</kbd> |
+
+For game pad layout reference, refer to [this image](https://en.wikipedia.org/wiki/Virtual_Boy#/media/File:Virtual-Boy-Set.jpg). This key map is currently non-configurable.
+
 ## Contributing
 
 Rustual Boy aims to be an open project where anyone can contribute. If you're interested, check [CONTRIBUTING.md](CONTRIBUTING.md)!
