@@ -1,4 +1,4 @@
-# Rustual Boy [![Build Status](https://travis-ci.org/emu-rs/rustual-boy.svg?branch=master)](https://travis-ci.org/emu-rs/rustual-boy) [![Build status](https://ci.appveyor.com/api/projects/status/ec29vne6uuh7tjtu/branch/master?svg=true)](https://ci.appveyor.com/project/yupferris/rustual-boy/branch/master) [![Compabitility](https://img.shields.io/badge/compatibility-68%25-orange.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility) [![Chat on discord](https://img.shields.io/badge/chat-on%20discord-7289DA.svg)](https://discord.gg/65j9YMA) [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#license)
+# Rustual Boy [![Build Status](https://travis-ci.org/emu-rs/rustual-boy.svg?branch=master)](https://travis-ci.org/emu-rs/rustual-boy) [![Build status](https://ci.appveyor.com/api/projects/status/ec29vne6uuh7tjtu/branch/master?svg=true)](https://ci.appveyor.com/project/yupferris/rustual-boy/branch/master) [![Compabitility](https://img.shields.io/badge/compatibility-71%25-orange.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility) [![Chat on discord](https://img.shields.io/badge/chat-on%20discord-7289DA.svg)](https://discord.gg/65j9YMA) [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#license)
 
 ![Rustual Boy](media/logo.png)
 
@@ -25,31 +25,39 @@ That said, these things are bound to improve with time, and everyone is encourag
 
 ## Known game compatibility
 
+Key:
+ - Empty cells: Incompatible. The reason is described in the notes field.
+ - `F`: Fully compatible. The game is fully playable with no known bugs (to our knowledge).
+ - `P`: Playable. The game can be played, but has some minor known glitches (described in the notes field).
+ - `N/A`: Game does not exist for this region.
+
+Games marked `F` and `P` are all included in the compatibility metric.
+
 | Game | USA | JP | Notes |
 | --- | --- | --- | --- |
 | 3-D Tetris | | N/A | Uses bit string ops |
-| Bound High! | x | N/A | ROM is both USA+JP |
-| Galactic Pinball | x | x | |
+| Bound High! | F | N/A | ROM is both USA+JP |
+| Galactic Pinball | P | P | Vocal samples throughout the game play at the wrong rate, likely related to CPU clock cycle inaccuracy |
 | Golf | | | Uses bit string ops |
-| Insmouse No Yakata | N/A | x | |
-| Jack Bros. | x | x | |
-| Mario Clash | x | x | |
-| Mario's Tennis | x | x | |
+| Insmouse No Yakata | N/A | F | |
+| Jack Bros. | F | F | |
+| Mario Clash | F | F | |
+| Mario's Tennis | F | F | |
 | Nester's Funky Bowling | | N/A | Uses bit string ops |
-| Panic Bomber | x | x | |
+| Panic Bomber | F | F | |
 | Red Alarm | | | Uses bit string ops |
-| SD Gundam Dimension War | N/A | x | |
+| SD Gundam Dimension War | N/A | F | |
 | Space Invaders Virtual Collection | N/A | | Lazers aren't visible on most of the screen in "Virtual 3D" mode |
 | Space Squash | N/A | | Game doesn't start; seems to be waiting on an interrupt (see commits [7423524](https://github.com/emu-rs/rustual-boy/commit/74235249a1abfca8d4b3d80e8c3c6b37230679a2) and [0ff9c61](https://github.com/emu-rs/rustual-boy/commit/0ff9c61efb188832680292a11c1a24c5c4f25360) for some investigation) |
-| Teleroboxer | x | x | |
-| V-Tetris | N/A | x | |
+| Teleroboxer | F | F | |
+| V-Tetris | N/A | F | |
 | Vertical Force | | | Enemies/powerups appear/disappear, first boss disappears and the game softlocks |
-| Virtual Bowling | N/A | | Some graphical glitches and slowdowns in the intro sequence, possibly other bugs |
-| Virtual Boy Wario Land | x | x | |
-| Virtual Fishing | N/A | x | |
-| Virtual Lab | N/A | x | |
-| Virtual League Baseball | x | x | |
-| Waterworld | x | N/A | |
+| Virtual Bowling | N/A | P | Small graphical glitch in the intro sequence, samples play at the wrong rate |
+| Virtual Boy Wario Land | F | F | |
+| Virtual Fishing | N/A | F | |
+| Virtual Lab | N/A | F | |
+| Virtual League Baseball | F | F | |
+| Waterworld | F | N/A | |
 
 ## Building and running
 
