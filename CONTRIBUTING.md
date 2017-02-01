@@ -14,6 +14,8 @@ Most of the core emulation/known game compatibility for Rustual Boy is nearing c
 
 **User interface**: Currently, Rustual Boy expects a ROM as its first command line arg. That's it! No further options, nothing. Ideally, we'd have both an improved CLI and a GUI would be ideal. This could obviously use a bit of TLC!
 
+**Additional frontend(s)** Integration with something like [libretro](https://www.libretro.com/)/[retroarch](https://www.libretro.com/index.php/retroarch-2/) would be a HUGE win for us in terms of having a great user experience and getting people actually using this thing :)
+
 **Performance**: As we've primarily focused on nailing the core emulation before spending too much time on this, the emulator is nowhere near as fast as it could be!
 
 **Documentation**: Both inside and out, this project currently lacks any and all documentation, really.
