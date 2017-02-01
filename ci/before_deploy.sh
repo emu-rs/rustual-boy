@@ -21,7 +21,7 @@ main() {
     cargo rustc --bin rustual-boy --release -- -C lto
 
     # TODO Update this to package the right artifacts
-    cp target/$TARGET/release/rustual-boy $stage/
+    cp target/release/rustual-boy $stage/
     cp doc/* $stage/
     cp LICENSE-APACHE $stage/
     cp LICENSE-MIT $stage/
