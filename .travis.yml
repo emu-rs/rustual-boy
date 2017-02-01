@@ -8,11 +8,12 @@ language: rust
 rust: stable
 
 env:
-  # default job
-  - TARGET=x86_64-unknown-linux-gnu
   global:
     # TODO Update this to match the name of your project.
     - CRATE_NAME=rustual-boy
+
+    # default job
+    - TARGET=x86_64-unknown-linux-gnu
 
 matrix:
   # additional build jobs
