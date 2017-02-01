@@ -58,6 +58,12 @@ matrix:
       os: osx
       rust: nightly
 
+# Required for ALSA on linux
+addons:
+  apt:
+    packages:
+      - libasound2-dev
+
 before_install: set -e
 
 install:
