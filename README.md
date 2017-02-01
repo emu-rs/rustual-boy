@@ -14,7 +14,7 @@ Rustual Boy is currently able to emulate [the majority of commercial Virtual Boy
 
 While Rustual Boy's core emulation is nearly complete [compatibility-wise](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility), the project is still quite young, and needs some time to mature. Particularly, there are currently no binary distributions (only source), its user interface is lacking (read: virtually non-existent), and there are some known (and probably unknown) stability/compatibility issues. Also, performance isn't fantastic yet, but the emulator should be playable at least.
 
-That said, these things are bound to improve with time, and everyone is encouraged to [build the emulator](https://github.com/emu-rs/rustual-boy/blob/master/README.md#building-and-running), give it a shot, and [report any bugs/feature requests](CONTRIBUTING.md)!
+That said, these things are bound to improve with time, and everyone is encouraged to [grab a build](https://github.com/emu-rs/rustual-boy/releases) or [build the emulator](https://github.com/emu-rs/rustual-boy/blob/master/README.md#building-and-running), give it a shot, and [report any bugs/feature requests](CONTRIBUTING.md)!
 
 ## Screenshots
 
