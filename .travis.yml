@@ -28,9 +28,14 @@ matrix:
     # Testing other channels
     - env: TARGET=x86_64-unknown-linux-gnu
       rust: nightly
+    - env: TARGET=x86_64-unknown-linux-gnu
+      rust: beta
     - env: TARGET=x86_64-apple-darwin
       os: osx
       rust: nightly
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
+      rust: beta
 
 # Required for ALSA on linux
 addons:
