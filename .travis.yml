@@ -12,9 +12,23 @@ env:
     # TODO Update this to match the name of your project.
     - CRATE_NAME=rustual-boy
 
-os:
-  - linux
-  - osx
+matrix:
+  include:
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-gnu
+    - os: linux
+      env: TARGET=i686-unknown-linux-gnu
+    - os: osx
+      env: TARGET=x86_64-apple-darwin
+    - os: osx
+      env: TARGET=i686-apple-darwin
+
+    # Testing other channels
+    - env: TARGET=x86_64-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
+      rust: nightly
 
 # Required for ALSA on linux
 addons:
