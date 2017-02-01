@@ -18,7 +18,7 @@ Most of the core emulation/known game compatibility for Rustual Boy is nearing c
 
 **Documentation**: Both inside and out, this project currently lacks any and all documentation, really.
 
-**Webdev**: Eventually, Rustual Boy should have its own website as well, so not only developers, but also gamers can find it and give it a shot!
+**Webdev**: We've got a [basic landing page](http://rustualboy.com/), but it would be fab incorporate other bits as well (such as a blog for bugfix logs, status updates, releases, etc). See [this repo](https://github.com/yupferris/rustual-boy-www) for the current state of affairs.
 
 **Branding/logo**: We have a logo, but it's pretty basic! Would be cool to take this even further.
 
