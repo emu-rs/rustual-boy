@@ -16,8 +16,6 @@ Most of the core emulation/known game compatibility for Rustual Boy is nearing c
 
 **Performance**: As we've primarily focused on nailing the core emulation before spending too much time on this, the emulator is nowhere near as fast as it could be!
 
-**CI/Build artifacts**: While we have rudimentary [travis](https://travis-ci.org/emu-rs/rustual-boy) and [appveyor](https://ci.appveyor.com/project/yupferris/rustual-boy) setups for basic CI, it would be great if we had, for example, binary builds/deployment/distribution as well.
-
 **Documentation**: Both inside and out, this project currently lacks any and all documentation, really.
 
 **Webdev**: Eventually, Rustual Boy should have its own website as well, so not only developers, but also gamers can find it and give it a shot!
