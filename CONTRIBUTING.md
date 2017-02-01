@@ -6,6 +6,10 @@ Want to contribute to Rustual Boy? Fantastic! We could use your help!
 
 Any contribution to/participation in the Rustual Boy project is expected to follow the [Contributor Covenant code of conduct](CODE_OF_CONDUCT.md). Rustual Boy aims to be an open project where anyone can contribute, and upholding this code is essential to that goal!
 
+## Getting started/getting in touch
+
+If you're interested in contributing in any way, shape, or form, feel free to [join our discord server](https://discord.gg/65j9YMA), [email @yupferris](mailto:yupferris@gmail.com), [file an issue](https://github.com/emu-rs/rustual-boy/issues) or [make a pull request](https://github.com/emu-rs/rustual-boy/pulls). For larger things it's obviously favorable to have a chat about it beforehand; for smaller bugfixes etc feel free to just fork/PR.
+
 ## Improvement areas/ideas
 
 Most of the core emulation/known game compatibility for Rustual Boy is nearing completion, but that doesn't mean the project is finished by any means! There are many areas where Rustual Boy can improve:
@@ -27,10 +31,6 @@ Most of the core emulation/known game compatibility for Rustual Boy is nearing c
 **Feature request/issue/bug report management**: This project is so young, not even these details are hammered out yet! We'd love to get your input regarding this.
 
 These are just _some_ areas we thought of off the top of our heads, and there are surely other areas to improve as well!
-
-## Getting started/getting in touch
-
-If you're interested in contributing in any way, shape, or form, feel free to [join our discord server](https://discord.gg/65j9YMA), [email @yupferris](mailto:yupferris@gmail.com), [file an issue](https://github.com/emu-rs/rustual-boy/issues) or [make a pull request](https://github.com/emu-rs/rustual-boy/pulls). For larger things it's obviously favorable to have a chat about it beforehand; for smaller bugfixes etc feel free to just fork/PR.
 
 ## Licensing
 
