@@ -20,6 +20,12 @@ const ENVELOPE_CLOCK_PERIOD: usize = 307218;
 // 20mhz / 5mhz = 4 clocks
 const FREQUENCY_CLOCK_PERIOD: usize = 4;
 
+// 20mhz / 1041.6hz = ~19200 clocks
+const SWEEP_MOD_SMALL_PERIOD: usize = 19200;
+
+// 20mhz / 130.2hz = ~153610 clocks
+const SWEEP_MOD_LARGE_PERIOD: usize = 153610;
+
 // 20mhz / 500khz = 40 clocks
 const NOISE_CLOCK_PERIOD: usize = 40;
 
@@ -214,6 +220,166 @@ impl Voice for StandardVoice {
 }
 
 #[derive(Default)]
+struct SweepModVoice {
+    reg_play_control: PlayControlReg,
+
+    reg_volume: VolumeReg,
+
+    reg_frequency_low: usize,
+    reg_frequency_high: usize,
+    frequency_low: usize,
+    frequency_high: usize,
+    next_frequency_low: usize,
+    next_frequency_high: usize,
+
+    envelope: Envelope,
+
+    reg_sweep_mod_enable: bool,
+    reg_mod_repeat: bool,
+    reg_function: bool,
+
+    reg_sweep_mod_base_interval: bool,
+    reg_sweep_mod_interval: usize,
+    reg_sweep_direction: bool,
+    reg_sweep_shift_amount: usize,
+
+    reg_pcm_wave: usize,
+
+    frequency_counter: usize,
+    phase: usize,
+
+    sweep_mod_counter: usize,
+    mod_phase: usize,
+}
+
+impl SweepModVoice {
+    fn write_play_control_reg(&mut self, value: u8) {
+        self.reg_play_control.write(value);
+
+        if self.reg_play_control.enable {
+            self.envelope.envelope_counter = 0;
+
+            self.frequency_counter = 0;
+            self.phase = 0;
+            self.sweep_mod_counter = 0;
+            self.mod_phase = 0;
+        }
+    }
+
+    fn write_volume_reg(&mut self, value: u8) {
+        self.reg_volume.write(value);
+    }
+
+    fn write_frequency_low_reg(&mut self, value: u8) {
+        self.reg_frequency_low = value as _;
+        self.next_frequency_low = self.reg_frequency_low;
+    }
+
+    fn write_frequency_high_reg(&mut self, value: u8) {
+        self.reg_frequency_high = (value & 0x07) as _;
+        self.next_frequency_high = self.reg_frequency_high;
+    }
+
+    fn write_envelope_data_reg(&mut self, value: u8) {
+        self.envelope.write_data_reg(value);
+    }
+
+    fn write_envelope_sweep_mod_control_reg(&mut self, value: u8) {
+        self.envelope.write_control_reg(value);
+        self.reg_sweep_mod_enable = ((value >> 6) & 0x01) != 0;
+        self.reg_mod_repeat = ((value >> 5) & 0x01) != 0;
+        self.reg_function = ((value >> 4) & 0x01) != 0;
+    }
+
+    fn write_sweep_mod_data_reg(&mut self, value: u8) {
+        self.reg_sweep_mod_base_interval = ((value >> 7) & 0x01) != 0;
+        self.reg_sweep_mod_interval = ((value >> 4) & 0x07) as _;
+        self.reg_sweep_direction = ((value >> 3) & 0x01) != 0;
+        self.reg_sweep_shift_amount = (value & 0x07) as _;
+    }
+
+    fn write_pcm_wave_reg(&mut self, value: u8) {
+        self.reg_pcm_wave = (value & 0x07) as _;
+    }
+
+    fn frequency_clock(&mut self) {
+        self.frequency_counter += 1;
+        if self.frequency_counter >= 2048 - ((self.frequency_high << 8) | self.frequency_low) {
+            self.frequency_counter = 0;
+
+            self.phase = (self.phase + 1) & (NUM_WAVE_TABLE_WORDS - 1);
+        }
+    }
+
+    fn sweep_mod_clock(&mut self, mod_table: &[i8]) {
+        self.sweep_mod_counter += 1;
+        if self.sweep_mod_counter >= self.reg_sweep_mod_interval {
+            self.sweep_mod_counter = 0;
+
+            self.frequency_low = self.next_frequency_low;
+            self.frequency_high = self.next_frequency_high;
+
+            let mut freq = (self.frequency_high << 8) | self.frequency_low;
+
+            if freq >= 2048 {
+                self.reg_play_control.enable = false;
+            }
+
+            if !self.reg_play_control.enable || !self.reg_sweep_mod_enable || self.reg_sweep_mod_interval == 0 {
+                return;
+            }
+
+            match self.reg_function {
+                false => {
+                    // Sweep
+                    let sweep_value = freq >> self.reg_sweep_shift_amount;
+                    freq = match self.reg_sweep_direction {
+                        false => freq.wrapping_sub(sweep_value),
+                        true => freq.wrapping_add(sweep_value)
+                    };
+                }
+                true => {
+                    // Mod
+                    let reg_freq = (self.reg_frequency_high << 8) | self.reg_frequency_low;
+                    freq = reg_freq.wrapping_add(mod_table[self.mod_phase] as _) & 0x07ff;
+
+                    const MAX_MOD_PHASE: usize = NUM_MOD_TABLE_WORDS - 1;
+                    self.mod_phase = match (self.reg_mod_repeat, self.mod_phase) {
+                        (false, MAX_MOD_PHASE) => MAX_MOD_PHASE,
+                        _ => (self.mod_phase + 1) & MAX_MOD_PHASE
+                    };
+                }
+            }
+
+            self.next_frequency_low = freq & 0xff;
+            self.next_frequency_high = (freq >> 8) & 0x07;
+        }
+    }
+
+    fn output(&self, wave_tables: &[u8]) -> usize {
+        if self.reg_pcm_wave > 4 {
+            return 0;
+        }
+
+        wave_tables[self.reg_pcm_wave * NUM_WAVE_TABLE_WORDS + self.phase] as _
+    }
+}
+
+impl Voice for SweepModVoice {
+    fn reg_play_control(&self) -> &PlayControlReg {
+        &self.reg_play_control
+    }
+
+    fn reg_volume(&self) -> &VolumeReg {
+        &self.reg_volume
+    }
+
+    fn envelope(&self) -> &Envelope {
+        &self.envelope
+    }
+}
+
+#[derive(Default)]
 struct NoiseVoice {
     reg_play_control: PlayControlReg,
 
@@ -322,12 +488,13 @@ pub struct Vsu {
     voice2: StandardVoice,
     voice3: StandardVoice,
     voice4: StandardVoice,
-    voice5: StandardVoice,
+    voice5: SweepModVoice,
     voice6: NoiseVoice,
 
     duration_clock_counter: usize,
     envelope_clock_counter: usize,
     frequency_clock_counter: usize,
+    sweep_mod_clock_counter: usize,
     noise_clock_counter: usize,
     sample_clock_counter: usize,
 }
@@ -342,12 +509,13 @@ impl Vsu {
             voice2: StandardVoice::default(),
             voice3: StandardVoice::default(),
             voice4: StandardVoice::default(),
-            voice5: StandardVoice::default(),
+            voice5: SweepModVoice::default(),
             voice6: NoiseVoice::default(),
 
             duration_clock_counter: 0,
             envelope_clock_counter: 0,
             frequency_clock_counter: 0,
+            sweep_mod_clock_counter: 0,
             noise_clock_counter: 0,
             sample_clock_counter: 0,
         }
@@ -424,7 +592,8 @@ impl Vsu {
             VOICE_5_FREQUENCY_LOW => self.voice5.write_frequency_low_reg(value),
             VOICE_5_FREQUENCY_HIGH => self.voice5.write_frequency_high_reg(value),
             VOICE_5_ENVELOPE_DATA => self.voice5.write_envelope_data_reg(value),
-            VOICE_5_ENVELOPE_CONTROL => self.voice5.write_envelope_control_reg(value),
+            VOICE_5_ENVELOPE_SWEEP_MOD_CONTROL => self.voice5.write_envelope_sweep_mod_control_reg(value),
+            VOICE_5_SWEEP_MOD_DATA => self.voice5.write_sweep_mod_data_reg(value),
             VOICE_5_PCM_WAVE => self.voice5.write_pcm_wave_reg(value),
             VOICE_6_PLAY_CONTROL => self.voice6.write_play_control_reg(value),
             VOICE_6_VOLUME => self.voice6.write_volume_reg(value),
@@ -492,6 +661,17 @@ impl Vsu {
                 self.voice3.frequency_clock();
                 self.voice4.frequency_clock();
                 self.voice5.frequency_clock();
+            }
+
+            self.sweep_mod_clock_counter += 1;
+            let sweep_mod_clock_period = match self.voice5.reg_sweep_mod_base_interval {
+                false => SWEEP_MOD_SMALL_PERIOD,
+                true => SWEEP_MOD_LARGE_PERIOD
+            };
+            if self.sweep_mod_clock_counter >= sweep_mod_clock_period {
+                self.sweep_mod_clock_counter = 0;
+
+                self.voice5.sweep_mod_clock(&self.mod_table);
             }
 
             self.noise_clock_counter += 1;
