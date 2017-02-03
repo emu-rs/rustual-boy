@@ -230,6 +230,15 @@ impl Emulator {
                     println!("eipsw: 0x{:08x}", self.virtual_boy.cpu.reg_eipsw());
                     println!("ecr: 0x{:08x}", self.virtual_boy.cpu.reg_ecr());
                 }
+                Ok(Command::ShowCpuCache) => {
+                    println!("CPU Instruction Cached enable: {}", self.virtual_boy.cpu.cache.is_enabled());
+                    let (hits, misses) = self.virtual_boy.cpu.cache.stats();
+                    let percent_hit = (hits as f64 / (hits + misses) as f64) * 100.0;
+                    println!("Cache Hits: {}, Cache Misses: {} ({:.1}% hit rate)", hits, misses, percent_hit);
+                    for i in 0..128 {
+                        println!("Entry {:3}: {}", i, self.virtual_boy.cpu.cache.entry(i));
+                    }
+                },
                 Ok(Command::Step) => {
                     self.step(video_frame_sink, audio_frame_sink);
                     self.cursor = self.virtual_boy.cpu.reg_pc();
