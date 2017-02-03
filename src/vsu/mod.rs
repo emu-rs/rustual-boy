@@ -23,8 +23,8 @@ const FREQUENCY_CLOCK_PERIOD: usize = 4;
 // 20mhz / 1041.6hz = ~19200 clocks
 const SWEEP_MOD_SMALL_PERIOD: usize = 19200;
 
-// 20mhz / 130.2hz = ~153610 clocks
-const SWEEP_MOD_LARGE_PERIOD: usize = 153610;
+// 20mhz / 130.2hz = ~153600 clocks
+const SWEEP_MOD_LARGE_PERIOD: usize = 153600;
 
 // 20mhz / 500khz = 40 clocks
 const NOISE_CLOCK_PERIOD: usize = 40;
