@@ -2,7 +2,7 @@
 name = "rustual-boy"
 version = "0.1.0"
 dependencies = [
- "cpal 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cpal 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "encoding 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "minifb 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -43,7 +43,7 @@ dependencies = [
 
 [[package]]
 name = "cpal"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "alsa-sys 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -256,7 +256,7 @@ dependencies = [
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum coreaudio-rs 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7a633fa29946681f8c98ad593c00a84189961970a01e317b054cdd7628794f7f"
 "checksum coreaudio-sys 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "31231897622a4cd14cb211af6f26d6fcf0c78078fa60c586ce9db8f0b581cd44"
-"checksum cpal 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b7008955c4a38ef3b9c3beac91a002c4541af01f6cb5044ad43040644122dbfe"
+"checksum cpal 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "bdd68fa8eb3344f4eaca6d0b3bed8bc857611e2d29fc2bb77f21650a0d0d7c50"
 "checksum dylib 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "cdff070fc467d71f23c5ac5ebfa0867e8f31146ef529b777723e8cba815e47ae"
 "checksum encoding 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)" = "6b0d943856b990d12d3b55b359144ff341533e516d94098b1d3fc1ac666d36ec"
 "checksum encoding-index-japanese 1.20141219.5 (registry+https://github.com/rust-lang/crates.io-index)" = "04e8b2ff42e9a05335dbf8b5c6f7567e5591d0d916ccef4e0b1710d32a0d0c91"
