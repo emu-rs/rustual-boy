@@ -5,6 +5,7 @@ use std::borrow::Cow;
 
 #[derive(Debug, Clone)]
 pub enum Command {
+    ShowCpuCache,
     ShowRegs,
     Step,
     Continue,
@@ -40,6 +41,7 @@ named!(
     complete!(
         terminated!(
         alt_complete!(
+            show_cpu_cache|
             step |
             continue_ |
             goto |
@@ -58,6 +60,12 @@ named!(
             show_regs |
             repeat),
         eof)));
+
+named!(
+    show_cpu_cache<Command>,
+    map!(
+        alt_complete!(tag!("showcpucache") | tag!("scc")),
+    |_| Command::ShowCpuCache));
 
 named!(
     step<Command>,

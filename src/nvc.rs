@@ -2,6 +2,109 @@ use instruction::*;
 use interconnect::*;
 
 use std::collections::HashSet;
+use std::fmt;
+
+#[derive(Copy, Clone, Default)]
+pub struct CacheEntry {
+    pub tag: u32,
+    pub base_addr: u32,
+    pub subblock_valid: [bool; 2],
+}
+
+impl fmt::Display for CacheEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "base_addr: 0x{:08x}, tag: 0x{:08x}, sb1 valid: {:5}, sb2 valid: {:5}", self.base_addr, self.tag, self.subblock_valid[0], self.subblock_valid[1])
+    }
+}
+
+pub enum CacheResult {
+    Hit,
+    Miss,
+    Disabled,
+}
+
+pub struct Cache {
+    hits: usize,
+    misses: usize,
+    is_enabled: bool,
+    entries: Box<[CacheEntry; 128]>,
+}
+
+impl Cache {
+    fn new() -> Cache {
+        Cache {
+            hits: 0,
+            misses: 0,
+            is_enabled: false,
+            entries: Box::new([CacheEntry::default(); 128]),
+        }
+    }
+
+    pub fn clear_entries(&mut self, start: usize, mut count: usize) {
+        if start >= 128 {
+            return;
+        }
+
+        if count > 128 {
+            count = 128;
+        }
+
+        if start + count > 128 {
+            count = 128 - start;
+        }
+
+        for offset in 0..count {
+            self.entries[start + offset].tag = 0;
+            self.entries[start + offset].subblock_valid = [false; 2];
+         }
+    }
+
+    pub fn set_is_enabled(&mut self, is_enabled: bool) {
+        self.is_enabled = is_enabled;
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        return self.is_enabled;
+    }
+
+    pub fn read_halfword(&mut self, interconnect: &mut Interconnect, addr: u32) -> (u16, CacheResult) {
+        let halfword = interconnect.read_halfword(addr);
+
+        if !self.is_enabled {
+            return (halfword, CacheResult::Disabled);
+        }
+
+        let byte_offset = (addr & 0x07) as usize;
+        let entry = ((addr >> 3) & 0x7f) as usize;
+        let tag = addr >> 10;
+        let subblock = if byte_offset >= 4 { 1 } else { 0 };
+
+        if self.entries[entry].tag == tag {
+            if self.entries[entry].subblock_valid[subblock] {
+                self.hits += 1;
+                return (halfword, CacheResult::Hit);
+            }
+            self.entries[entry].subblock_valid[subblock] = true;
+            self.misses += 1;
+            return (halfword, CacheResult::Miss);
+        } else {
+            self.entries[entry].tag = tag;
+            self.entries[entry].subblock_valid = [false; 2];
+            self.entries[entry].subblock_valid[subblock] = true;
+            self.entries[entry].base_addr = addr & 0xfffffff8;
+            self.misses += 1;
+            return (halfword, CacheResult::Miss);
+        }
+    }
+
+    pub fn entry(&self, entry: usize) -> CacheEntry {
+        return self.entries[entry];
+    }
+
+    pub fn stats(&self) -> (usize, usize) {
+        return (self.hits, self.misses);
+    }
+}
 
 pub struct Nvc {
     reg_pc: u32,
@@ -28,6 +131,8 @@ pub struct Nvc {
     psw_exception_pending: bool,
     psw_nmi_pending: bool,
     psw_interrupt_mask_level: usize,
+
+    pub cache: Cache,
 
     pub watchpoints: HashSet<u32>,
 }
@@ -63,6 +168,8 @@ impl Nvc {
             psw_exception_pending: false,
             psw_nmi_pending: true,
             psw_interrupt_mask_level: 0,
+
+            cache: Cache::new(),
 
             watchpoints: HashSet::new(),
         }
@@ -158,7 +265,7 @@ impl Nvc {
     pub fn step(&mut self, interconnect: &mut Interconnect) -> (usize, bool) {
         let original_pc = self.reg_pc;
 
-        let first_halfword = interconnect.read_halfword(original_pc);
+        let (first_halfword, _) = self.cache.read_halfword(interconnect, original_pc);
         let mut next_pc = original_pc.wrapping_add(2);
 
         let mut num_cycles = 1;
@@ -211,7 +318,7 @@ impl Nvc {
 
             macro_rules! format_iv {
                 ($f:expr) => ({
-                    let second_halfword = interconnect.read_halfword(next_pc);
+                    let (second_halfword, _) = self.cache.read_halfword(interconnect, next_pc);
                     next_pc = next_pc.wrapping_add(2);
 
                     let disp = ((((((first_halfword as i16) << 6) >> 6) as u32) << 16) | (second_halfword as u32)) & 0xfffffffe;
@@ -222,7 +329,7 @@ impl Nvc {
 
             macro_rules! format_v {
                 ($f:expr) => ({
-                    let second_halfword = interconnect.read_halfword(next_pc);
+                    let (second_halfword, _) = self.cache.read_halfword(interconnect, next_pc);
                     next_pc = next_pc.wrapping_add(2);
 
                     let reg1 = (first_halfword & 0x1f) as usize;
@@ -234,7 +341,7 @@ impl Nvc {
 
             macro_rules! format_vi {
                 ($f:expr) => ({
-                    let second_halfword = interconnect.read_halfword(next_pc);
+                    let (second_halfword, _) = self.cache.read_halfword(interconnect, next_pc);
                     next_pc = next_pc.wrapping_add(2);
 
                     let reg1 = (first_halfword & 0x1f) as usize;
@@ -459,7 +566,25 @@ impl Nvc {
                         }
                         OPCODE_SYSTEM_REGISTER_ID_PSW => self.set_reg_psw(value),
                         OPCODE_SYSTEM_REGISTER_ID_CHCW => {
-                            logln!("WARNING: ldsr chcw not yet implemented (value: 0x{:08x})", value);
+                            logln!("WARNING: ldsr chcw not fully implemented (value: 0x{:08x})", value);
+                            let enable = (value >> 1) & 0x01 == 1;
+                            if enable != self.cache.is_enabled() {
+                                logln!("ldsr chcw cache enable changed to {}", enable);
+                                self.cache.set_is_enabled(enable);
+                            }
+
+                            if value & 0x01 == 1 {
+                                let entry_count = ((value >> 8) & 0x7ffff) as usize;
+                                let entry_start = (value >> 20) as usize;
+                                logln!("ldsr chcw request to clear cache for start entry: {}, entry count: {}", entry_start, entry_count);
+                                self.cache.clear_entries(entry_start, entry_count);
+                            } else if (value >> 4) & 0x01 == 1 {
+                                let addr = value & 0xffffff00;
+                                logln!("WARNING: ldsr chcw request to dump instruction cache to 0x{:08x} not implemented yet", addr);
+                            } else if (value >> 5) & 0x01 == 1 {
+                                let addr = value & 0xffffff00;
+                                logln!("WARNING: ldsr chcw request to restore instruction cache from 0x{:08x} not implemented yet", addr);
+                            }
                         }
                         _ => logln!("WARNING: Unrecognized system register: {}", imm5),
                     }
@@ -479,8 +604,11 @@ impl Nvc {
                         OPCODE_SYSTEM_REGISTER_ID_ECR => self.reg_ecr as _,
                         OPCODE_SYSTEM_REGISTER_ID_PSW => self.reg_psw(),
                         OPCODE_SYSTEM_REGISTER_ID_CHCW => {
-                            logln!("WARNING: stsr chcw not yet implemented");
-                            0
+                            logln!("WARNING: stsr chcw not fully implemented");
+                            match self.cache.is_enabled() {
+                                true => 2,
+                                false => 0,
+                            }
                         }
                         _ => {
                             logln!("WARNING: Unrecognized system register: {}", imm5);
@@ -607,7 +735,7 @@ impl Nvc {
                     num_cycles = 4;
                 }),
                 OPCODE_BITS_EXTENDED => {
-                    let second_halfword = interconnect.read_halfword(next_pc);
+                    let (second_halfword, _) = self.cache.read_halfword(interconnect, next_pc);
                     next_pc = next_pc.wrapping_add(2);
 
                     let reg1 = (first_halfword & 0x1f) as usize;
