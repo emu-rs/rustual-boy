@@ -1,15 +1,16 @@
 use minifb::{WindowOptions, Window, Key, KeyRepeat, Scale};
 
-use video_frame_sink::*;
-use audio_buffer_sink::*;
-use audio_frame_sink::*;
-use time_source::*;
-use rom::*;
-use sram::*;
-use instruction::*;
-use game_pad::*;
-use virtual_boy::*;
 use command::*;
+
+use rustual_boy_core::video_frame_sink::VideoFrameSink;
+use rustual_boy_core::audio_buffer_sink::AudioBufferSink;
+use rustual_boy_core::audio_frame_sink::AudioFrameSink;
+use rustual_boy_core::time_source::TimeSource;
+use rustual_boy_core::rom::Rom;
+use rustual_boy_core::sram::Sram;
+use rustual_boy_core::instruction::*;
+use rustual_boy_core::game_pad::Button;
+use rustual_boy_core::virtual_boy::VirtualBoy;
 
 use std::time;
 use std::thread::{self, JoinHandle};

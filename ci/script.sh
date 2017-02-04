@@ -4,6 +4,7 @@ set -ex
 
 # TODO This is the "test phase", tweak it as you see fit
 main() {
+    cd rustual-boy-cli
     cargo build
     cargo build --release
 
