@@ -8,7 +8,7 @@ environment:
     RUST_VERSION: stable
 
     # TODO Update this to match the name of your project.
-    CRATE_NAME: rustual-boy
+    CRATE_NAME: rustual-boy-cli
 
   # TODO These are all the build jobs. Adjust as necessary. Comment out what you
   # don't need
@@ -44,6 +44,7 @@ install:
 test_script:
   # we don't run the "test phase" when doing deploys
   - if [%APPVEYOR_REPO_TAG%]==[false] (
+      cd rustual-boy-cli &&
       cargo build --target %TARGET% &&
       cargo build --target %TARGET% --release &&
       cargo test --target %TARGET% &&
@@ -52,6 +53,7 @@ test_script:
 
 before_deploy:
   # TODO Update this to build the artifacts that matter to you
+  - cd rustual-boy-cli
   - cargo rustc --target %TARGET% --release --bin rustual-boy -- -C lto
   - ps: ci\before_deploy.ps1
 
@@ -75,7 +77,7 @@ deploy:
 
 cache:
   - C:\Users\appveyor\.cargo\registry
-  - target
+  - rustual-boy-cli/target
 
 branches:
   only:

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use time_source::*;
+use rustual_boy_core::time_source::TimeSource;
 
 use std::time::Instant;
 

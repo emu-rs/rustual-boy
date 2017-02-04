@@ -9,33 +9,19 @@ extern crate cpal;
 
 extern crate futures;
 
+extern crate rustual_boy_core;
+
 #[macro_use]
 mod logging;
-mod video_frame_sink;
-mod audio_buffer_sink;
-mod audio_frame_sink;
-mod time_source;
-mod rom;
-mod wram;
-mod sram;
-mod vip;
-mod vsu;
-mod timer;
-mod game_pad;
-mod mem_map;
-mod interconnect;
-mod instruction;
-mod nvc;
-mod virtual_boy;
-mod system_time_source;
-mod cpal_driver;
-mod wave_file_buffer_sink;
 mod command;
+mod cpal_driver;
 mod emulator;
+mod system_time_source;
+mod wave_file_buffer_sink;
 
-use rom::*;
-use sram::*;
-use vsu::*;
+use rustual_boy_core::rom::*;
+use rustual_boy_core::sram::*;
+use rustual_boy_core::vsu::*;
 use cpal_driver::*;
 use emulator::*;
 

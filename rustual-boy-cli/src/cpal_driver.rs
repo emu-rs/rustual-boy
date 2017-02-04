@@ -5,8 +5,8 @@ use cpal::{EventLoop, Voice, UnknownTypeBuffer, get_default_endpoint};
 use futures::stream::Stream;
 use futures::task::{self, Executor, Run};
 
-use audio_buffer_sink::*;
-use time_source::*;
+use rustual_boy_core::audio_buffer_sink::AudioBufferSink;
+use rustual_boy_core::time_source::TimeSource;
 
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};

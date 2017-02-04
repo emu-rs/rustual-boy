@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use audio_buffer_sink::*;
+use rustual_boy_core::audio_buffer_sink::AudioBufferSink;
 
 use std::io::{self, Write, Seek, SeekFrom, BufWriter};
 use std::fs::File;

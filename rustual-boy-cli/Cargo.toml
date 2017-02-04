@@ -1,8 +1,8 @@
 [package]
-name = "rustual-boy"
+name = "rustual-boy-cli"
 version = "0.1.0"
 authors = ["ferris <yupferris@gmail.com>", "The Rustual Boy contributors"]
-description = "A Virtual Boy emulator."
+description = "A CLI Frontend to rustual-boy-core"
 readme = "README.md"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/emu-rs/rustual-boy"
@@ -17,3 +17,4 @@ nom = "^1.2.3"
 minifb = "0.9.0"
 cpal = "0.4.2"
 futures = "0.1.1"
+rustual-boy-core = { path = "../rustual-boy-core" }
