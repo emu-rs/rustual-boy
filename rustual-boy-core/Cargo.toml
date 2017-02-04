@@ -13,5 +13,3 @@ logging = []
 
 [dependencies]
 encoding = "0.2"
-nom = "^1.2.3"
-futures = "0.1.1"

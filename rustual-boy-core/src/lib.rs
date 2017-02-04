@@ -1,11 +1,6 @@
 extern crate encoding;
 
 #[macro_use]
-extern crate nom;
-
-extern crate futures;
-
-#[macro_use]
 mod logging;
 mod mem_map;
 
