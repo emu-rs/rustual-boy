@@ -14,12 +14,19 @@ pub fn parse_args() -> CommandLineConfig {
              .help("The name of the ROM to load")
              .required(true)
              .index(1)
+        ).arg(Arg::with_name("SRAM")
+              .help("Path to an SRAM")
+              .short("s")
+              .long("sram")
         );
 
     let matches = app.get_matches();
 
     CommandLineConfig {
         rom_path: matches.value_of("ROM").unwrap().into(),
-        sram_path: matches.value_of("ROM").unwrap().replace(".vb", ".srm").into()
+        sram_path: match matches.value_of("SRAM") {
+            Some(v) => v.into(),
+            None => matches.value_of("ROM").unwrap().replace(".vb", ".srm")
+        },
     }
 }
