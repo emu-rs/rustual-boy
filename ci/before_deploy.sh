@@ -20,10 +20,10 @@ main() {
     test -f Cargo.lock || cargo generate-lockfile
 
     # TODO Update this to build the artifacts that matter to you
-    cargo rustc --bin rustual-boy --release -- -C lto
+    cargo rustc --bin rustual-boy-cli --release -- -C lto
 
     # TODO Update this to package the right artifacts
-    cp target/release/rustual-boy $stage/
+    cp target/release/rustual-boy-cli $stage/
     cp doc/* $stage/
     cp LICENSE-APACHE $stage/
     cp LICENSE-MIT $stage/
