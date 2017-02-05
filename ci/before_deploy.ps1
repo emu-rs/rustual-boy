@@ -14,10 +14,10 @@ $ZIP = "$SRC_DIR\$($Env:CRATE_NAME)-$($Env:APPVEYOR_REPO_TAG_NAME)-$($Env:TARGET
 
 # TODO Update this to package the right artifacts
 Copy-Item "$SRC_DIR\target\$($Env:TARGET)\release\rustual-boy-cli.exe" '.\'
-Copy-Item "$SRC_DIR\doc\*" '.\'
-Copy-Item "$SRC_DIR\LICENSE-APACHE" '.\'
-Copy-Item "$SRC_DIR\LICENSE-MIT" '.\'
-Copy-Item "$SRC_DIR\LICENSE-THIRD-PARTY" '.\'
+Copy-Item "$SRC_DIR\..\doc\*" '.\'
+Copy-Item "$SRC_DIR\..\LICENSE-APACHE" '.\'
+Copy-Item "$SRC_DIR\..\LICENSE-MIT" '.\'
+Copy-Item "$SRC_DIR\..\LICENSE-THIRD-PARTY" '.\'
 
 7z a "$ZIP" *
 

@@ -24,10 +24,10 @@ main() {
 
     # TODO Update this to package the right artifacts
     cp target/release/rustual-boy-cli $stage/
-    cp doc/* $stage/
-    cp LICENSE-APACHE $stage/
-    cp LICENSE-MIT $stage/
-    cp LICENSE-THIRD-PARTY $stage/
+    cp ../doc/* $stage/
+    cp ../LICENSE-APACHE $stage/
+    cp ../LICENSE-MIT $stage/
+    cp ../LICENSE-THIRD-PARTY $stage/
 
     cd $stage
     tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET.tar.gz *
