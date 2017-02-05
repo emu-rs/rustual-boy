@@ -54,7 +54,7 @@ test_script:
 before_deploy:
   # TODO Update this to build the artifacts that matter to you
   - cd rustual-boy-cli
-  - cargo rustc --target %TARGET% --release --bin rustual-boy -- -C lto
+  - cargo rustc --target %TARGET% --release --bin rustual-boy-cli -- -C lto
   - ps: ci\before_deploy.ps1
 
 deploy:
