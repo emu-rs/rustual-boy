@@ -321,6 +321,7 @@ distributions of Rustual Boy:
    limitations under the License.
 
 * alsa-sys - https://opensource.org/licenses/MIT
+* redox_syscall - https://opensource.org/licenses/MIT
 
     Copyright <YEAR> <COPYRIGHT HOLDER>
 
