@@ -6,10 +6,10 @@ pub struct CommandLineConfig {
 }
 
 pub fn parse_args() -> CommandLineConfig {
-    let app = App::new("Rustual-boy")
+    let app = App::new("Rustual Boy")
         .version("0.1.0")
         .author(crate_authors!(", "))
-        .about("A CLI frontend to the rustual-boy emulator")
+        .about("A CLI frontend to the Rustual Boy emulator")
         .arg(Arg::with_name("ROM")
              .help("The name of the ROM to load")
              .required(true)
