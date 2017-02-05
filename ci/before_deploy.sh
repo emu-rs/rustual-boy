@@ -3,8 +3,6 @@
 set -ex
 
 main() {
-    cd rustual-boy-cli
-
     local src=$(pwd) \
           stage=
 
@@ -16,6 +14,8 @@ main() {
             stage=$(mktemp -d -t tmp)
             ;;
     esac
+
+    cd rustual-boy-cli
 
     test -f Cargo.lock || cargo generate-lockfile
 

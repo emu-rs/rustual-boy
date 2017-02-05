@@ -1,8 +1,6 @@
 # This script takes care of packaging the build artifacts that will go in the
 # release zipfile
 
-cd rustual-boy-cli
-
 $SRC_DIR = $PWD.Path
 $STAGE = [System.Guid]::NewGuid().ToString()
 
