@@ -219,8 +219,6 @@ name = "rustual-boy-core"
 version = "0.1.0"
 dependencies = [
  "encoding 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "nom 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

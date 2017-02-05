@@ -3,6 +3,8 @@
 set -ex
 
 main() {
+    cd rustual-boy-cli
+
     local src=$(pwd) \
           stage=
 
