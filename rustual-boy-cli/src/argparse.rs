@@ -21,12 +21,15 @@ pub fn parse_args() -> CommandLineConfig {
         );
 
     let matches = app.get_matches();
+    //
+    // unwrap is safe here becuase clap guarantees that required arguments are never None
+    let rom_path = matches.value_of("ROM").unwrap();
 
     CommandLineConfig {
-        rom_path: matches.value_of("ROM").unwrap().into(),
+        rom_path: rom_path.into(),
         sram_path: match matches.value_of("SRAM") {
             Some(v) => v.into(),
-            None => matches.value_of("ROM").unwrap().replace(".vb", ".srm")
+            None => rom_path.replace(".vb", ".srm")
         },
     }
 }
