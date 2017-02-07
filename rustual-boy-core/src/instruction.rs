@@ -79,6 +79,7 @@ pub const OPCODE_BITS_SUB_OP_MULF_S: u16 = 0b000110;
 pub const OPCODE_BITS_SUB_OP_DIVF_S: u16 = 0b000111;
 pub const OPCODE_BITS_SUB_OP_XB: u16 = 0b001000;
 pub const OPCODE_BITS_SUB_OP_XH: u16 = 0b001001;
+pub const OPCODE_BITS_SUB_OP_REV: u16 = 0b001010;
 pub const OPCODE_BITS_SUB_OP_TRNC_SW: u16 = 0b001011;
 pub const OPCODE_BITS_SUB_OP_MPYHW: u16 = 0b001100;
 
@@ -340,6 +341,7 @@ impl Opcode {
             OPCODE_BITS_SUB_OP_DIVF_S => SubOp::DivfS,
             OPCODE_BITS_SUB_OP_XB => SubOp::Xb,
             OPCODE_BITS_SUB_OP_XH => SubOp::Xh,
+            OPCODE_BITS_SUB_OP_REV => SubOp::Rev,
             OPCODE_BITS_SUB_OP_TRNC_SW => SubOp::TrncSw,
             OPCODE_BITS_SUB_OP_MPYHW => SubOp::Mpyhw,
             _ => panic!("Unrecognized subop bits: {:06b}", subop),
@@ -462,6 +464,7 @@ pub enum SubOp {
     DivfS,
     Xb,
     Xh,
+    Rev,
     TrncSw,
     Mpyhw,
 }
@@ -478,6 +481,7 @@ impl fmt::Display for SubOp {
             &SubOp::DivfS => "divf.s",
             &SubOp::Xb => "xb",
             &SubOp::Xh => "xh",
+            &SubOp::Rev => "rev",
             &SubOp::TrncSw => "trnc.sw",
             &SubOp::Mpyhw => "mpyhw",
         };

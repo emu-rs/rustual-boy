@@ -822,6 +822,16 @@ impl Nvc {
                             let value = (original >> 16) | ((original & 0xffff) << 16);
                             self.set_reg_gpr(reg2, value);
                         }
+                        OPCODE_BITS_SUB_OP_REV => {
+                            let original = self.reg_gpr(reg1);
+                            let mut value: u32 = 0;
+                            for x in 0..32 {
+                                value = (value << 1) | ((original >> x) & 0x01);
+                            }
+                            self.set_reg_gpr(reg2, value);
+
+                            num_cycles = 22;
+                        }
                         OPCODE_BITS_SUB_OP_TRNC_SW => {
                             let value = (self.reg_gpr_float(reg1).trunc() as i32) as u32;
                             self.set_reg_gpr(reg2, value);
