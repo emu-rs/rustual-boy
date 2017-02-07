@@ -5,8 +5,9 @@ use self::mem_map::*;
 
 const FRAMEBUFFER_RESOLUTION_X: usize = 384;
 const FRAMEBUFFER_RESOLUTION_Y: usize = 256;
-const DISPLAY_RESOLUTION_X: usize = 384;
-const DISPLAY_RESOLUTION_Y: usize = 224;
+
+pub const DISPLAY_RESOLUTION_X: usize = 384;
+pub const DISPLAY_RESOLUTION_Y: usize = 224;
 
 const DRAWING_BLOCK_HEIGHT: usize = 8;
 const DRAWING_BLOCK_COUNT: usize = DISPLAY_RESOLUTION_Y / DRAWING_BLOCK_HEIGHT;
