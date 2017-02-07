@@ -2,7 +2,7 @@
 name = "rustual-boy-core"
 version = "0.1.0"
 authors = ["ferris <yupferris@gmail.com>", "The Rustual Boy contributors"]
-description = "The core of rustual-boy, a Virtual Boy emulator"
+description = "The core of Rustual Boy, a Virtual Boy emulator"
 readme = "README.md"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/emu-rs/rustual-boy"

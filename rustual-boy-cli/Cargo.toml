@@ -2,7 +2,7 @@
 name = "rustual-boy-cli"
 version = "0.1.0"
 authors = ["ferris <yupferris@gmail.com>", "The Rustual Boy contributors"]
-description = "A CLI Frontend to rustual-boy-core"
+description = "A CLI frontend for rustual-boy-core"
 readme = "README.md"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/emu-rs/rustual-boy"
