@@ -31,7 +31,7 @@ impl Sram {
         file.read_to_end(&mut vec)?;
 
         let size = vec.len();
-        if size < MIN_SRAM_SIZE || size > MAX_SRAM_SIZE || size.count_ones() != 1 {
+        if size < MIN_SRAM_SIZE || size > MAX_SRAM_SIZE || !size.is_power_of_two() {
             return Err(Error::new(ErrorKind::InvalidData, "Invalid SRAM size"));
         }
 

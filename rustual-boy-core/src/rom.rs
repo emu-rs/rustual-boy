@@ -23,7 +23,7 @@ impl Rom {
         file.read_to_end(&mut vec)?;
 
         let size = vec.len();
-        if size < MIN_ROM_SIZE || size > MAX_ROM_SIZE || size.count_ones() != 1 {
+        if size < MIN_ROM_SIZE || size > MAX_ROM_SIZE || !size.is_power_of_two() {
             return Err(Error::new(ErrorKind::InvalidData, "Invalid ROM size"));
         }
 
