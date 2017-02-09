@@ -1,6 +1,6 @@
 extern crate rustual_boy_core;
 
-mod color;
+pub mod color;
 
 pub use color::Color;
 
@@ -56,14 +56,11 @@ impl AnaglyphFrameSink {
             let r_buffer = r_buffer.as_ptr();
             let o_ptr = output.as_mut_ptr();
             for i in 0..(DISPLAY_PIXELS as isize) {
-                let l = *(l_buffer.offset(i)) as u32;
-                let r = *(r_buffer.offset(i)) as u32;
+                let l = *(l_buffer.offset(i));
+                let r = *(r_buffer.offset(i));
 
-                let l = (l as f32) / 255.0;
-                let r = (r as f32) / 255.0;
-
-                let l = self.left_color.scale_color(l);
-                let r = self.right_color.scale_color(r);
+                let l = self.left_color.scale_by(l);
+                let r = self.right_color.scale_by(r);
 
                 let c = l.add_color(r);
 
