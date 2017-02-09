@@ -117,12 +117,9 @@ impl Emulator {
 
             match self.mode {
                 Mode::Running => {
-                    self.read_input_keys();
+                    let mut start_debugger = false;
 
-                    let mut start_debugger = self.window.is_key_pressed(Key::F12, KeyRepeat::No);
-                    println!("{}", start_debugger);
-
-                    while !(start_debugger) && self.emulated_cycles < target_emulated_cycles {
+                    while self.emulated_cycles < target_emulated_cycles {
                         let (_, trigger_watchpoint) = self.step(&mut video_frame_sink, &mut audio_frame_sink);
                         if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
                             start_debugger = true;
@@ -146,6 +143,15 @@ impl Emulator {
                 let mut buffer = vec![0; 384 * 224];
                 video_frame_sink.update_output_buffer(buffer.as_mut_slice());
                 self.window.update_with_buffer(&buffer);
+
+                if self.mode == Mode::Running {
+                    // We only want to update the key state when a frame is actually pushed
+                    // Otherwise some games break.
+                    self.read_input_keys();
+                    if self.window.is_key_pressed(Key::F12, KeyRepeat::No) {
+                        self.start_debugger();
+                    }
+                }
             }
 
             self.audio_buffer_sink.append(audio_frame_sink.inner.as_slices().0);
