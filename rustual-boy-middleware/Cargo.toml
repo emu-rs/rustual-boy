@@ -1,0 +1,7 @@
+[package]
+name = "rustual-boy-middleware"
+version = "0.1.0"
+authors = ["bobtwinkles <srkoser+github@gmail.com>"]
+
+[dependencies]
+rustual-boy-core = { path = "../rustual-boy-core" }

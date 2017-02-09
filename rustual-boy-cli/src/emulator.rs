@@ -12,6 +12,8 @@ use rustual_boy_core::instruction::*;
 use rustual_boy_core::game_pad::Button;
 use rustual_boy_core::virtual_boy::VirtualBoy;
 
+use rustual_boy_middleware::AnaglyphFrameSink;
+
 use std::time;
 use std::thread::{self, JoinHandle};
 use std::io::{stdin, stdout, Write};
@@ -19,16 +21,6 @@ use std::collections::{HashSet, HashMap, VecDeque};
 use std::sync::mpsc::{channel, Receiver};
 
 const CPU_CYCLE_TIME_NS: u64 = 50;
-
-struct SimpleVideoFrameSink {
-    inner: Option<(Box<[u8]>, Box<[u8]>)>,
-}
-
-impl VideoFrameSink for SimpleVideoFrameSink {
-    fn append(&mut self, frame: (Box<[u8]>, Box<[u8]>)) {
-        self.inner = Some(frame);
-    }
-}
 
 struct SimpleAudioFrameSink {
     inner: VecDeque<(i16, i16)>,
@@ -111,9 +103,10 @@ impl Emulator {
         self.time_source_start_time_ns = self.time_source.time_ns();
 
         while self.window.is_open() && !self.window.is_key_down(Key::Escape) {
-            let mut video_frame_sink = SimpleVideoFrameSink {
-                inner: None,
-            };
+            let mut video_frame_sink = AnaglyphFrameSink::new(
+                (1.0, 0.0, 0.0).into(),
+                (0.0, 1.0, 1.0).into()
+            );
 
             let mut audio_frame_sink = SimpleAudioFrameSink {
                 inner: VecDeque::new(),
@@ -124,13 +117,15 @@ impl Emulator {
 
             match self.mode {
                 Mode::Running => {
-                    let mut start_debugger = false;
+                    self.read_input_keys();
 
-                    while self.emulated_cycles < target_emulated_cycles {
+                    let mut start_debugger = self.window.is_key_pressed(Key::F12, KeyRepeat::No);
+                    println!("{}", start_debugger);
+
+                    while !(start_debugger) && self.emulated_cycles < target_emulated_cycles {
                         let (_, trigger_watchpoint) = self.step(&mut video_frame_sink, &mut audio_frame_sink);
                         if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
                             start_debugger = true;
-                            break;
                         }
                     }
 
@@ -147,27 +142,10 @@ impl Emulator {
                 }
             }
 
-            if let Some((left_buffer, right_buffer)) = video_frame_sink.inner {
+            if video_frame_sink.update_availible() {
                 let mut buffer = vec![0; 384 * 224];
-                unsafe {
-                    let left_buffer_ptr = left_buffer.as_ptr();
-                    let right_buffer_ptr = right_buffer.as_ptr();
-                    let buffer_ptr = buffer.as_mut_ptr();
-                    for i in 0..384 * 224 {
-                        let left = *left_buffer_ptr.offset(i) as u32;
-                        let right = *right_buffer_ptr.offset(i) as u32;
-                        *buffer_ptr.offset(i) = (right << 16) | (left << 8) | left;
-                    }
-                }
+                video_frame_sink.update_output_buffer(buffer.as_mut_slice());
                 self.window.update_with_buffer(&buffer);
-
-                if let Mode::Running = self.mode {
-                    self.read_input_keys();
-
-                    if self.window.is_key_pressed(Key::F12, KeyRepeat::No) {
-                        self.start_debugger();
-                    }
-                }
             }
 
             self.audio_buffer_sink.append(audio_frame_sink.inner.as_slices().0);
