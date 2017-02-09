@@ -22,12 +22,15 @@ impl Rom {
         let mut vec = Vec::new();
         file.read_to_end(&mut vec)?;
 
-        let size = vec.len();
+        Rom::from_bytes(vec.into_boxed_slice())
+    }
+
+    pub fn from_bytes(mut bytes: Box<[u8]>) -> io::Result<Rom> {
+        let size = bytes.len();
         if size < MIN_ROM_SIZE || size > MAX_ROM_SIZE || size.count_ones() != 1 {
             return Err(Error::new(ErrorKind::InvalidData, "Invalid ROM size"));
         }
 
-        let mut bytes = vec.into_boxed_slice();
         let bytes_ptr = bytes.as_mut_ptr();
 
         Ok(Rom {
