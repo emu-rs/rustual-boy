@@ -142,21 +142,18 @@ impl Emulator {
                 }
             }
 
-            match video_frame_sink.into_inner().into_inner() {
-                Some(frame) => {
-                    let frame: Vec<u32> = frame.into_iter().map(|x| x.into()).collect();
-                    self.window.update_with_buffer(&frame);
+            if let Some(frame) = video_frame_sink.into_inner().into_inner() {
+                let frame: Vec<u32> = frame.into_iter().map(|x| x.into()).collect();
+                self.window.update_with_buffer(&frame);
 
-                    if self.mode == Mode::Running {
-                        // We only want to update the key state when a frame is actually pushed
-                        // Otherwise some games break.
-                        self.read_input_keys();
-                        if self.window.is_key_pressed(Key::F12, KeyRepeat::No) {
-                            self.start_debugger();
-                        }
+                if self.mode == Mode::Running {
+                    // We only want to update the key state when a frame is actually pushed
+                    // Otherwise some games break.
+                    self.read_input_keys();
+                    if self.window.is_key_pressed(Key::F12, KeyRepeat::No) {
+                        self.start_debugger();
                     }
-                },
-                None => {}
+                }
             }
 
             self.audio_buffer_sink.append(audio_frame_sink.inner.as_slices().0);
