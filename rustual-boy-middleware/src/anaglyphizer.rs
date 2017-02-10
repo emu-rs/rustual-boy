@@ -1,0 +1,50 @@
+use color::Color;
+use rustual_boy_core::sinks::{VideoFrame};
+use rustual_boy_core::vip::{DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y};
+
+const DISPLAY_PIXELS: usize = DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y;
+
+/// A utility for the Rustual Boy core that collapses the left/right
+/// anaglyph channels in to a single buffer.
+pub struct Anaglyphizer {
+    /// Color of the left channel
+    left_color: Color,
+    /// Color of the right channel
+    right_color: Color,
+}
+
+impl Anaglyphizer {
+    /// Create a new Anaglyphizer which will use the provided colors for
+    /// the left and right channels
+    pub fn new(left_color: Color, right_color: Color) -> Anaglyphizer {
+        Anaglyphizer {
+            left_color: left_color,
+            right_color: right_color,
+        }
+    }
+
+    /// Compute the final anaglyph image, using the provided VideoFrame.
+    pub fn collapse_into(&self, frame: VideoFrame, output: &mut [u32]) {
+        if output.len() < DISPLAY_PIXELS {
+            panic!("Display output buffer not large enough");
+        }
+        let (ref l_buffer, ref r_buffer) = frame;
+
+        unsafe {
+            let l_buffer = l_buffer.as_ptr();
+            let r_buffer = r_buffer.as_ptr();
+            let o_ptr = output.as_mut_ptr();
+            for i in 0..(DISPLAY_PIXELS as isize) {
+                let l = *(l_buffer.offset(i));
+                let r = *(r_buffer.offset(i));
+
+                let l = self.left_color.scale_by(l);
+                let r = self.right_color.scale_by(r);
+
+                let c = l.add_color(r);
+
+                *o_ptr.offset(i) = c.into();
+            }
+        }
+    }
+}

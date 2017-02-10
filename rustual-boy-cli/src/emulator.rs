@@ -10,7 +10,8 @@ use rustual_boy_core::instruction::*;
 use rustual_boy_core::game_pad::Button;
 use rustual_boy_core::virtual_boy::VirtualBoy;
 
-use rustual_boy_middleware::AnaglyphFrameSink;
+use rustual_boy_middleware::Anaglyphizer;
+use rustual_boy_middleware::frame_sink::MostRecentFrameSink;
 
 use std::time;
 use std::thread::{self, JoinHandle};
@@ -103,10 +104,11 @@ impl Emulator {
         self.time_source_start_time_ns = self.time_source.time_ns();
 
         while self.window.is_open() && !self.window.is_key_down(Key::Escape) {
-            let mut video_frame_sink = AnaglyphFrameSink::new(
+            let anaglyphizer = Anaglyphizer::new(
                 (1.0, 0.0, 0.0).into(),
                 (0.0, 1.0, 1.0).into()
             );
+            let mut video_frame_sink = MostRecentFrameSink::new();
 
             let mut audio_frame_sink = SimpleAudioFrameSink {
                 inner: VecDeque::new(),
@@ -139,9 +141,11 @@ impl Emulator {
                 }
             }
 
-            if video_frame_sink.update_availible() {
+            if video_frame_sink.has_frame() {
                 let mut buffer = vec![0; 384 * 224];
-                video_frame_sink.update_output_buffer(buffer.as_mut_slice());
+                // unwrap is safe here since we tested to make sure we had a frame first
+                let frame = video_frame_sink.into_frame().unwrap();
+                anaglyphizer.collapse_into(frame, buffer.as_mut_slice());
                 self.window.update_with_buffer(&buffer);
 
                 if self.mode == Mode::Running {
