@@ -247,6 +247,7 @@ impl Emulator {
                 }
                 Ok(Command::Continue) => {
                     self.mode = Mode::Running;
+                    self.time_source_start_time_ns = self.time_source.time_ns() - (self.emulated_cycles * CPU_CYCLE_TIME_NS);
                 }
                 Ok(Command::Goto(addr)) => {
                     self.cursor = addr;
