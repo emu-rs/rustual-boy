@@ -1,5 +1,5 @@
 use color::Color;
-use rustual_boy_core::sinks::{Sink, VideoFrame, VideoFrameSink};
+use rustual_boy_core::sinks::{Sink, VideoFrame};
 use rustual_boy_core::vip::{DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y};
 
 const DISPLAY_PIXELS: usize = DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y;
@@ -60,5 +60,3 @@ impl<T: Sink<ColorFrame>> Sink<VideoFrame> for Anaglyphizer<T> {
         self.inner.append(output.into_boxed_slice());
     }
 }
-
-impl<T: Sink<ColorFrame>> VideoFrameSink for Anaglyphizer<T> {}

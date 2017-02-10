@@ -1,6 +1,6 @@
 mod mem_map;
 
-use sinks::VideoFrameSink;
+use sinks::*;
 
 use self::mem_map::*;
 
@@ -512,7 +512,7 @@ impl Vip {
         }
     }
 
-    pub fn cycles(&mut self, cycles: usize, video_frame_sink: &mut VideoFrameSink) -> bool {
+    pub fn cycles(&mut self, cycles: usize, video_frame_sink: &mut Sink<VideoFrame>) -> bool {
         let mut raise_interrupt = false;
 
         for _ in 0..cycles {
@@ -1103,7 +1103,7 @@ impl Vip {
         self.write_vram_byte(framebuffer_offset + framebuffer_byte_index, framebuffer_byte);
     }
 
-    fn display(&mut self, video_frame_sink: &mut VideoFrameSink) {
+    fn display(&mut self, video_frame_sink: &mut Sink<VideoFrame>) {
         let left_framebuffer_offset = if self.display_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 

@@ -1,4 +1,4 @@
-use rustual_boy_core::sinks::{Sink, VideoFrame, VideoFrameSink};
+use rustual_boy_core::sinks::{Sink, VideoFrame};
 
 /// A sink that keeps track of only the most recent
 pub struct MostRecentFrameSink<T> {
@@ -26,5 +26,3 @@ impl<T> Sink<T> for MostRecentFrameSink<T> {
         self.inner = Some(frame);
     }
 }
-
-impl VideoFrameSink for MostRecentFrameSink {}
