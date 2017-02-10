@@ -3,7 +3,7 @@ extern crate rustual_boy_core;
 mod color;
 mod anaglyphizer;
 
-pub mod frame_sink;
+pub mod sinks;
 
 // reexports
 pub use color::Color;

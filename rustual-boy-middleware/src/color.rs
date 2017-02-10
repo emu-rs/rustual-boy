@@ -40,6 +40,16 @@ impl Into<u32> for Color {
     }
 }
 
+impl<'a> Into<u32> for &'a Color {
+    fn into(self) -> u32 {
+        let r = self.r as u32;
+        let g = self.g as u32;
+        let b = self.b as u32;
+
+        (r << 16) | (g << 8) | b
+    }
+}
+
 impl From<(u8, u8, u8)> for Color {
     /// Convert a tuple of u8s to a color
     fn from((r, g, b): (u8, u8, u8)) -> Color {

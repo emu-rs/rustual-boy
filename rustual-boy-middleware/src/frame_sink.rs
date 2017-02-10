@@ -1,12 +1,12 @@
 use rustual_boy_core::sinks::{Sink, VideoFrame, VideoFrameSink};
 
-/// A frame sink that keeps track of only the most recent frame
-pub struct MostRecentFrameSink {
-    inner: Option<VideoFrame>
+/// A sink that keeps track of only the most recent
+pub struct MostRecentFrameSink<T> {
+    inner: Option<T>
 }
 
-impl MostRecentFrameSink {
-    pub fn new() -> MostRecentFrameSink {
+impl<T> MostRecentFrameSink<T> {
+    pub fn new() -> MostRecentFrameSink<T> {
         MostRecentFrameSink { inner: None }
     }
 
@@ -16,12 +16,12 @@ impl MostRecentFrameSink {
     }
 
     /// Convert ourself in to a frame
-    pub fn into_frame(self) -> Option<VideoFrame> {
+    pub fn into_frame(self) -> Option<T> {
         self.inner
     }
 }
 
-impl Sink<VideoFrame> for MostRecentFrameSink {
+impl<T> Sink<T> for MostRecentFrameSink<T> {
     fn append(&mut self, frame: VideoFrame) {
         self.inner = Some(frame);
     }

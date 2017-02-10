@@ -11,7 +11,7 @@ use rustual_boy_core::game_pad::Button;
 use rustual_boy_core::virtual_boy::VirtualBoy;
 
 use rustual_boy_middleware::Anaglyphizer;
-use rustual_boy_middleware::frame_sink::MostRecentFrameSink;
+use rustual_boy_middleware::sinks::MostRecentSink;
 
 use std::time;
 use std::thread::{self, JoinHandle};
@@ -104,11 +104,12 @@ impl Emulator {
         self.time_source_start_time_ns = self.time_source.time_ns();
 
         while self.window.is_open() && !self.window.is_key_down(Key::Escape) {
-            let anaglyphizer = Anaglyphizer::new(
+            let video_frame_sink = MostRecentSink::new();
+            let mut video_frame_sink = Anaglyphizer::new(
+                video_frame_sink,
                 (1.0, 0.0, 0.0).into(),
-                (0.0, 1.0, 1.0).into()
+                (0.0, 1.0, 1.0).into(),
             );
-            let mut video_frame_sink = MostRecentFrameSink::new();
 
             let mut audio_frame_sink = SimpleAudioFrameSink {
                 inner: VecDeque::new(),
@@ -141,21 +142,21 @@ impl Emulator {
                 }
             }
 
-            if video_frame_sink.has_frame() {
-                let mut buffer = vec![0; 384 * 224];
-                // unwrap is safe here since we tested to make sure we had a frame first
-                let frame = video_frame_sink.into_frame().unwrap();
-                anaglyphizer.collapse_into(frame, buffer.as_mut_slice());
-                self.window.update_with_buffer(&buffer);
+            match video_frame_sink.into_inner().into_inner() {
+                Some(frame) => {
+                    let frame: Vec<u32> = frame.into_iter().map(|x| x.into()).collect();
+                    self.window.update_with_buffer(&frame);
 
-                if self.mode == Mode::Running {
-                    // We only want to update the key state when a frame is actually pushed
-                    // Otherwise some games break.
-                    self.read_input_keys();
-                    if self.window.is_key_pressed(Key::F12, KeyRepeat::No) {
-                        self.start_debugger();
+                    if self.mode == Mode::Running {
+                        // We only want to update the key state when a frame is actually pushed
+                        // Otherwise some games break.
+                        self.read_input_keys();
+                        if self.window.is_key_pressed(Key::F12, KeyRepeat::No) {
+                            self.start_debugger();
+                        }
                     }
-                }
+                },
+                None => {}
             }
 
             self.audio_buffer_sink.append(audio_frame_sink.inner.as_slices().0);
