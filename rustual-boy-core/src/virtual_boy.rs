@@ -1,5 +1,4 @@
-use video_frame_sink::*;
-use audio_frame_sink::*;
+use sinks::*;
 use rom::*;
 use sram::*;
 use interconnect::*;

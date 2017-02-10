@@ -1,6 +1,7 @@
 mod mem_map;
 
-use video_frame_sink::*;
+use sinks::VideoFrameSink;
+
 use self::mem_map::*;
 
 const FRAMEBUFFER_RESOLUTION_X: usize = 384;

@@ -2,9 +2,7 @@ use minifb::{WindowOptions, Window, Key, KeyRepeat, Scale};
 
 use command::*;
 
-use rustual_boy_core::video_frame_sink::VideoFrameSink;
-use rustual_boy_core::audio_buffer_sink::AudioBufferSink;
-use rustual_boy_core::audio_frame_sink::AudioFrameSink;
+use rustual_boy_core::sinks::{AudioBufferSink, AudioFrameSink, Sink, VideoFrameSink};
 use rustual_boy_core::time_source::TimeSource;
 use rustual_boy_core::rom::Rom;
 use rustual_boy_core::sram::Sram;
@@ -26,11 +24,13 @@ struct SimpleAudioFrameSink {
     inner: VecDeque<(i16, i16)>,
 }
 
-impl AudioFrameSink for SimpleAudioFrameSink {
+impl Sink<(i16, i16)> for SimpleAudioFrameSink {
     fn append(&mut self, frame: (i16, i16)) {
         self.inner.push_back(frame);
     }
 }
+
+impl AudioFrameSink for SimpleAudioFrameSink { }
 
 #[derive(PartialEq, Eq)]
 enum Mode {

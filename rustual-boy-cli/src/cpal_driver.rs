@@ -5,7 +5,7 @@ use cpal::{EventLoop, Voice, UnknownTypeBuffer, get_default_endpoint};
 use futures::stream::Stream;
 use futures::task::{self, Executor, Run};
 
-use rustual_boy_core::audio_buffer_sink::AudioBufferSink;
+use rustual_boy_core::sinks::{AudioBufferSink, SinkRef};
 use rustual_boy_core::time_source::TimeSource;
 
 use std::borrow::Cow;
@@ -56,7 +56,7 @@ struct CpalDriverBufferSink {
     ring_buffer: Arc<Mutex<RingBuffer>>,
 }
 
-impl AudioBufferSink for CpalDriverBufferSink {
+impl SinkRef<[(i16, i16)]> for CpalDriverBufferSink {
     fn append(&mut self, buffer: &[(i16, i16)]) {
         let mut ring_buffer = self.ring_buffer.lock().unwrap();
         for &(left, right) in buffer {
@@ -65,6 +65,8 @@ impl AudioBufferSink for CpalDriverBufferSink {
         }
     }
 }
+
+impl AudioBufferSink for CpalDriverBufferSink { }
 
 struct CpalDriverTimeSource {
     ring_buffer: Arc<Mutex<RingBuffer>>,

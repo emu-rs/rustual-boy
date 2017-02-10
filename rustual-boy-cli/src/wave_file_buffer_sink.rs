@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use rustual_boy_core::audio_buffer_sink::AudioBufferSink;
+use rustual_boy_core::sinks::{AudioBufferSink, SinkRef};
 
 use std::io::{self, Write, Seek, SeekFrom, BufWriter};
 use std::fs::File;
@@ -80,7 +80,7 @@ impl Drop for WaveFileBufferSink {
     }
 }
 
-impl AudioBufferSink for WaveFileBufferSink {
+impl SinkRef<[(i16, i16)]> for WaveFileBufferSink {
     fn append(&mut self, buffer: &[(i16, i16)]) {
         for &(left, right) in buffer {
             self.write_u16(left as _).unwrap();
@@ -88,4 +88,7 @@ impl AudioBufferSink for WaveFileBufferSink {
             self.num_frames += 1;
         }
     }
+}
+
+impl AudioBufferSink for WaveFileBufferSink {
 }

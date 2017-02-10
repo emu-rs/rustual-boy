@@ -1,6 +1,6 @@
 mod mem_map;
 
-use audio_frame_sink::*;
+use sinks::AudioFrameSink;
 use self::mem_map::*;
 
 // Docs claim the sample rate is 41.7khz, but my calculations indicate it should be 41666.66hz repeating

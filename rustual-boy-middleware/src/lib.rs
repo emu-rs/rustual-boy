@@ -4,7 +4,7 @@ pub mod color;
 
 pub use color::Color;
 
-use rustual_boy_core::video_frame_sink::VideoFrameSink;
+use rustual_boy_core::sinks::{Sink, VideoFrame, VideoFrameSink};
 use rustual_boy_core::vip::{DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y};
 
 const DISPLAY_PIXELS: usize = DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y;
@@ -17,7 +17,7 @@ pub struct AnaglyphFrameSink {
     /// Color of the right channel
     right_color: Color,
 
-    inner: Option<(Box<[u8]>, Box<[u8]>)>,
+    inner: Option<VideoFrame>,
 }
 
 impl AnaglyphFrameSink {
@@ -72,8 +72,11 @@ impl AnaglyphFrameSink {
     }
 }
 
-impl VideoFrameSink for AnaglyphFrameSink {
-    fn append(&mut self, frame: (Box<[u8]>, Box<[u8]>)) {
+impl Sink<VideoFrame> for AnaglyphFrameSink {
+    fn append(&mut self, frame: VideoFrame) {
         self.inner = Some(frame);
     }
+}
+
+impl VideoFrameSink for AnaglyphFrameSink {
 }
