@@ -1,5 +1,7 @@
 //! Some color utilities that are useful for implementing the anaglyph modes
 
+use std::ops::Add;
+
 /// Represents a color
 pub struct Color {
     r: u8,
@@ -58,15 +60,6 @@ impl From<(u8, u8, u8)> for Color {
 }
 
 impl Color {
-    /// Compute the sum of two colors
-    pub fn add_color(&self, col: Color) -> Color {
-        Color {
-            r: self.r.saturating_add(col.r),
-            g: self.g.saturating_add(col.g),
-            b: self.b.saturating_add(col.b)
-        }
-    }
-
     /// Scale a color by a uniform constant factor
     pub fn scale_by(&self, u: u8) -> Color {
         let s = u as u32;
@@ -77,6 +70,18 @@ impl Color {
             r: (s * r / 255) as u8,
             g: (s * g / 255) as u8,
             b: (s * b / 255) as u8,
+        }
+    }
+}
+
+impl Add for Color {
+    type Output = Color;
+
+    fn add(self, other: Color) -> Color {
+        Color {
+            r: self.r.saturating_add(other.r),
+            g: self.g.saturating_add(other.g),
+            b: self.b.saturating_add(other.b),
         }
     }
 }

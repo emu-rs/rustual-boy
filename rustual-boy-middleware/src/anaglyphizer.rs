@@ -52,7 +52,7 @@ impl<T: Sink<ColorFrame>> Sink<VideoFrame> for Anaglyphizer<T> {
                     let l = self.left_color.scale_by(l);
                     let r = self.right_color.scale_by(r);
 
-                    *o_ptr.offset(i) = l.add_color(r);
+                    *o_ptr.offset(i) = l + r;
                 }
             }
             output.set_len(DISPLAY_PIXELS);
