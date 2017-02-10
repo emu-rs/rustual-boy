@@ -1,4 +1,4 @@
-use rustual_boy_core::sinks::{Sink, VideoFrame};
+use rustual_boy_core::sinks::Sink;
 
 /// A sink that keeps track of only the most recent value
 pub struct MostRecentSink<T> {

@@ -1,11 +1,7 @@
 use color::Color;
+use color_frame::ColorFrame;
 use rustual_boy_core::sinks::{Sink, VideoFrame};
-use rustual_boy_core::vip::{DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y};
-
-const DISPLAY_PIXELS: usize = DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y;
-
-/// Frame of color imagery
-pub type ColorFrame = Box<[Color]>;
+use rustual_boy_core::vip::DISPLAY_PIXELS;
 
 /// A utility for the Rustual Boy core that collapses the left/right
 /// anaglyph channels in to a single buffer.

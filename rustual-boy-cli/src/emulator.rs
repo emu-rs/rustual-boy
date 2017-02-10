@@ -10,8 +10,7 @@ use rustual_boy_core::instruction::*;
 use rustual_boy_core::game_pad::Button;
 use rustual_boy_core::virtual_boy::VirtualBoy;
 
-use rustual_boy_middleware::Anaglyphizer;
-use rustual_boy_middleware::sinks::MostRecentSink;
+use rustual_boy_middleware::{Anaglyphizer, GammaAdjustSink, MostRecentSink};
 
 use std::time;
 use std::thread::{self, JoinHandle};
@@ -102,9 +101,10 @@ impl Emulator {
         self.time_source_start_time_ns = self.time_source.time_ns();
 
         while self.window.is_open() && !self.window.is_key_down(Key::Escape) {
-            let video_frame_sink = MostRecentSink::new();
+            let most_recent_sink = MostRecentSink::new();
+            let gamma_adjust_sink = GammaAdjustSink::new(most_recent_sink, 2.2);
             let mut video_frame_sink = Anaglyphizer::new(
-                video_frame_sink,
+                gamma_adjust_sink,
                 (1.0, 0.0, 0.0).into(),
                 (0.0, 1.0, 1.0).into(),
             );
@@ -140,7 +140,7 @@ impl Emulator {
                 }
             }
 
-            if let Some(frame) = video_frame_sink.into_inner().into_inner() {
+            if let Some(frame) = video_frame_sink.into_inner().into_inner().into_inner() {
                 let frame: Vec<u32> = frame.into_iter().map(|x| x.into()).collect();
                 self.window.update_with_buffer(&frame);
 

@@ -12,7 +12,7 @@ pub trait SinkRef<T: ?Sized> {
 /// A frame of video. The `Box`es contain the left/right monochrome
 /// [DISPLAY_RESOLUTION_X](../vip/constant.DISPLAY_RESOLUTION_X.html) by
 /// [DISPLAY_RESOLUTION_Y](../vip/constant.DISPLAY_RESOLUTION_Y.html)
-/// pixels, after gamma mapping.
+/// pixels in linear brightness.
 pub type VideoFrame = (Box<[u8]>, Box<[u8]>);
 
 /// A frame of audio (left, right).
