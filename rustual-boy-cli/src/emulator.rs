@@ -240,10 +240,12 @@ impl Emulator {
                         println!("Entry {:3}: {}", i, self.virtual_boy.cpu.cache.entry(i));
                     }
                 },
-                Ok(Command::Step) => {
-                    self.step(video_frame_sink, audio_frame_sink);
-                    self.cursor = self.virtual_boy.cpu.reg_pc();
-                    self.disassemble_instruction();
+                Ok(Command::Step(count)) => {
+                    for _ in 0..count {
+                        self.step(video_frame_sink, audio_frame_sink);
+                        self.cursor = self.virtual_boy.cpu.reg_pc();
+                        self.disassemble_instruction();
+                    }
                 }
                 Ok(Command::Continue) => {
                     self.mode = Mode::Running;

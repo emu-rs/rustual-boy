@@ -7,7 +7,7 @@ use std::borrow::Cow;
 pub enum Command {
     ShowCpuCache,
     ShowRegs,
-    Step,
+    Step(usize),
     Continue,
     Goto(u32),
     ShowMem(Option<u32>),
@@ -69,9 +69,10 @@ named!(
 
 named!(
     step<Command>,
-    map!(
-        alt_complete!(tag!("step") | tag!("s")),
-    |_| Command::Step));
+    chain!(
+        alt_complete!(tag!("step") | tag!("s")) ~
+        count: opt!(preceded!(space, usize_parser)),
+    || Command::Step(count.unwrap_or(1))));
 
 named!(
     continue_<Command>,
