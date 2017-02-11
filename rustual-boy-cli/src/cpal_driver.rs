@@ -5,7 +5,7 @@ use cpal::{EventLoop, Voice, UnknownTypeBuffer, get_default_endpoint};
 use futures::stream::Stream;
 use futures::task::{self, Executor, Run};
 
-use rustual_boy_core::sinks::{AudioBufferSink, SinkRef};
+use rustual_boy_core::sinks::{AudioFrame, SinkRef};
 use rustual_boy_core::time_source::TimeSource;
 
 use std::borrow::Cow;
@@ -56,8 +56,8 @@ struct CpalDriverBufferSink {
     ring_buffer: Arc<Mutex<RingBuffer>>,
 }
 
-impl SinkRef<[(i16, i16)]> for CpalDriverBufferSink {
-    fn append(&mut self, buffer: &[(i16, i16)]) {
+impl SinkRef<[AudioFrame]> for CpalDriverBufferSink {
+    fn append(&mut self, buffer: &[AudioFrame]) {
         let mut ring_buffer = self.ring_buffer.lock().unwrap();
         for &(left, right) in buffer {
             ring_buffer.push(left);
@@ -65,8 +65,6 @@ impl SinkRef<[(i16, i16)]> for CpalDriverBufferSink {
         }
     }
 }
-
-impl AudioBufferSink for CpalDriverBufferSink { }
 
 struct CpalDriverTimeSource {
     ring_buffer: Arc<Mutex<RingBuffer>>,
@@ -170,7 +168,7 @@ impl CpalDriver {
         })
     }
 
-    pub fn sink(&self) -> Box<AudioBufferSink> {
+    pub fn sink(&self) -> Box<SinkRef<[AudioFrame]>> {
         Box::new(CpalDriverBufferSink {
             ring_buffer: self.ring_buffer.clone(),
         })
@@ -188,8 +186,8 @@ struct LinearResampler {
     from_sample_rate: usize,
     to_sample_rate: usize,
 
-    current_from_frame: (i16, i16),
-    next_from_frame: (i16, i16),
+    current_from_frame: AudioFrame,
+    next_from_frame: AudioFrame,
     from_fract_pos: usize,
 
     current_frame_channel_offset: usize,

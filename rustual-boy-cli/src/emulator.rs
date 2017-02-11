@@ -2,7 +2,7 @@ use minifb::{WindowOptions, Window, Key, KeyRepeat, Scale};
 
 use command::*;
 
-use rustual_boy_core::sinks::{AudioBufferSink, AudioFrameSink, Sink, VideoFrameSink};
+use rustual_boy_core::sinks::{AudioFrame, Sink, SinkRef, VideoFrame};
 use rustual_boy_core::time_source::TimeSource;
 use rustual_boy_core::rom::Rom;
 use rustual_boy_core::sram::Sram;
@@ -10,8 +10,7 @@ use rustual_boy_core::instruction::*;
 use rustual_boy_core::game_pad::Button;
 use rustual_boy_core::virtual_boy::VirtualBoy;
 
-use rustual_boy_middleware::Anaglyphizer;
-use rustual_boy_middleware::sinks::MostRecentSink;
+use rustual_boy_middleware::{Anaglyphizer, GammaAdjustSink, MostRecentSink};
 
 use std::time;
 use std::thread::{self, JoinHandle};
@@ -22,16 +21,14 @@ use std::sync::mpsc::{channel, Receiver};
 const CPU_CYCLE_TIME_NS: u64 = 50;
 
 struct SimpleAudioFrameSink {
-    inner: VecDeque<(i16, i16)>,
+    inner: VecDeque<AudioFrame>,
 }
 
-impl Sink<(i16, i16)> for SimpleAudioFrameSink {
-    fn append(&mut self, frame: (i16, i16)) {
+impl Sink<AudioFrame> for SimpleAudioFrameSink {
+    fn append(&mut self, frame: AudioFrame) {
         self.inner.push_back(frame);
     }
 }
-
-impl AudioFrameSink for SimpleAudioFrameSink { }
 
 #[derive(PartialEq, Eq)]
 enum Mode {
@@ -54,7 +51,7 @@ pub struct Emulator {
     stdin_receiver: Receiver<String>,
     _stdin_thread: JoinHandle<()>,
 
-    audio_buffer_sink: Box<AudioBufferSink>,
+    audio_buffer_sink: Box<SinkRef<[AudioFrame]>>,
 
     time_source: Box<TimeSource>,
     time_source_start_time_ns: u64,
@@ -63,7 +60,7 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    pub fn new(rom: Rom, sram: Sram, audio_buffer_sink: Box<AudioBufferSink>, time_source: Box<TimeSource>) -> Emulator {
+    pub fn new(rom: Rom, sram: Sram, audio_buffer_sink: Box<SinkRef<[AudioFrame]>>, time_source: Box<TimeSource>) -> Emulator {
         let (stdin_sender, stdin_receiver) = channel();
         let stdin_thread = thread::spawn(move || {
             loop {
@@ -104,9 +101,10 @@ impl Emulator {
         self.time_source_start_time_ns = self.time_source.time_ns();
 
         while self.window.is_open() && !self.window.is_key_down(Key::Escape) {
-            let video_frame_sink = MostRecentSink::new();
+            let most_recent_sink = MostRecentSink::new();
+            let gamma_adjust_sink = GammaAdjustSink::new(most_recent_sink, 2.2);
             let mut video_frame_sink = Anaglyphizer::new(
-                video_frame_sink,
+                gamma_adjust_sink,
                 (1.0, 0.0, 0.0).into(),
                 (0.0, 1.0, 1.0).into(),
             );
@@ -142,7 +140,7 @@ impl Emulator {
                 }
             }
 
-            if let Some(frame) = video_frame_sink.into_inner().into_inner() {
+            if let Some(frame) = video_frame_sink.into_inner().into_inner().into_inner() {
                 let frame: Vec<u32> = frame.into_iter().map(|x| x.into()).collect();
                 self.window.update_with_buffer(&frame);
 
@@ -162,7 +160,7 @@ impl Emulator {
         }
     }
 
-    fn step(&mut self, video_frame_sink: &mut VideoFrameSink, audio_frame_sink: &mut AudioFrameSink) -> (usize, bool) {
+    fn step(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> (usize, bool) {
         let ret = self.virtual_boy.step(video_frame_sink, audio_frame_sink);
 
         self.emulated_cycles += ret.0 as _;
@@ -196,7 +194,7 @@ impl Emulator {
         self.print_cursor();
     }
 
-    fn run_debugger_commands(&mut self, video_frame_sink: &mut VideoFrameSink, audio_frame_sink: &mut AudioFrameSink) -> bool {
+    fn run_debugger_commands(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> bool {
         while let Ok(command_string) = self.stdin_receiver.try_recv() {
             let command = match (command_string.parse(), self.last_command.clone()) {
                 (Ok(Command::Repeat), Some(c)) => Ok(c),
