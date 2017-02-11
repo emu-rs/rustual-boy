@@ -9,6 +9,7 @@ dependencies = [
  "minifb 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nom 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustual-boy-core 0.1.0",
+ "rustual-boy-middleware 0.1.0",
 ]
 
 [[package]]
@@ -245,6 +246,13 @@ name = "rustual-boy-core"
 version = "0.1.0"
 dependencies = [
  "encoding 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rustual-boy-middleware"
+version = "0.1.0"
+dependencies = [
+ "rustual-boy-core 0.1.0",
 ]
 
 [[package]]

@@ -1,5 +1,4 @@
-use video_frame_sink::*;
-use audio_frame_sink::*;
+use sinks::*;
 use rom::*;
 use wram::*;
 use sram::*;
@@ -204,7 +203,7 @@ impl Interconnect {
         }
     }
 
-    pub fn cycles(&mut self, cycles: usize, video_frame_sink: &mut VideoFrameSink, audio_frame_sink: &mut AudioFrameSink) -> Option<u16> {
+    pub fn cycles(&mut self, cycles: usize, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> Option<u16> {
         let mut interrupt = None;
 
         if self.timer.cycles(cycles) {

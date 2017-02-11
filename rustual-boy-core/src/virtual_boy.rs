@@ -1,5 +1,4 @@
-use video_frame_sink::*;
-use audio_frame_sink::*;
+use sinks::*;
 use rom::*;
 use sram::*;
 use interconnect::*;
@@ -18,7 +17,7 @@ impl VirtualBoy {
         }
     }
 
-    pub fn step(&mut self, video_frame_sink: &mut VideoFrameSink, audio_frame_sink: &mut AudioFrameSink) -> (usize, bool) {
+    pub fn step(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> (usize, bool) {
         let ret = self.cpu.step(&mut self.interconnect);
 
         if let Some(exception_code) = self.interconnect.cycles(ret.0, video_frame_sink, audio_frame_sink) {

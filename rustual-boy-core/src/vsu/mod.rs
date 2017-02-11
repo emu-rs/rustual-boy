@@ -1,6 +1,7 @@
 mod mem_map;
 
-use audio_frame_sink::*;
+use sinks::*;
+
 use self::mem_map::*;
 
 // Docs claim the sample rate is 41.7khz, but my calculations indicate it should be 41666.66hz repeating
@@ -626,7 +627,7 @@ impl Vsu {
         self.write_byte(addr, value as _);
     }
 
-    pub fn cycles(&mut self, num_cycles: usize, audio_frame_sink: &mut AudioFrameSink) {
+    pub fn cycles(&mut self, num_cycles: usize, audio_frame_sink: &mut Sink<AudioFrame>) {
         for _ in 0..num_cycles {
             self.duration_clock_counter += 1;
             if self.duration_clock_counter >= DURATION_CLOCK_PERIOD {
@@ -690,7 +691,7 @@ impl Vsu {
         }
     }
 
-    fn sample_clock(&mut self, audio_frame_sink: &mut AudioFrameSink) {
+    fn sample_clock(&mut self, audio_frame_sink: &mut Sink<AudioFrame>) {
         let mut acc_left = 0;
         let mut acc_right = 0;
 

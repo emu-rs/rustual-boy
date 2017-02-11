@@ -14,6 +14,8 @@ extern crate clap;
 
 extern crate rustual_boy_core;
 
+extern crate rustual_boy_middleware;
+
 mod argparse;
 #[macro_use]
 mod logging;
