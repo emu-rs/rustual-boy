@@ -1,1 +1,3 @@
-target
+target/
+rustual-boy-core/Cargo.lock
+rustual-boy-middleware/Cargo.lock
