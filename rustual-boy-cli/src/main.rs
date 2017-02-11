@@ -1,8 +1,5 @@
 extern crate encoding;
 
-#[macro_use]
-extern crate nom;
-
 extern crate minifb;
 
 extern crate cpal;
@@ -11,6 +8,8 @@ extern crate futures;
 
 #[macro_use]
 extern crate clap;
+
+extern crate combine;
 
 extern crate rustual_boy_core;
 

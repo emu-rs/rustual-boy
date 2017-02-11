@@ -13,10 +13,10 @@ logging = []
 
 [dependencies]
 encoding = "0.2"
-nom = "^1.2.3"
 minifb = "0.9.0"
 cpal = "0.4.4"
 futures = "0.1.1"
 rustual-boy-middleware = { path = "../rustual-boy-middleware" }
 rustual-boy-core = { path = "../rustual-boy-core" }
 clap = "2.0.0"
+combine = "2.2.0"

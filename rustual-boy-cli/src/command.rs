@@ -1,4 +1,6 @@
-use nom::{IResult, eof, space, digit, hex_digit, alphanumeric};
+use combine::{choice, eof, many1, optional, Parser, parser, try, value};
+use combine::char::{alpha_num, digit, hex_digit, space, spaces, string};
+use combine::primitives::{ParseResult, Stream};
 
 use std::str::{self, FromStr};
 use std::borrow::Cow;
@@ -29,184 +31,160 @@ impl FromStr for Command {
     type Err = Cow<'static, str>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match command(s.as_bytes()) {
-            IResult::Done(_, c) => Ok(c),
+        match parser(command).parse(s) {
+            Ok((c, _)) => Ok(c),
             err => Err(format!("Unable to parse command: {:?}", err).into()),
         }
     }
 }
 
-named!(
-    command<Command>,
-    complete!(
-        terminated!(
-        alt_complete!(
-            show_cpu_cache|
-            step |
-            continue_ |
-            goto |
-            show_mem |
-            disassemble |
-            label |
-            add_label |
-            remove_label |
-            breakpoint |
-            add_breakpoint |
-            remove_breakpoint |
-            watchpoint |
-            add_watchpoint |
-            remove_watchpoint |
-            exit |
-            show_regs |
-            repeat),
-        eof)));
+fn command<I: Stream<Item=char>>(input: I) -> ParseResult<Command, I> {
+    let show_cpu_cache =
+        choice([try(string("show_cpu_cache")), try(string("scc"))])
+        .map(|_| Command::ShowCpuCache)
+        .boxed();
 
-named!(
-    show_cpu_cache<Command>,
-    map!(
-        alt_complete!(tag!("showcpucache") | tag!("scc")),
-    |_| Command::ShowCpuCache));
+    let show_regs =
+        choice([try(string("showregs")), try(string("r"))])
+        .map(|_| Command::ShowRegs)
+        .boxed();
 
-named!(
-    step<Command>,
-    chain!(
-        alt_complete!(tag!("step") | tag!("s")) ~
-        count: opt!(preceded!(space, usize_parser)),
-    || Command::Step(count.unwrap_or(1))));
+    let step =
+        (choice([try(string("step")), try(string("s"))]),
+            optional((spaces(), usize_()).map(|x| x.1)))
+        .map(|(_, count)| Command::Step(count.unwrap_or(1)))
+        .boxed();
 
-named!(
-    continue_<Command>,
-    map!(
-        alt_complete!(tag!("continue") | tag!("c")),
-    |_| Command::Continue));
+    let continue_ =
+        choice([try(string("continue")), try(string("c"))])
+        .map(|_| Command::Continue)
+        .boxed();
 
-named!(
-    goto<Command>,
-    chain!(
-        alt_complete!(tag!("goto") | tag!("g")) ~
-        addr: preceded!(space, hex_u32_parser),
-    || Command::Goto(addr)));
+    let goto =
+        (choice([try(string("goto")), try(string("g"))]), spaces(), u32_hex())
+        .map(|(_, _, addr)| Command::Goto(addr))
+        .boxed();
 
-named!(
-    show_mem<Command>,
-    chain!(
-        alt_complete!(tag!("showmem") | tag!("mem") | tag!("m")) ~
-        addr: opt!(preceded!(space, hex_u32_parser)),
-    || Command::ShowMem(addr)));
+    let show_mem =
+        (choice([try(string("showmem")), try(string("m"))]),
+            optional((spaces(), u32_hex()).map(|x| x.1)))
+        .map(|(_, addr)| Command::ShowMem(addr))
+        .boxed();
 
-named!(
-    hex_u32_parser<u32>,
-    map_res!(
-        map_res!(
-            preceded!(opt!(alt_complete!(tag!("0x") | tag!("$"))), hex_digit),
-            str::from_utf8),
-    |s| u32::from_str_radix(s, 16)));
+    let disassemble =
+        (choice([try(string("disassemble")), try(string("d"))]),
+            optional((spaces(), usize_()).map(|x| x.1)))
+        .map(|(_, count)| Command::Disassemble(count.unwrap_or(4)))
+        .boxed();
 
-named!(
-    disassemble<Command>,
-    chain!(
-        alt_complete!(tag!("disassemble") | tag!("d")) ~
-        count: opt!(preceded!(space, usize_parser)),
-    || Command::Disassemble(count.unwrap_or(4))));
+    let label =
+        choice([try(string("label")), try(string("l"))])
+        .map(|_| Command::Label)
+        .boxed();
 
-named!(
-    usize_parser<usize>,
-    map_res!(
-        map_res!(
-            digit,
-            str::from_utf8),
-    FromStr::from_str));
+    let add_label =
+        (choice([try(string("addlabel")), try(string("al"))]),
+            space(),
+            label_name(),
+            space(),
+            u32_hex())
+        .map(|(_, _, name, _, addr)| Command::AddLabel(name, addr))
+        .boxed();
 
-named!(
-    label<Command>,
-    map!(
-        alt_complete!(tag!("label") | tag!("l")),
-    |_| Command::Label));
+    let remove_label =
+        (choice([try(string("removelabel")), try(string("rl"))]),
+            space(),
+            label_name())
+        .map(|(_, _, name)| Command::RemoveLabel(name))
+        .boxed();
 
-named!(
-    add_label<Command>,
-    chain!(
-        alt_complete!(tag!("addlabel") | tag!("al")) ~
-        space ~
-        name: label_name ~
-        space ~
-        addr: hex_u32_parser,
-    || Command::AddLabel(name, addr)));
+    let breakpoint =
+        choice([try(string("breakpoint")), try(string("b"))])
+        .map(|_| Command::Breakpoint)
+        .boxed();
 
-named!(
-    label_name<String>,
-    preceded!(
-        char!('.'),
-        map_res!(
-            map_res!(
-                alphanumeric,
-                str::from_utf8),
-        FromStr::from_str)));
+    let add_breakpoint =
+        (choice([try(string("addbreakpoint")), try(string("ab"))]),
+            space(),
+            u32_hex())
+        .map(|(_, _, addr)| Command::AddBreakpoint(addr))
+        .boxed();
 
-named!(
-    remove_label<Command>,
-    chain!(
-        alt_complete!(tag!("removelabel") | tag!("rl")) ~
-        space ~
-        name: label_name,
-    || Command::RemoveLabel(name)));
+    let remove_breakpoint =
+        (choice([try(string("removebreakpoint")), try(string("rb"))]),
+            space(),
+            u32_hex())
+        .map(|(_, _, addr)| Command::RemoveBreakpoint(addr))
+        .boxed();
 
-named!(
-    breakpoint<Command>,
-    map!(
-        alt_complete!(tag!("breakpoint") | tag!("b")),
-    |_| Command::Breakpoint));
+    let watchpoint =
+        choice([try(string("watchpoint")), try(string("w"))])
+        .map(|_| Command::Watchpoint)
+        .boxed();
 
-named!(
-    add_breakpoint<Command>,
-    chain!(
-        alt_complete!(tag!("addbreakpoint") | tag!("ab")) ~
-        space ~
-        addr: hex_u32_parser,
-    || Command::AddBreakpoint(addr)));
+    let add_watchpoint =
+        (choice([try(string("addwatchpoint")), try(string("aw"))]),
+            space(),
+            u32_hex())
+        .map(|(_, _, addr)| Command::AddWatchpoint(addr))
+        .boxed();
 
-named!(
-    remove_breakpoint<Command>,
-    chain!(
-        alt_complete!(tag!("removebreakpoint") | tag!("rb")) ~
-        space ~
-        addr: hex_u32_parser,
-    || Command::RemoveBreakpoint(addr)));
+    let remove_watchpoint =
+        (choice([try(string("removewatchpoint")), try(string("rw"))]),
+            space(),
+            u32_hex())
+        .map(|(_, _, addr)| Command::RemoveWatchpoint(addr))
+        .boxed();
 
-named!(
-    watchpoint<Command>,
-    map!(
-        alt_complete!(tag!("watchpoint") | tag!("w")),
-    |_| Command::Watchpoint));
+    let exit =
+        choice([try(string("exit")), try(string("quit")), try(string("e")), try(string("x")), try(string("q"))])
+        .map(|_| Command::Exit)
+        .boxed();
 
-named!(
-    add_watchpoint<Command>,
-    chain!(
-        alt_complete!(tag!("addwatchpoint") | tag!("aw")) ~
-        space ~
-        addr: hex_u32_parser,
-    || Command::AddWatchpoint(addr)));
+    let repeat = value(Command::Repeat).boxed();
 
-named!(
-    remove_watchpoint<Command>,
-    chain!(
-        alt_complete!(tag!("removewatchpoint") | tag!("rw")) ~
-        space ~
-        addr: hex_u32_parser,
-    || Command::RemoveWatchpoint(addr)));
+    choice(
+        vec![
+            show_cpu_cache,
+            show_regs,
+            step,
+            continue_,
+            goto,
+            show_mem,
+            disassemble,
+            label,
+            add_label,
+            remove_label,
+            breakpoint,
+            add_breakpoint,
+            remove_breakpoint,
+            watchpoint,
+            add_watchpoint,
+            remove_watchpoint,
+            exit,
+            repeat,
+        ]
+        .into_iter()
+        .map(|parser| (parser, eof()).map(|x| x.0))
+        .map(|parser| try(parser))
+        .collect::<Vec<_>>())
+    .parse_stream(input)
+}
 
-named!(
-    exit<Command>,
-    map!(
-        alt_complete!(tag!("exit") | tag!("quit") | tag!("e") | tag!("x") | tag!("q")),
-        |_| Command::Exit));
+fn usize_<'a, I: Stream<Item=char> + 'a>() -> Box<Parser<Input=I, Output=usize> + 'a> {
+    many1(digit())
+        .and_then(|s: String| s.parse::<usize>())
+        .boxed()
+}
 
-named!(
-    show_regs<Command>,
-    map!(
-        alt_complete!(tag!("showregs") | tag!("r")),
-    |_| Command::ShowRegs));
+fn u32_hex<'a, I: Stream<Item=char> + 'a>() -> Box<Parser<Input=I, Output=u32> + 'a> {
+    let hex_prefix = choice([try(string("0x")), try(string("$"))]);
+    (optional(hex_prefix), many1(hex_digit()))
+        .map(|x| x.1)
+        .and_then(|s: String| u32::from_str_radix(&s, 16))
+        .boxed()
+}
 
-named!(
-    repeat<Command>,
-    value!(Command::Repeat));
+fn label_name<'a, I: Stream<Item=char> + 'a>() -> Box<Parser<Input=I, Output=String> + 'a> {
+    many1::<String, _>(alpha_num()).boxed()
+}
