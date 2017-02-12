@@ -14,6 +14,12 @@ pub const DISPLAY_PIXELS: usize = DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y;
 const DRAWING_BLOCK_HEIGHT: usize = 8;
 const DRAWING_BLOCK_COUNT: usize = DISPLAY_RESOLUTION_Y / DRAWING_BLOCK_HEIGHT;
 
+// It seems it can take quite a long time before the display stabilizes from a
+//  cold start, sometimes in excess of 5 seconds, so we'll use that time here
+//  in order to be conservative.
+// 5s / 50ns = 100000000 clocks
+const DISPLAY_STABILIZATION_PERIOD: usize = 100000000;
+
 // 20mhz / (1s / 5ms) = 100000 clocks
 const DISPLAY_FRAME_QUARTER_PERIOD: usize = 100000;
 
@@ -64,6 +70,7 @@ pub struct Vip {
 
     drawing_state: DrawingState,
 
+    reg_interrupt_pending_display_not_ready: bool,
     reg_interrupt_pending_left_display_finished: bool,
     reg_interrupt_pending_right_display_finished: bool,
     reg_interrupt_pending_start_of_game_frame: bool,
@@ -108,6 +115,9 @@ pub struct Vip {
 
     reg_clear_color: u8,
 
+    is_display_stable: bool,
+    display_stabilization_clock_counter: usize,
+
     display_frame_quarter_clock_counter: usize,
     display_frame_quarter_counter: usize,
 
@@ -133,6 +143,7 @@ impl Vip {
 
             drawing_state: DrawingState::Idle,
 
+            reg_interrupt_pending_display_not_ready: false,
             reg_interrupt_pending_left_display_finished: false,
             reg_interrupt_pending_right_display_finished: false,
             reg_interrupt_pending_start_of_game_frame: false,
@@ -176,6 +187,9 @@ impl Vip {
             reg_obj_palette_3: 0,
 
             reg_clear_color: 0,
+
+            is_display_stable: false,
+            display_stabilization_clock_counter: 0,
 
             display_frame_quarter_clock_counter: 0,
             display_frame_quarter_counter: 0,
@@ -243,6 +257,7 @@ impl Vip {
             VRAM_START ... VRAM_END => self.read_vram_halfword(addr - VRAM_START),
             INTERRUPT_PENDING_REG => {
                 //logln!(Log::Vip, "WARNING: Read halfword from Interrupt Pending Reg not fully implemented");
+                (if self.reg_interrupt_pending_display_not_ready { 1 } else { 0 } << 0) |
                 (if self.reg_interrupt_pending_left_display_finished { 1 } else { 0 } << 1) |
                 (if self.reg_interrupt_pending_right_display_finished { 1 } else { 0 } << 2) |
                 (if self.reg_interrupt_pending_start_of_game_frame { 1 } else { 0 } << 3) |
@@ -264,7 +279,6 @@ impl Vip {
                 0
             }
             DISPLAY_CONTROL_READ_REG => {
-                let scan_ready = true; // TODO
                 // TODO: Not entirely sure this is correct
                 let frame_clock = match self.display_state {
                     DisplayState::Idle => true,
@@ -279,7 +293,7 @@ impl Vip {
                     DisplayState::LeftFramebuffer => if self.display_first_framebuffers { 0b0001 } else { 0b0100 },
                     DisplayState::RightFramebuffer => if self.display_first_framebuffers { 0b0010 } else { 0b1000 },
                 } << 2) |
-                (if scan_ready { 1 } else { 0 } << 6) |
+                (if self.is_display_stable { 1 } else { 0 } << 6) |
                 (if frame_clock { 1 } else { 0 } << 7) |
                 (if mem_refresh { 1 } else { 0 } << 8) |
                 (if self.reg_display_control_sync_enable { 1 } else { 0 } << 9) |
@@ -499,85 +513,92 @@ impl Vip {
         let mut raise_interrupt = false;
 
         for _ in 0..cycles {
-            self.display_frame_quarter_clock_counter += 1;
-            if self.display_frame_quarter_clock_counter >= DISPLAY_FRAME_QUARTER_PERIOD {
-                self.display_frame_quarter_clock_counter = 0;
+            if self.is_display_stable {
+                self.display_frame_quarter_clock_counter += 1;
+                if self.display_frame_quarter_clock_counter >= DISPLAY_FRAME_QUARTER_PERIOD {
+                    self.display_frame_quarter_clock_counter = 0;
 
-                match self.display_frame_quarter_counter {
-                    0 => {
-                        self.frame_clock(&mut raise_interrupt);
-                    }
-                    1 => {
-                        self.display(video_frame_sink);
+                    match self.display_frame_quarter_counter {
+                        0 => {
+                            self.frame_clock(&mut raise_interrupt);
+                        }
+                        1 => {
+                            self.display(video_frame_sink);
 
-                        if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
-                            self.begin_left_framebuffer_display_process();
+                            if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
+                                self.begin_left_framebuffer_display_process();
+                            }
+                        }
+                        2 => {
+                            if self.reg_display_control_display_enable {
+                                if let DisplayState::LeftFramebuffer = self.display_state {
+                                    self.reg_interrupt_pending_left_display_finished = true;
+                                    if self.reg_interrupt_enable_left_display_finished {
+                                        raise_interrupt = true;
+                                    }
+                                }
+
+                                if self.reg_display_control_sync_enable {
+                                    self.begin_right_framebuffer_display_process();
+                                }
+                            }
+                        }
+                        _ => {
+                            if self.reg_display_control_display_enable {
+                                if let DisplayState::RightFramebuffer = self.display_state {
+                                    self.reg_interrupt_pending_right_display_finished = true;
+                                    if self.reg_interrupt_enable_right_display_finished {
+                                        raise_interrupt = true;
+                                    }
+                                }
+
+                                self.end_display_process();
+                            }
                         }
                     }
-                    2 => {
-                        if self.reg_display_control_display_enable {
-                            if let DisplayState::LeftFramebuffer = self.display_state {
-                                self.reg_interrupt_pending_left_display_finished = true;
-                                if self.reg_interrupt_enable_left_display_finished {
+
+                    self.display_frame_quarter_counter = match self.display_frame_quarter_counter {
+                        3 => 0,
+                        _ => self.display_frame_quarter_counter + 1
+                    };
+                }
+
+                if let DrawingState::Drawing = self.drawing_state {
+                    self.drawing_block_counter += 1;
+                    if self.drawing_block_counter >= DRAWING_BLOCK_PERIOD {
+                        self.drawing_block_counter = 0;
+
+                        if self.reg_drawing_control_sbcount < DRAWING_BLOCK_COUNT {
+                            self.end_drawing_block(&mut raise_interrupt);
+
+                            if self.reg_drawing_control_sbcount < DRAWING_BLOCK_COUNT - 1 {
+                                self.reg_drawing_control_sbcount += 1;
+                                if self.reg_drawing_control_drawing_enable {
+                                    self.begin_drawing_block();
+                                }
+                            } else {
+                                self.reg_drawing_control_sbcount = 0;
+
+                                self.end_drawing_process();
+                                self.reg_interrupt_pending_drawing_finished = true;
+                                if self.reg_interrupt_enable_drawing_finished {
                                     raise_interrupt = true;
                                 }
                             }
-
-                            if self.reg_display_control_sync_enable {
-                                self.begin_right_framebuffer_display_process();
-                            }
                         }
                     }
-                    _ => {
-                        if self.reg_display_control_display_enable {
-                            if let DisplayState::RightFramebuffer = self.display_state {
-                                self.reg_interrupt_pending_right_display_finished = true;
-                                if self.reg_interrupt_enable_right_display_finished {
-                                    raise_interrupt = true;
-                                }
-                            }
 
-                            self.end_display_process();
+                    if self.reg_drawing_control_sbout {
+                        self.drawing_sbout_counter += 1;
+                        if self.drawing_sbout_counter >= DRAWING_SBOUT_PERIOD {
+                            self.reg_drawing_control_sbout = false;
                         }
                     }
                 }
-
-                self.display_frame_quarter_counter = match self.display_frame_quarter_counter {
-                    3 => 0,
-                    _ => self.display_frame_quarter_counter + 1
-                };
-            }
-
-            if let DrawingState::Drawing = self.drawing_state {
-                self.drawing_block_counter += 1;
-                if self.drawing_block_counter >= DRAWING_BLOCK_PERIOD {
-                    self.drawing_block_counter = 0;
-
-                    if self.reg_drawing_control_sbcount < DRAWING_BLOCK_COUNT {
-                        self.end_drawing_block(&mut raise_interrupt);
-
-                        if self.reg_drawing_control_sbcount < DRAWING_BLOCK_COUNT - 1 {
-                            self.reg_drawing_control_sbcount += 1;
-                            if self.reg_drawing_control_drawing_enable {
-                                self.begin_drawing_block();
-                            }
-                        } else {
-                            self.reg_drawing_control_sbcount = 0;
-
-                            self.end_drawing_process();
-                            self.reg_interrupt_pending_drawing_finished = true;
-                            if self.reg_interrupt_enable_drawing_finished {
-                                raise_interrupt = true;
-                            }
-                        }
-                    }
-                }
-
-                if self.reg_drawing_control_sbout {
-                    self.drawing_sbout_counter += 1;
-                    if self.drawing_sbout_counter >= DRAWING_SBOUT_PERIOD {
-                        self.reg_drawing_control_sbout = false;
-                    }
+            } else {
+                self.display_stabilization_clock_counter += 1;
+                if self.display_stabilization_clock_counter >= DISPLAY_STABILIZATION_PERIOD {
+                    self.is_display_stable = true;
                 }
             }
         }
