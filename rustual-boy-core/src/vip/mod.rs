@@ -242,7 +242,7 @@ impl Vip {
         match addr {
             VRAM_START ... VRAM_END => self.read_vram_halfword(addr - VRAM_START),
             INTERRUPT_PENDING_REG => {
-                //logln!("WARNING: Read halfword from Interrupt Pending Reg not fully implemented");
+                //logln!(Log::Vip, "WARNING: Read halfword from Interrupt Pending Reg not fully implemented");
                 (if self.reg_interrupt_pending_left_display_finished { 1 } else { 0 } << 1) |
                 (if self.reg_interrupt_pending_right_display_finished { 1 } else { 0 } << 2) |
                 (if self.reg_interrupt_pending_start_of_game_frame { 1 } else { 0 } << 3) |
@@ -251,7 +251,7 @@ impl Vip {
                 (if self.reg_interrupt_pending_drawing_finished { 1 } else { 0 } << 14)
             }
             INTERRUPT_ENABLE_REG => {
-                logln!("WARNING: Read halfword from Interrupt Enable Reg not fully implemented");
+                logln!(Log::Vip, "WARNING: Read halfword from Interrupt Enable Reg not fully implemented");
                 (if self.reg_interrupt_enable_left_display_finished { 1 } else { 0 } << 1) |
                 (if self.reg_interrupt_enable_right_display_finished { 1 } else { 0 } << 2) |
                 (if self.reg_interrupt_enable_start_of_game_frame { 1 } else { 0 } << 3) |
@@ -260,7 +260,7 @@ impl Vip {
                 (if self.reg_interrupt_enable_drawing_finished { 1 } else { 0 } << 14)
             }
             INTERRUPT_CLEAR_REG => {
-                logln!("WARNING: Attempted read halfword from Interrupt Clear Reg");
+                logln!(Log::Vip, "WARNING: Attempted read halfword from Interrupt Clear Reg");
                 0
             }
             DISPLAY_CONTROL_READ_REG => {
@@ -286,14 +286,14 @@ impl Vip {
                 (if column_table_addr_lock { 1 } else { 0 } << 10)
             }
             DISPLAY_CONTROL_WRITE_REG => {
-                logln!("WARNING: Attempted read halfword from Display Control Write Reg");
+                logln!(Log::Vip, "WARNING: Attempted read halfword from Display Control Write Reg");
                 0
             }
             LED_BRIGHTNESS_1_REG => self.reg_led_brightness_1 as _,
             LED_BRIGHTNESS_2_REG => self.reg_led_brightness_2 as _,
             LED_BRIGHTNESS_3_REG => self.reg_led_brightness_3 as _,
             LED_BRIGHTNESS_IDLE_REG => {
-                logln!("WARNING: Read halfword from LED Brightness Idle Reg not yet implemented");
+                logln!(Log::Vip, "WARNING: Read halfword from LED Brightness Idle Reg not yet implemented");
                 0
             }
             GAME_FRAME_CONTROL_REG => {
@@ -321,7 +321,7 @@ impl Vip {
                 (if self.reg_drawing_control_sbout { 1 } else { 0 } << 15)
             }
             DRAWING_CONTROL_WRITE_REG => {
-                logln!("WARNING: Attempted read halfword from Drawing Control Write Reg");
+                logln!(Log::Vip, "WARNING: Attempted read halfword from Drawing Control Write Reg");
                 0
             }
             OBJ_GROUP_0_POINTER_REG => self.reg_obj_group_0_ptr,
@@ -346,7 +346,7 @@ impl Vip {
             CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
                 self.read_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START),
             _ => {
-                logln!("WARNING: Attempted read halfword from unrecognized VIP address (addr: 0x{:08x})", addr);
+                logln!(Log::Vip, "WARNING: Attempted read halfword from unrecognized VIP address (addr: 0x{:08x})", addr);
                 0
             }
         }
@@ -358,10 +358,10 @@ impl Vip {
         match addr {
             VRAM_START ... VRAM_END => self.write_vram_halfword(addr - VRAM_START, value),
             INTERRUPT_PENDING_REG => {
-                logln!("WARNING: Attempted write halfword to Interrupt Pending Reg");
+                logln!(Log::Vip, "WARNING: Attempted write halfword to Interrupt Pending Reg");
             }
             INTERRUPT_ENABLE_REG => {
-                logln!("WARNING: Write halfword to Interrupt Enable Reg not fully implemented (value: 0x{:04x})", value);
+                logln!(Log::Vip, "WARNING: Write halfword to Interrupt Enable Reg not fully implemented (value: 0x{:04x})", value);
                 self.reg_interrupt_enable_left_display_finished = (value & 0x0002) != 0;
                 self.reg_interrupt_enable_right_display_finished = (value & 0x0004) != 0;
                 self.reg_interrupt_enable_start_of_game_frame = (value & 0x0008) != 0;
@@ -370,7 +370,7 @@ impl Vip {
                 self.reg_interrupt_enable_drawing_finished = (value & 0x4000) != 0;
             }
             INTERRUPT_CLEAR_REG => {
-                logln!("WARNING: Write halfword to Interrupt Clear Reg not fully implemented (value: 0x{:04x})", value);
+                logln!(Log::Vip, "WARNING: Write halfword to Interrupt Clear Reg not fully implemented (value: 0x{:04x})", value);
                 if (value & 0x0002) != 0 {
                     self.reg_interrupt_pending_left_display_finished = false;
                 }
@@ -391,10 +391,10 @@ impl Vip {
                 }
             }
             DISPLAY_CONTROL_READ_REG => {
-                logln!("WARNING: Attempted write halfword to Display Control Read Reg");
+                logln!(Log::Vip, "WARNING: Attempted write halfword to Display Control Read Reg");
             }
             DISPLAY_CONTROL_WRITE_REG => {
-                logln!("WARNING: Write halfword to Display Control Write Reg not fully implemented (value: 0x{:04x})", value);
+                logln!(Log::Vip, "WARNING: Write halfword to Display Control Write Reg not fully implemented (value: 0x{:04x})", value);
 
                 let reset = (value & 0x0001) != 0;
                 let enable = (value & 0x0002) != 0;
@@ -419,17 +419,17 @@ impl Vip {
             LED_BRIGHTNESS_2_REG => self.reg_led_brightness_2 = value as _,
             LED_BRIGHTNESS_3_REG => self.reg_led_brightness_3 = value as _,
             LED_BRIGHTNESS_IDLE_REG => {
-                logln!("WARNING: Write halfword to LED Brightness Idle Reg not yet implemented (value: 0x{:04x})", value);
+                logln!(Log::Vip, "WARNING: Write halfword to LED Brightness Idle Reg not yet implemented (value: 0x{:04x})", value);
             }
             GAME_FRAME_CONTROL_REG => {
-                logln!("Game Frame Control written (value: 0x{:04x})", value);
+                logln!(Log::Vip, "Game Frame Control written (value: 0x{:04x})", value);
                 self.reg_game_frame_control = (value as usize) + 1;
             }
             DRAWING_CONTROL_READ_REG => {
-                logln!("WARNING: Attempted write halfword to Drawing Control Read Reg (value: 0x{:04x})", value);
+                logln!(Log::Vip, "WARNING: Attempted write halfword to Drawing Control Read Reg (value: 0x{:04x})", value);
             }
             DRAWING_CONTROL_WRITE_REG => {
-                logln!("WARNING: Write halfword to Drawing Control Write Reg not fully implemented (value: 0x{:04x})", value);
+                logln!(Log::Vip, "WARNING: Write halfword to Drawing Control Write Reg not fully implemented (value: 0x{:04x})", value);
 
                 let reset = (value & 0x01) != 0;
                 self.reg_drawing_control_drawing_enable = (value & 0x02) != 0;
@@ -464,7 +464,7 @@ impl Vip {
             CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
                 self.write_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START, value),
             _ => {
-                logln!("WARNING: Attempted write halfword to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
+                logln!(Log::Vip, "WARNING: Attempted write halfword to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
             }
         }
     }
@@ -586,7 +586,7 @@ impl Vip {
     }
 
     fn frame_clock(&mut self, raise_interrupt: &mut bool) {
-        logln!("Frame clock rising edge");
+        logln!(Log::Vip, "Frame clock rising edge");
 
         if self.reg_display_control_display_enable {
             self.reg_interrupt_pending_start_of_display_frame = true;
@@ -605,7 +605,7 @@ impl Vip {
     }
 
     fn game_clock(&mut self, raise_interrupt: &mut bool) {
-        logln!("Game clock rising edge");
+        logln!(Log::Vip, "Game clock rising edge");
 
         self.reg_interrupt_pending_start_of_game_frame = true;
         if self.reg_interrupt_enable_start_of_game_frame {
@@ -625,7 +625,7 @@ impl Vip {
     }
 
     fn begin_drawing_process(&mut self) {
-        logln!("Begin drawing process");
+        logln!(Log::Vip, "Begin drawing process");
         self.drawing_state = DrawingState::Drawing;
 
         self.reg_drawing_control_sbcount = 0;
@@ -636,11 +636,11 @@ impl Vip {
     }
 
     fn begin_drawing_block(&mut self) {
-        logln!("Begin drawing block {}", self.reg_drawing_control_sbcount);
+        logln!(Log::Vip, "Begin drawing block {}", self.reg_drawing_control_sbcount);
     }
 
     fn end_drawing_block(&mut self, raise_interrupt: &mut bool) {
-        logln!("End drawing block {}", self.reg_drawing_control_sbcount);
+        logln!(Log::Vip, "End drawing block {}", self.reg_drawing_control_sbcount);
 
         self.draw_current_block();
 
@@ -656,27 +656,27 @@ impl Vip {
     }
 
     fn end_drawing_process(&mut self) {
-        logln!("End drawing process");
+        logln!(Log::Vip, "End drawing process");
         self.drawing_state = DrawingState::Idle;
     }
 
     fn begin_display_process(&mut self) {
-        logln!("Start display process");
+        logln!(Log::Vip, "Start display process");
         self.display_state = DisplayState::Idle;
     }
 
     fn begin_left_framebuffer_display_process(&mut self) {
-        logln!("Start left framebuffer display process");
+        logln!(Log::Vip, "Start left framebuffer display process");
         self.display_state = DisplayState::LeftFramebuffer;
     }
 
     fn begin_right_framebuffer_display_process(&mut self) {
-        logln!("Start right framebuffer display process");
+        logln!(Log::Vip, "Start right framebuffer display process");
         self.display_state = DisplayState::RightFramebuffer;
     }
 
     fn end_display_process(&mut self) {
-        logln!("End display process");
+        logln!(Log::Vip, "End display process");
         self.display_state = DisplayState::Finished;
     }
 
@@ -705,13 +705,13 @@ impl Vip {
         let mut window_offset = WINDOW_ATTRIBS_END + 1 - WINDOW_ENTRY_LENGTH;
         let mut window_index = 31;
         for _ in 0..32 {
-            logln!("Window {}", window_index);
+            logln!(Log::Vip, "Window {}", window_index);
 
             let header = self.read_vram_halfword(window_offset);
-            logln!(" Header: 0x{:04x}", header);
+            logln!(Log::Vip, " Header: 0x{:04x}", header);
 
             if header == 0 {
-                logln!("  [Dummy world]");
+                logln!(Log::Vip, "  [Dummy world]");
             } else {
                 let base = (header & 0x000f) as u32;
                 let stop = (header & 0x0040) != 0;
@@ -721,12 +721,12 @@ impl Vip {
                 let mode = ((header >> 12) & 0x03) as usize;
                 let right_on = (header & 0x4000) != 0;
                 let left_on = (header & 0x8000) != 0;
-                /*logln!("  base: 0x{:02x}", base);
-                logln!("  stop: {}", stop);
-                logln!("  out of bounds: {}", out_of_bounds);
-                logln!("  w, h: {}, {}", bg_width, bg_height);
-                logln!("  mode: {}", mode);
-                logln!("  l, r: {}, {}", left_on, right_on);*/
+                /*logln!(Log::Vip, "  base: 0x{:02x}", base);
+                logln!(Log::Vip, "  stop: {}", stop);
+                logln!(Log::Vip, "  out of bounds: {}", out_of_bounds);
+                logln!(Log::Vip, "  w, h: {}, {}", bg_width, bg_height);
+                logln!(Log::Vip, "  mode: {}", mode);
+                logln!(Log::Vip, "  l, r: {}, {}", left_on, right_on);*/
 
                 let x = self.read_vram_halfword(window_offset + 2) as i16;
                 let parallax = self.read_vram_halfword(window_offset + 4) as i16;
@@ -738,16 +738,16 @@ impl Vip {
                 let height = self.read_vram_halfword(window_offset + 16);
                 let param_base = self.read_vram_halfword(window_offset + 18) as u32;
                 let out_of_bounds_char = self.read_vram_halfword(window_offset + 20);
-                /*logln!(" X: {}", x);
-                logln!(" Parallax: {}", parallax);
-                logln!(" Y: {}", y);
-                logln!(" BG X: {}", bg_x);
-                logln!(" BG Parallax: {}", bg_parallax);
-                logln!(" BG Y: {}", bg_y);
-                logln!(" Width: {}", width);
-                logln!(" Height: {}", height);
-                logln!(" Param base: 0x{:04x}", param_base);
-                logln!(" Out of bounds char: 0x{:04x}", out_of_bounds_char);*/
+                /*logln!(Log::Vip, " X: {}", x);
+                logln!(Log::Vip, " Parallax: {}", parallax);
+                logln!(Log::Vip, " Y: {}", y);
+                logln!(Log::Vip, " BG X: {}", bg_x);
+                logln!(Log::Vip, " BG Parallax: {}", bg_parallax);
+                logln!(Log::Vip, " BG Y: {}", bg_y);
+                logln!(Log::Vip, " Width: {}", width);
+                logln!(Log::Vip, " Height: {}", height);
+                logln!(Log::Vip, " Param base: 0x{:04x}", param_base);
+                logln!(Log::Vip, " Out of bounds char: 0x{:04x}", out_of_bounds_char);*/
 
                 if stop {
                     break;
@@ -794,7 +794,7 @@ impl Vip {
 
                     match mode {
                         WindowMode::Obj => {
-                            //logln!("Current obj group: {:?}", current_obj_group);
+                            //logln!(Log::Vip, "Current obj group: {:?}", current_obj_group);
 
                             match current_obj_group {
                                 Some(obj_group) => {
@@ -814,7 +814,7 @@ impl Vip {
                                         ending_obj_index = 0;
                                     }
                                     for i in (ending_obj_index..starting_obj_index + 1).rev() {
-                                        //logln!("Current obj: {}", i);
+                                        //logln!(Log::Vip, "Current obj: {}", i);
 
                                         let obj_offset = 0x0003e000 + (i as u32) * 8;
 
@@ -829,15 +829,15 @@ impl Vip {
                                         let horizontal_flip = (pal_hf_vf_char & 0x2000) != 0;
                                         let vertical_flip = (pal_hf_vf_char & 0x1000) != 0;
                                         let char_index = (pal_hf_vf_char & 0x07ff) as u32;
-                                        /*logln!(" X: {}", x);
-                                        logln!(" L: {}", l);
-                                        logln!(" R: {}", r);
-                                        logln!(" Parallax: {}", parallax);
-                                        logln!(" Y: {}", y);
-                                        logln!(" Pal: {}", pal);
-                                        logln!(" Horizontal flip: {}", horizontal_flip);
-                                        logln!(" Vertical flip: {}", vertical_flip);
-                                        logln!(" Char index: {}", char_index);*/
+                                        /*logln!(Log::Vip, " X: {}", x);
+                                        logln!(Log::Vip, " L: {}", l);
+                                        logln!(Log::Vip, " R: {}", r);
+                                        logln!(Log::Vip, " Parallax: {}", parallax);
+                                        logln!(Log::Vip, " Y: {}", y);
+                                        logln!(Log::Vip, " Pal: {}", pal);
+                                        logln!(Log::Vip, " Horizontal flip: {}", horizontal_flip);
+                                        logln!(Log::Vip, " Vertical flip: {}", vertical_flip);
+                                        logln!(Log::Vip, " Char index: {}", char_index);*/
 
                                         match eye {
                                             Eye::Left => {
@@ -881,7 +881,7 @@ impl Vip {
                                         }
                                     }
                                 }
-                                _ => logln!("WARNING: Extra obj window found; all obj groups already drawn")
+                                _ => logln!(Log::Vip, "WARNING: Extra obj window found; all obj groups already drawn")
                             }
                         }
                         WindowMode::Affine => {

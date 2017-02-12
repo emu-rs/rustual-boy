@@ -556,37 +556,37 @@ impl Nvc {
                             self.reg_eipsw = value;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_FEPC => {
-                            logln!("WARNING: ldsr fepc not yet implemented (value: 0x{:08x})", value);
+                            logln!(Log::Cpu, "WARNING: ldsr fepc not yet implemented (value: 0x{:08x})", value);
                         }
                         OPCODE_SYSTEM_REGISTER_ID_FEPSW => {
-                            logln!("WARNING: ldsr fepsw not yet implemented (value: 0x{:08x})", value);
+                            logln!(Log::Cpu, "WARNING: ldsr fepsw not yet implemented (value: 0x{:08x})", value);
                         }
                         OPCODE_SYSTEM_REGISTER_ID_ECR => {
                             self.reg_ecr = value as _;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_PSW => self.set_reg_psw(value),
                         OPCODE_SYSTEM_REGISTER_ID_CHCW => {
-                            logln!("WARNING: ldsr chcw not fully implemented (value: 0x{:08x})", value);
+                            logln!(Log::Cpu, "WARNING: ldsr chcw not fully implemented (value: 0x{:08x})", value);
                             let enable = (value >> 1) & 0x01 == 1;
                             if enable != self.cache.is_enabled() {
-                                logln!("ldsr chcw cache enable changed to {}", enable);
+                                logln!(Log::Cpu, "ldsr chcw cache enable changed to {}", enable);
                                 self.cache.set_is_enabled(enable);
                             }
 
                             if value & 0x01 == 1 {
                                 let entry_count = ((value >> 8) & 0x7ffff) as usize;
                                 let entry_start = (value >> 20) as usize;
-                                logln!("ldsr chcw request to clear cache for start entry: {}, entry count: {}", entry_start, entry_count);
+                                logln!(Log::Cpu, "ldsr chcw request to clear cache for start entry: {}, entry count: {}", entry_start, entry_count);
                                 self.cache.clear_entries(entry_start, entry_count);
                             } else if (value >> 4) & 0x01 == 1 {
                                 let addr = value & 0xffffff00;
-                                logln!("WARNING: ldsr chcw request to dump instruction cache to 0x{:08x} not implemented yet", addr);
+                                logln!(Log::Cpu, "WARNING: ldsr chcw request to dump instruction cache to 0x{:08x} not implemented yet", addr);
                             } else if (value >> 5) & 0x01 == 1 {
                                 let addr = value & 0xffffff00;
-                                logln!("WARNING: ldsr chcw request to restore instruction cache from 0x{:08x} not implemented yet", addr);
+                                logln!(Log::Cpu, "WARNING: ldsr chcw request to restore instruction cache from 0x{:08x} not implemented yet", addr);
                             }
                         }
-                        _ => logln!("WARNING: Unrecognized system register: {}", imm5),
+                        _ => logln!(Log::Cpu, "WARNING: Unrecognized system register: {}", imm5),
                     }
                 }),
                 OPCODE_BITS_STSR => format_ii!(|imm5, reg2| {
@@ -594,24 +594,24 @@ impl Nvc {
                         OPCODE_SYSTEM_REGISTER_ID_EIPC => self.reg_eipc,
                         OPCODE_SYSTEM_REGISTER_ID_EIPSW => self.reg_eipsw,
                         OPCODE_SYSTEM_REGISTER_ID_FEPC => {
-                            logln!("WARNING: stsr fepc not yet implemented");
+                            logln!(Log::Cpu, "WARNING: stsr fepc not yet implemented");
                             0
                         }
                         OPCODE_SYSTEM_REGISTER_ID_FEPSW => {
-                            logln!("WARNING: stsr fepsw not yet implemented");
+                            logln!(Log::Cpu, "WARNING: stsr fepsw not yet implemented");
                             0
                         }
                         OPCODE_SYSTEM_REGISTER_ID_ECR => self.reg_ecr as _,
                         OPCODE_SYSTEM_REGISTER_ID_PSW => self.reg_psw(),
                         OPCODE_SYSTEM_REGISTER_ID_CHCW => {
-                            logln!("WARNING: stsr chcw not fully implemented");
+                            logln!(Log::Cpu, "WARNING: stsr chcw not fully implemented");
                             match self.cache.is_enabled() {
                                 true => 2,
                                 false => 0,
                             }
                         }
                         _ => {
-                            logln!("WARNING: Unrecognized system register: {}", imm5);
+                            logln!(Log::Cpu, "WARNING: Unrecognized system register: {}", imm5);
                             0
                         }
                     };
@@ -945,7 +945,7 @@ impl Nvc {
     }
 
     fn enter_exception(&mut self, exception_code: u16) {
-        logln!("Entering exception (code: 0x{:04x})", exception_code);
+        logln!(Log::Cpu, "Entering exception (code: 0x{:04x})", exception_code);
         self.reg_eipc = self.reg_pc;
         self.reg_eipsw = self.reg_psw();
         self.reg_ecr = exception_code;
@@ -954,7 +954,7 @@ impl Nvc {
     }
 
     fn return_from_exception(&mut self) -> u32 {
-        logln!("Returning from exception (code: 0x{:04x})", self.reg_ecr);
+        logln!(Log::Cpu, "Returning from exception (code: 0x{:04x})", self.reg_ecr);
         let psw = self.reg_eipsw;
         self.set_reg_psw(psw);
         self.reg_eipc

@@ -9,7 +9,13 @@ repository = "https://github.com/emu-rs/rustual-boy"
 homepage = "https://github.com/emu-rs/rustual-boy"
 
 [features]
-logging = []
+log-cpu = []
+log-gamepad = []
+log-ic = []
+log-vip = []
+log-vsu = []
+log-other = []
+log-all = ["log-cpu", "log-gamepad", "log-ic", "log-vip", "log-vsu", "log-other"]
 
 [dependencies]
 encoding = "0.2"

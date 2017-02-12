@@ -523,7 +523,7 @@ impl Vsu {
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {
-        logln!("WARNING: Attempted read byte from VSU (addr: 0x{:08x})", addr);
+        logln!(Log::Vsu, "WARNING: Attempted read byte from VSU (addr: 0x{:08x})", addr);
 
         0
     }
@@ -612,12 +612,12 @@ impl Vsu {
                     self.voice6.reg_play_control.enable = false;
                 }
             }
-            _ => logln!("VSU write byte not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value)
+            _ => logln!(Log::Vsu, "VSU write byte not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr, value)
         }
     }
 
     pub fn read_halfword(&self, addr: u32) -> u16 {
-        logln!("WARNING: Attempted read halfword from VSU (addr: 0x{:08x})", addr);
+        logln!(Log::Vsu, "WARNING: Attempted read halfword from VSU (addr: 0x{:08x})", addr);
 
         0
     }
