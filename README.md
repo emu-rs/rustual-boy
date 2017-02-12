@@ -29,35 +29,35 @@ Key:
  - Empty cells: Incompatible. The reason is described in the notes field.
  - 💖: Fully compatible. The game is fully playable with no known bugs (to our knowledge).
  - 💔: Playable. The game can be played, but has some minor known glitches (described in the notes field).
- - `N/A`: Game does not exist for this region.
+ - `-`: Game does not exist for this region.
 
 Games marked 💖 and 💔 are all included in the compatibility metric.
 
 | Game | USA | JP | Notes |
 | --- | --- | --- | --- |
-| 3-D Tetris | | N/A | Uses bit string ops |
-| Bound High! | 💖 | N/A | ROM is both USA+JP |
+| 3-D Tetris | | - | Uses bit string ops |
+| Bound High! | 💖 | - | ROM is both USA+JP |
 | Galactic Pinball | 💔 | 💔 | Vocal samples throughout the game play at the wrong rate, likely related to CPU clock cycle inaccuracy |
 | Golf | | | Uses bit string ops |
-| Insmouse No Yakata | N/A | 💖 | |
+| Insmouse No Yakata | - | 💖 | |
 | Jack Bros. | 💖 | 💖 | |
 | Mario Clash | 💖 | 💖 | |
 | Mario's Tennis | 💖 | 💖 | |
-| Nester's Funky Bowling | | N/A | Uses bit string ops |
+| Nester's Funky Bowling | | - | Uses bit string ops |
 | Panic Bomber | 💖 | 💖 | |
 | Red Alarm | | | Uses bit string ops |
-| SD Gundam Dimension War | N/A | 💖 | |
-| Space Invaders Virtual Collection | N/A | | Lazers aren't visible on most of the screen in "Virtual 3D" mode |
-| Space Squash | N/A | | Game doesn't start; seems to be waiting on an interrupt (see commits [7423524](https://github.com/emu-rs/rustual-boy/commit/74235249a1abfca8d4b3d80e8c3c6b37230679a2) and [0ff9c61](https://github.com/emu-rs/rustual-boy/commit/0ff9c61efb188832680292a11c1a24c5c4f25360) for some investigation) |
+| SD Gundam Dimension War | - | 💖 | |
+| Space Invaders Virtual Collection | - | | Lazers aren't visible on most of the screen in "Virtual 3D" mode |
+| Space Squash | - | | Game doesn't start; seems to be waiting on an interrupt (see commits [7423524](https://github.com/emu-rs/rustual-boy/commit/74235249a1abfca8d4b3d80e8c3c6b37230679a2) and [0ff9c61](https://github.com/emu-rs/rustual-boy/commit/0ff9c61efb188832680292a11c1a24c5c4f25360) for some investigation) |
 | Teleroboxer | 💖 | 💖 | |
-| V-Tetris | N/A | 💖 | |
+| V-Tetris | - | 💖 | |
 | Vertical Force | | | Enemies/powerups appear/disappear, first boss disappears and the game softlocks |
-| Virtual Bowling | N/A | 💔 | Small graphical glitch in the intro sequence, samples play at the wrong rate |
+| Virtual Bowling | - | 💔 | Small graphical glitch in the intro sequence, samples play at the wrong rate |
 | Virtual Boy Wario Land | 💖 | 💖 | |
-| Virtual Fishing | N/A | 💖 | |
-| Virtual Lab | N/A | 💖 | |
+| Virtual Fishing | - | 💖 | |
+| Virtual Lab | - | 💖 | |
 | Virtual League Baseball | 💖 | 💖 | |
-| Waterworld | 💖 | N/A | |
+| Waterworld | 💖 | - | |
 
 ## Building and running
 
