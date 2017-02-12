@@ -8,6 +8,7 @@ mod most_recent_sink;
 
 // reexports
 pub use color::Color;
+pub use color_frame::ColorFrame;
 pub use anaglyphizer::Anaglyphizer;
 pub use gamma_adjust_sink::GammaAdjustSink;
 pub use most_recent_sink::MostRecentSink;
