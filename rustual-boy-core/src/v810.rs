@@ -411,16 +411,16 @@ impl V810 {
                 OPCODE_BITS_DIV => format_i!(|reg1, reg2| {
                     let lhs = self.reg_gpr(reg2);
                     let rhs = self.reg_gpr(reg1);
-                    let (res, r30, overflow) = if lhs == 0x80000000 && rhs == 0xffffffff {
+                    let (res, rem, overflow) = if lhs == 0x80000000 && rhs == 0xffffffff {
                         (lhs, 0, true)
                     } else {
                         let lhs = lhs as i32;
                         let rhs = rhs as i32;
                         let res = (lhs / rhs) as u32;
-                        let r30 = (lhs % rhs) as u32;
-                        (res, r30, false)
+                        let rem = (lhs % rhs) as u32;
+                        (res, rem, false)
                     };
-                    self.set_reg_gpr(30, r30);
+                    self.set_reg_gpr(30, rem);
                     self.set_reg_gpr(reg2, res);
                     self.set_zero_sign_flags(res);
                     self.psw_overflow = overflow;
@@ -443,8 +443,8 @@ impl V810 {
                     let lhs = self.reg_gpr(reg2);
                     let rhs = self.reg_gpr(reg1);
                     let res = lhs / rhs;
-                    let r30 = lhs % rhs;
-                    self.set_reg_gpr(30, r30);
+                    let rem = lhs % rhs;
+                    self.set_reg_gpr(30, rem);
                     self.set_reg_gpr(reg2, res);
                     self.set_zero_sign_flags(res);
                     self.psw_overflow = false;
