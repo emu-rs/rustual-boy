@@ -19,6 +19,10 @@ impl<T> MostRecentSink<T> {
     pub fn into_inner(self) -> Option<T> {
         self.inner
     }
+
+    pub fn append_to(self, target: &mut Sink<T>) {
+        target.append(self.into_inner().unwrap())
+    }
 }
 
 impl<T> Sink<T> for MostRecentSink<T> {
