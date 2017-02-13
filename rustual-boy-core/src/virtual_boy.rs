@@ -2,18 +2,18 @@ use sinks::*;
 use rom::*;
 use sram::*;
 use interconnect::*;
-use nvc::*;
+use v810::*;
 
 pub struct VirtualBoy {
     pub interconnect: Interconnect,
-    pub cpu: Nvc,
+    pub cpu: V810,
 }
 
 impl VirtualBoy {
     pub fn new(rom: Rom, sram: Sram) -> VirtualBoy {
         VirtualBoy {
             interconnect: Interconnect::new(rom, sram),
-            cpu: Nvc::new(),
+            cpu: V810::new(),
         }
     }
 

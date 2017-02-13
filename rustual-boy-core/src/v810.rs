@@ -106,7 +106,7 @@ impl Cache {
     }
 }
 
-pub struct Nvc {
+pub struct V810 {
     reg_pc: u32,
 
     _reg_gpr: Box<[u32; 32]>,
@@ -137,13 +137,13 @@ pub struct Nvc {
     pub watchpoints: HashSet<u32>,
 }
 
-impl Nvc {
-    pub fn new() -> Nvc {
+impl V810 {
+    pub fn new() -> V810 {
         let mut reg_gpr = Box::new([0xdeadbeef; 32]);
         reg_gpr[0] = 0;
         let reg_gpr_ptr = reg_gpr.as_mut_ptr();
 
-        Nvc {
+        V810 {
             reg_pc: 0xfffffff0,
 
             _reg_gpr: reg_gpr,
