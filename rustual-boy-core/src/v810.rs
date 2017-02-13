@@ -887,7 +887,7 @@ impl V810 {
         let shift = (rhs as usize) & 0x1f;
         for _ in 0..shift {
             carry = (res & 0x80000000) != 0;
-            res = res.wrapping_shl(1);
+            res <<= 1;
         }
         self.set_zero_sign_flags(res);
         self.psw_overflow = false;
@@ -901,7 +901,7 @@ impl V810 {
         let shift = (rhs as usize) & 0x1f;
         for _ in 0..shift {
             carry = (res & 0x00000001) != 0;
-            res = res.wrapping_shr(1);
+            res >>= 1;
         }
         self.set_zero_sign_flags(res);
         self.psw_overflow = false;
@@ -916,7 +916,7 @@ impl V810 {
         for _ in 0..shift {
             let sign = res & 0x80000000;
             carry = (res & 0x00000001) != 0;
-            res = sign | res.wrapping_shr(1);
+            res = sign | (res >> 1);
         }
         self.set_zero_sign_flags(res);
         self.psw_overflow = false;
