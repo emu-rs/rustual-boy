@@ -396,8 +396,8 @@ impl V810 {
                     self.set_reg_gpr(reg2, res);
                 }),
                 OPCODE_BITS_MUL => format_i!(|reg1, reg2| {
-                    let lhs = self.reg_gpr(reg2) as i64;
-                    let rhs = self.reg_gpr(reg1) as i64;
+                    let lhs = (self.reg_gpr(reg2) as i32) as i64;
+                    let rhs = (self.reg_gpr(reg1) as i32) as i64;
                     let res = (lhs * rhs) as u64;
                     let res_low = res as u32;
                     let res_high = (res >> 32) as u32;
