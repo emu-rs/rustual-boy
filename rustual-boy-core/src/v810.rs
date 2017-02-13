@@ -638,7 +638,7 @@ impl V810 {
                     num_cycles = 3;
                 }),
                 OPCODE_BITS_JAL => format_iv!(|target| {
-                    self.set_reg_gpr(31, original_pc.wrapping_add(4));
+                    self.set_reg_gpr(31, next_pc);
                     next_pc = target;
                     num_cycles = 3;
                 }),
