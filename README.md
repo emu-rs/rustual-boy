@@ -1,4 +1,4 @@
-# Rustual Boy [![Build Status](https://travis-ci.org/emu-rs/rustual-boy.svg?branch=master)](https://travis-ci.org/emu-rs/rustual-boy) [![Build status](https://ci.appveyor.com/api/projects/status/ec29vne6uuh7tjtu/branch/master?svg=true)](https://ci.appveyor.com/project/yupferris/rustual-boy/branch/master) [![Compabitility](https://img.shields.io/badge/compatibility-71%25-orange.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility) [![Chat on discord](https://img.shields.io/badge/chat-on%20discord-7289DA.svg)](https://discord.gg/65j9YMA) [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#license)
+# Rustual Boy [![Build Status](https://travis-ci.org/emu-rs/rustual-boy.svg?branch=master)](https://travis-ci.org/emu-rs/rustual-boy) [![Build status](https://ci.appveyor.com/api/projects/status/ec29vne6uuh7tjtu/branch/master?svg=true)](https://ci.appveyor.com/project/yupferris/rustual-boy/branch/master) [![Compabitility](https://img.shields.io/badge/compatibility-76%25-yellow.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility) [![Chat on discord](https://img.shields.io/badge/chat-on%20discord-7289DA.svg)](https://discord.gg/65j9YMA) [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#license)
 
 ![Rustual Boy](media/logo.png)
 
@@ -51,7 +51,7 @@ Games marked 💖 and 💔 are all included in the compatibility metric.
 | Space Squash | N/A | | Game doesn't start; seems to be waiting on an interrupt (see commits [7423524](https://github.com/emu-rs/rustual-boy/commit/74235249a1abfca8d4b3d80e8c3c6b37230679a2) and [0ff9c61](https://github.com/emu-rs/rustual-boy/commit/0ff9c61efb188832680292a11c1a24c5c4f25360) for some investigation) |
 | Teleroboxer | 💖 | 💖 | |
 | V-Tetris | N/A | 💖 | |
-| Vertical Force | | | Enemies/powerups appear/disappear, first boss disappears and the game softlocks |
+| Vertical Force | 💖 | 💖 | |
 | Virtual Bowling | N/A | 💔 | Small graphical glitch in the intro sequence, samples play at the wrong rate |
 | Virtual Boy Wario Land | 💖 | 💖 | |
 | Virtual Fishing | N/A | 💖 | |
