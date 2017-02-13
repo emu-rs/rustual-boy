@@ -294,7 +294,7 @@ impl V810 {
             };
 
             if take_branch {
-                let disp = (((first_halfword as i16) << 7) >> 7) as u32;
+                let disp = ((((first_halfword as i16) << 7) >> 7) as u32) & 0xfffffffe;
                 next_pc = self.reg_pc.wrapping_add(disp);
                 num_cycles = 3;
             }
