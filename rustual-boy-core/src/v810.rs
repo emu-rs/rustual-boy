@@ -490,7 +490,7 @@ impl V810 {
                     self.add(lhs, rhs, reg2);
                 }),
                 OPCODE_BITS_SETF => format_ii!(|imm5, reg2| {
-                    let set = match imm5 & 0xffff {
+                    let set = match imm5 & 0x0f {
                         OPCODE_CONDITION_BITS_V => self.psw_overflow,
                         OPCODE_CONDITION_BITS_C => self.psw_carry,
                         OPCODE_CONDITION_BITS_Z => self.psw_zero,
