@@ -38,7 +38,7 @@ Games marked 💖 and 💔 are all included in the compatibility metric.
 | 3-D Tetris | 💖 | N/A | |
 | Bound High! | 💖 | N/A | ROM is both USA+JP |
 | Galactic Pinball | 💔 | 💔 | Vocal samples throughout the game play at the wrong rate, likely related to CPU clock cycle inaccuracy |
-| Golf | 💔 | 💔 | Game seems to softlock randomly in demo mode, JP version transitions to demo mode WAY too fast |
+| Golf | 💔 | 💔 | Game seems to softlock randomly in demo mode, game transitions to demo mode WAY too fast |
 | Insmouse No Yakata | N/A | 💖 | |
 | Jack Bros. | 💖 | 💖 | |
 | Mario Clash | 💖 | 💖 | |
