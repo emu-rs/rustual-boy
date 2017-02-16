@@ -48,6 +48,7 @@ pub const OPCODE_BITS_HALT: u16 = 0b011010;
 pub const OPCODE_BITS_LDSR: u16 = 0b011100;
 pub const OPCODE_BITS_STSR: u16 = 0b011101;
 pub const OPCODE_BITS_SEI: u16 = 0b011110;
+pub const OPCODE_BITS_BIT_STRING: u16 = 0b011111;
 pub const OPCODE_BITS_MOVEA: u16 = 0b101000;
 pub const OPCODE_BITS_ADD_IMM_16: u16 = 0b101001;
 pub const OPCODE_BITS_JR: u16 = 0b101010;
@@ -69,6 +70,11 @@ pub const OPCODE_BITS_OUTB: u16 = 0b111100;
 pub const OPCODE_BITS_OUTH: u16 = 0b111101;
 pub const OPCODE_BITS_EXTENDED: u16 = 0b111110;
 pub const OPCODE_BITS_OUTW: u16 = 0b111111;
+
+pub const OPCODE_BITS_BIT_STRING_OP_ORBSU: usize = 0b01000;
+pub const OPCODE_BITS_BIT_STRING_OP_ANDBSU: usize = 0b01001;
+pub const OPCODE_BITS_BIT_STRING_OP_MOVBSU: usize = 0b01011;
+pub const OPCODE_BITS_BIT_STRING_OP_ANDNBSU: usize = 0b01101;
 
 pub const OPCODE_BITS_SUB_OP_CMPF_S: u16 = 0b000000;
 pub const OPCODE_BITS_SUB_OP_CVT_WS: u16 = 0b000010;
@@ -139,6 +145,7 @@ pub enum Opcode {
     Ldsr,
     Stsr,
     Sei,
+    BitString,
     Bv,
     Bc,
     Bz,
@@ -233,6 +240,7 @@ impl Opcode {
                 OPCODE_BITS_LDSR => Opcode::Ldsr,
                 OPCODE_BITS_STSR => Opcode::Stsr,
                 OPCODE_BITS_SEI => Opcode::Sei,
+                OPCODE_BITS_BIT_STRING => Opcode::BitString,
                 OPCODE_BITS_MOVEA => Opcode::Movea,
                 OPCODE_BITS_ADD_IMM_16 => Opcode::AddImm16,
                 OPCODE_BITS_JR => Opcode::Jr,
@@ -290,6 +298,7 @@ impl Opcode {
             &Opcode::Ldsr => InstructionFormat::II,
             &Opcode::Stsr => InstructionFormat::II,
             &Opcode::Sei => InstructionFormat::II,
+            &Opcode::BitString => InstructionFormat::II,
             &Opcode::Bv => InstructionFormat::III,
             &Opcode::Bc => InstructionFormat::III,
             &Opcode::Bz => InstructionFormat::III,
@@ -327,6 +336,16 @@ impl Opcode {
             &Opcode::Outh => InstructionFormat::VI,
             &Opcode::Extended => InstructionFormat::VII,
             &Opcode::Outw => InstructionFormat::VI,
+        }
+    }
+
+    pub fn bit_string_op(&self, bit_string_op: usize) -> BitStringOp {
+        match bit_string_op {
+            OPCODE_BITS_BIT_STRING_OP_ORBSU => BitStringOp::Orbsu,
+            OPCODE_BITS_BIT_STRING_OP_ANDBSU => BitStringOp::Andbsu,
+            OPCODE_BITS_BIT_STRING_OP_MOVBSU => BitStringOp::Movbsu,
+            OPCODE_BITS_BIT_STRING_OP_ANDNBSU => BitStringOp::Andnbsu,
+            _ => panic!("Unrecognized bit string op: {:05b}", bit_string_op)
         }
     }
 
@@ -388,6 +407,7 @@ impl fmt::Display for Opcode {
             &Opcode::Ldsr => "ldsr",
             &Opcode::Stsr => "stsr",
             &Opcode::Sei => "sei",
+            &Opcode::BitString => unreachable!(), // TODO: Better pattern
             &Opcode::Bv => "bv",
             &Opcode::Bc => "bc",
             &Opcode::Bz => "bz",
@@ -451,6 +471,25 @@ impl InstructionFormat {
             &InstructionFormat::VI => true,
             &InstructionFormat::VII => true,
         }
+    }
+}
+
+pub enum BitStringOp {
+    Orbsu,
+    Andbsu,
+    Movbsu,
+    Andnbsu,
+}
+
+impl fmt::Display for BitStringOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mnemonic = match self {
+            &BitStringOp::Orbsu => "orbsu",
+            &BitStringOp::Andbsu => "andbsu",
+            &BitStringOp::Movbsu => "movbsu",
+            &BitStringOp::Andnbsu => "andnbsu",
+        };
+        write!(f, "{}", mnemonic)
     }
 }
 

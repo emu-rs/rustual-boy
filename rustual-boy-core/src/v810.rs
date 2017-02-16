@@ -622,6 +622,55 @@ impl V810 {
 
                     num_cycles = 12;
                 }),
+                OPCODE_BITS_BIT_STRING => format_ii!(|imm5, _| {
+                    macro_rules! bsu {
+                        ($f:expr) => ({
+                            let mut src_word_addr = self.reg_gpr(30) & 0xfffffffc;
+                            let mut dst_word_addr = self.reg_gpr(29) & 0xfffffffc;
+                            let mut src_bit_offset = self.reg_gpr(27) & 0x1f;
+                            let mut dst_bit_offset = self.reg_gpr(26) & 0x1f;
+                            let mut num_bits = self.reg_gpr(28);
+
+                            while num_bits > 0 {
+                                let src_word = read_word(interconnect, src_word_addr);
+                                let dst_word = read_word(interconnect, dst_word_addr);
+                                let src_bit = (src_word >> src_bit_offset) & 0x01;
+                                let dst_bit = (dst_word >> dst_bit_offset) & 0x01;
+                                let res_bit = $f(src_bit, dst_bit) & 0x01;
+                                let dst_bit_mask = !(1 << dst_bit_offset);
+                                let res_word = (dst_word & dst_bit_mask) | (res_bit << dst_bit_offset);
+                                write_word(interconnect, dst_word_addr, res_word);
+
+                                src_bit_offset += 1;
+                                if src_bit_offset >= 32 {
+                                    src_bit_offset = 0;
+                                    src_word_addr += 4;
+                                }
+                                dst_bit_offset += 1;
+                                if dst_bit_offset >= 32 {
+                                    dst_bit_offset = 0;
+                                    dst_word_addr += 4;
+                                }
+
+                                num_bits -= 1;
+
+                                self.set_reg_gpr(30, src_word_addr);
+                                self.set_reg_gpr(29, dst_word_addr);
+                                self.set_reg_gpr(27, src_bit_offset);
+                                self.set_reg_gpr(26, dst_bit_offset);
+                                self.set_reg_gpr(28, num_bits);
+                            }
+                        });
+                    }
+
+                    match imm5 {
+                        OPCODE_BITS_BIT_STRING_OP_ORBSU => bsu!(|src_bit: u32, dst_bit: u32| src_bit | dst_bit),
+                        OPCODE_BITS_BIT_STRING_OP_ANDBSU => bsu!(|src_bit: u32, dst_bit: u32| src_bit & dst_bit),
+                        OPCODE_BITS_BIT_STRING_OP_MOVBSU => bsu!(|src_bit: u32, _| src_bit),
+                        OPCODE_BITS_BIT_STRING_OP_ANDNBSU => bsu!(|src_bit: u32, dst_bit: u32| !src_bit & dst_bit),
+                        _ => panic!("Unrecognized bit string op: {:05b}", imm5)
+                    }
+                }),
                 OPCODE_BITS_MOVEA => format_v!(|reg1, reg2, imm16| {
                     let lhs = self.reg_gpr(reg1);
                     let rhs = (imm16 as i16) as u32;
@@ -691,7 +740,7 @@ impl V810 {
                     let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                     let addr = addr & 0xfffffffc;
                     trigger_watchpoint |= self.check_watchpoints(addr);
-                    let value = (interconnect.read_halfword(addr) as u32) | ((interconnect.read_halfword(addr + 2) as u32) << 16);
+                    let value = read_word(interconnect, addr);
                     self.set_reg_gpr(reg2, value);
                     num_cycles = 4;
                 }),
@@ -715,8 +764,7 @@ impl V810 {
                     let addr = addr & 0xfffffffc;
                     trigger_watchpoint |= self.check_watchpoints(addr);
                     let value = self.reg_gpr(reg2);
-                    interconnect.write_halfword(addr, value as _);
-                    interconnect.write_halfword(addr + 2, (value >> 16) as _);
+                    write_word(interconnect, addr, value);
                     num_cycles = 4;
                 }),
                 OPCODE_BITS_INB => format_vi!(|reg1, reg2, disp16| {
@@ -963,4 +1011,14 @@ impl V810 {
 
 fn sign_extend_imm5(imm5: usize) -> u32 {
     (((imm5 as i32) << 27) >> 27) as _
+}
+
+fn read_word(interconnect: &mut Interconnect, addr: u32) -> u32 {
+    (interconnect.read_halfword(addr) as u32) |
+    ((interconnect.read_halfword(addr + 2) as u32) << 16)
+}
+
+fn write_word(interconnect: &mut Interconnect, addr: u32, value: u32) {
+    interconnect.write_halfword(addr, value as _);
+    interconnect.write_halfword(addr + 2, (value >> 16) as _);
 }
