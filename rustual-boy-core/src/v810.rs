@@ -666,8 +666,12 @@ impl V810 {
                     match imm5 {
                         OPCODE_BITS_BIT_STRING_OP_ORBSU => bsu!(|src_bit: u32, dst_bit: u32| src_bit | dst_bit),
                         OPCODE_BITS_BIT_STRING_OP_ANDBSU => bsu!(|src_bit: u32, dst_bit: u32| src_bit & dst_bit),
+                        OPCODE_BITS_BIT_STRING_OP_XORBSU => bsu!(|src_bit: u32, dst_bit: u32| src_bit ^ dst_bit),
                         OPCODE_BITS_BIT_STRING_OP_MOVBSU => bsu!(|src_bit: u32, _| src_bit),
+                        OPCODE_BITS_BIT_STRING_OP_ORNBSU => bsu!(|src_bit: u32, dst_bit: u32| !src_bit | dst_bit),
                         OPCODE_BITS_BIT_STRING_OP_ANDNBSU => bsu!(|src_bit: u32, dst_bit: u32| !src_bit & dst_bit),
+                        OPCODE_BITS_BIT_STRING_OP_XORNBSU => bsu!(|src_bit: u32, dst_bit: u32| !src_bit ^ dst_bit),
+                        OPCODE_BITS_BIT_STRING_OP_NOTBSU => bsu!(|src_bit: u32, _| !src_bit),
                         _ => panic!("Unrecognized bit string op: {:05b}", imm5)
                     }
                 }),

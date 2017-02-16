@@ -73,8 +73,12 @@ pub const OPCODE_BITS_OUTW: u16 = 0b111111;
 
 pub const OPCODE_BITS_BIT_STRING_OP_ORBSU: usize = 0b01000;
 pub const OPCODE_BITS_BIT_STRING_OP_ANDBSU: usize = 0b01001;
+pub const OPCODE_BITS_BIT_STRING_OP_XORBSU: usize = 0b01010;
 pub const OPCODE_BITS_BIT_STRING_OP_MOVBSU: usize = 0b01011;
+pub const OPCODE_BITS_BIT_STRING_OP_ORNBSU: usize = 0b01100;
 pub const OPCODE_BITS_BIT_STRING_OP_ANDNBSU: usize = 0b01101;
+pub const OPCODE_BITS_BIT_STRING_OP_XORNBSU: usize = 0b01110;
+pub const OPCODE_BITS_BIT_STRING_OP_NOTBSU: usize = 0b01111;
 
 pub const OPCODE_BITS_SUB_OP_CMPF_S: u16 = 0b000000;
 pub const OPCODE_BITS_SUB_OP_CVT_WS: u16 = 0b000010;
@@ -343,8 +347,12 @@ impl Opcode {
         match bit_string_op {
             OPCODE_BITS_BIT_STRING_OP_ORBSU => BitStringOp::Orbsu,
             OPCODE_BITS_BIT_STRING_OP_ANDBSU => BitStringOp::Andbsu,
+            OPCODE_BITS_BIT_STRING_OP_XORBSU => BitStringOp::Xorbsu,
             OPCODE_BITS_BIT_STRING_OP_MOVBSU => BitStringOp::Movbsu,
+            OPCODE_BITS_BIT_STRING_OP_ORNBSU => BitStringOp::Ornbsu,
             OPCODE_BITS_BIT_STRING_OP_ANDNBSU => BitStringOp::Andnbsu,
+            OPCODE_BITS_BIT_STRING_OP_XORNBSU => BitStringOp::Xornbsu,
+            OPCODE_BITS_BIT_STRING_OP_NOTBSU => BitStringOp::Notbsu,
             _ => panic!("Unrecognized bit string op: {:05b}", bit_string_op)
         }
     }
@@ -477,8 +485,12 @@ impl InstructionFormat {
 pub enum BitStringOp {
     Orbsu,
     Andbsu,
+    Xorbsu,
     Movbsu,
+    Ornbsu,
     Andnbsu,
+    Xornbsu,
+    Notbsu,
 }
 
 impl fmt::Display for BitStringOp {
@@ -486,8 +498,12 @@ impl fmt::Display for BitStringOp {
         let mnemonic = match self {
             &BitStringOp::Orbsu => "orbsu",
             &BitStringOp::Andbsu => "andbsu",
+            &BitStringOp::Xorbsu => "xorbsu",
             &BitStringOp::Movbsu => "movbsu",
+            &BitStringOp::Ornbsu => "ornbsu",
             &BitStringOp::Andnbsu => "andnbsu",
+            &BitStringOp::Xornbsu => "xornbsu",
+            &BitStringOp::Notbsu => "notbsu",
         };
         write!(f, "{}", mnemonic)
     }
