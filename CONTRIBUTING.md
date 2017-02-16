@@ -12,9 +12,13 @@ If you're interested in contributing in any way, shape, or form, feel free to [j
 
 ## Improvement areas/ideas
 
-Most of the core emulation/known game compatibility for Rustual Boy is nearing completion, but that doesn't mean the project is finished by any means! There are many areas where Rustual Boy can improve:
+Most of the core emulation/known game compatibility for Rustual Boy is nearing completion, but that doesn't mean the project is finished by any means! There are many areas where Rustual Boy can improve.
 
-**Accuracy**: Even though the emulator is capable of playing most commercial games (to our knowledge), that doesn't mean every nook and cranny of the Virtual Boy hardware is emulated, and it doesn't mean we've got all the details nailed down. For example, the CPU has a pipeline that we haven't even bothered with yet. Its floating point operations don't always take the same amount of cycles. And many of the hardware details of the virtual boy are completely unknown/unexplored! We're always super pumped to improve our collective understanding of this hardware oddity.
+For a great place to start, check out our [road to 1.0 ticket](https://github.com/emu-rs/rustual-boy/issues/22)!
+
+Some other general areas include:
+
+**Accuracy**: Even though the emulator is capable of playing most commercial games (to our knowledge), that doesn't mean every nook and cranny of the Virtual Boy hardware is emulated, and it doesn't mean we've got all the details nailed down. For example, the CPU has a pipeline that we haven't even bothered with yet. Its floating point and bit string operations don't always take the same amount of cycles. And many of the hardware details of the virtual boy are completely unknown/unexplored! We're always super pumped to improve our collective understanding of this hardware oddity.
 
 **User interface**: Currently, Rustual Boy expects a ROM as its first command line arg. That's it! No further options, nothing. Ideally, we'd have both an improved CLI and a GUI would be ideal. This could obviously use a bit of TLC!
 
