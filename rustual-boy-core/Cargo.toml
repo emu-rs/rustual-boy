@@ -16,6 +16,7 @@ log-vip = []
 log-vsu = []
 log-other = []
 log-all = ["log-cpu", "log-gamepad", "log-ic", "log-vip", "log-vsu", "log-other"]
+cpu-trace = []
 
 [dependencies]
 encoding = "0.2"

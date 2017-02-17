@@ -17,6 +17,7 @@ log-core-vip = ["rustual-boy-core/log-vip"]
 log-core-vsu = ["rustual-boy-core/log-vsu"]
 log-core-other = ["rustual-boy-core/log-other"]
 log-core-all = ["rustual-boy-core/log-all"]
+cpu-trace = ["rustual-boy-core/cpu-trace"]
 
 [dependencies]
 encoding = "0.2"
