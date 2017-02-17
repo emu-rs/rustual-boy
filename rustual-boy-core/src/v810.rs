@@ -653,13 +653,13 @@ impl V810 {
                                 }
 
                                 num_bits -= 1;
-
-                                self.set_reg_gpr(30, src_word_addr);
-                                self.set_reg_gpr(29, dst_word_addr);
-                                self.set_reg_gpr(27, src_bit_offset);
-                                self.set_reg_gpr(26, dst_bit_offset);
-                                self.set_reg_gpr(28, num_bits);
                             }
+
+                            self.set_reg_gpr(30, src_word_addr);
+                            self.set_reg_gpr(29, dst_word_addr);
+                            self.set_reg_gpr(27, src_bit_offset);
+                            self.set_reg_gpr(26, dst_bit_offset);
+                            self.set_reg_gpr(28, num_bits);
                         });
                     }
 
