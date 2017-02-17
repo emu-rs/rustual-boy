@@ -120,7 +120,7 @@ impl Emulator {
                 Mode::Running => {
                     let mut start_debugger = false;
 
-                    while self.emulated_cycles < target_emulated_cycles {
+                    while self.emulated_cycles < target_emulated_cycles && !start_debugger {
                         let (_, trigger_watchpoint) = self.step(&mut video_frame_sink, &mut audio_frame_sink);
                         if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
                             start_debugger = true;
