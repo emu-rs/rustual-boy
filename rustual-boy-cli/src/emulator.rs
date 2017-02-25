@@ -408,7 +408,10 @@ impl Emulator {
 
                 let disp16 = second_halfword as i16;
 
-                println!("{} {}[r{}], r{}", opcode, disp16, reg1, reg2);
+                match opcode {
+                    Opcode::Stb | Opcode::Sth | Opcode::Stw | Opcode::Outb | Opcode::Outh | Opcode::Outw => println!("{} r{}, {}[r{}]", opcode, reg2, disp16, reg1),
+                    _ => println!("{} {}[r{}], r{}", opcode, disp16, reg1, reg2),
+                }
             }
             InstructionFormat::VII => {
                 let reg1 = (first_halfword & 0x1f) as usize;
