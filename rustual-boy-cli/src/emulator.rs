@@ -378,7 +378,8 @@ impl Emulator {
                         println!("{}", bit_string_op);
                     }
                     Opcode::Cli | Opcode::Reti | Opcode::Halt | Opcode::Sei => println!("{}", opcode),
-                    Opcode::Ldsr | Opcode::Stsr => println!("{} r{}, {}", opcode, reg2, opcode.system_register(imm5)),
+                    Opcode::Ldsr => println!("{} r{}, {}", opcode, reg2, opcode.system_register(imm5)),
+                    Opcode::Stsr => println!("{} {}, r{}", opcode, opcode.system_register(imm5), reg2),
                     _ => println!("{} {}, r{}", opcode, imm5, reg2)
                 }
             }
