@@ -15,6 +15,7 @@ pub struct Timer {
     zero_status: bool,
     enable: bool,
     reload: u16,
+    reload_pending: bool,
     counter: u16,
 
     tick_counter: usize,
@@ -28,7 +29,8 @@ impl Timer {
             zero_interrupt_enable: false,
             zero_status: false,
             enable: false,
-            reload: 0,
+            reload: 0xffff,
+            reload_pending: false,
             counter: 0,
 
             tick_counter: 0,
@@ -53,13 +55,18 @@ impl Timer {
             Interval::Small
         };
         self.zero_interrupt_enable = ((value >> 3) & 0x01) != 0;
-        if ((value >> 2) & 0x01) != 0 {
+        if ((value >> 2) & 0x01) != 0/* && self.counter != 0*/ {
             self.zero_status = false;
         }
         if !self.zero_interrupt_enable || !self.zero_status {
             self.zero_interrupt = false;
         }
+
+        let previous_enable = self.enable;
         self.enable = (value & 0x01) != 0;
+        if !previous_enable && self.enable {
+            self.tick_counter = 250;
+        }
     }
 
     pub fn read_counter_reload_low_reg(&self) -> u8 {
@@ -68,7 +75,7 @@ impl Timer {
 
     pub fn write_counter_reload_low_reg(&mut self, value: u8) {
         self.reload = (self.reload & 0xff00) | (value as u16);
-        self.counter = self.reload;
+        self.reload_pending = true;
     }
 
     pub fn read_counter_reload_high_reg(&self) -> u8 {
@@ -77,7 +84,7 @@ impl Timer {
 
     pub fn write_counter_reload_high_reg(&mut self, value: u8) {
         self.reload = ((value as u16) << 8) | (self.reload & 0xff);
-        self.counter = self.reload;
+        self.reload_pending = true;
     }
 
     pub fn cycles(&mut self, cycles: usize) -> bool {
@@ -91,16 +98,19 @@ impl Timer {
                 if self.tick_counter >= tick_period {
                     self.tick_counter = 0;
 
-                    self.counter = match self.counter {
-                        0 => {
-                            self.zero_status = true;
-                            if self.zero_interrupt_enable {
-                                self.zero_interrupt = true;
-                            }
-                            self.reload
-                        }
-                        _ => self.counter - 1
+                    self.counter = if self.reload_pending || self.counter == 0 {
+                        self.reload_pending = false;
+
+                        self.reload
+                    } else {
+                        self.counter - 1
                     };
+
+                    self.zero_status = self.counter == 0;
+
+                    if self.zero_status && self.zero_interrupt_enable {
+                        self.zero_interrupt = true;
+                    }
                 }
             }
         }
