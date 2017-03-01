@@ -993,15 +993,24 @@ impl V810 {
             return;
         }
 
-        self.enter_exception(exception_code);
+        let interrupt_level = (exception_code as usize >> 4) & 0x0f;
+        if interrupt_level < self.psw_interrupt_mask_level {
+            return;
+        }
+
+        self.enter_exception(exception_code, interrupt_level);
     }
 
-    fn enter_exception(&mut self, exception_code: u16) {
+    fn enter_exception(&mut self, exception_code: u16, mut interrupt_level: usize) {
         logln!(Log::Cpu, "Entering exception (code: 0x{:04x})", exception_code);
+        if interrupt_level < 15 {
+            interrupt_level += 1;
+        }
         self.reg_eipc = self.reg_pc;
         self.reg_eipsw = self.reg_psw();
         self.reg_ecr = exception_code;
         self.psw_exception_pending = true;
+        self.psw_interrupt_mask_level = interrupt_level;
         self.reg_pc = 0xffff0000 | (exception_code as u32);
     }
 
