@@ -1,5 +1,8 @@
 mod mem_map;
 
+use std::io::{self, Write, BufWriter};
+use std::fs::File;
+
 use sinks::*;
 
 use self::mem_map::*;
@@ -498,6 +501,8 @@ pub struct Vsu {
     sweep_mod_clock_counter: usize,
     noise_clock_counter: usize,
     sample_clock_counter: usize,
+
+    dump_data: Vec<u8>,
 }
 
 impl Vsu {
@@ -519,6 +524,8 @@ impl Vsu {
             sweep_mod_clock_counter: 0,
             noise_clock_counter: 0,
             sample_clock_counter: 0,
+
+            dump_data: Vec::new(),
         }
     }
 
@@ -529,6 +536,8 @@ impl Vsu {
     }
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
+        println!("VSU write byte: 0x{:08x} <- 0x{:02x}", addr, value);
+
         match addr {
             PCM_WAVE_TABLE_0_START ... PCM_WAVE_TABLE_0_END => {
                 if !self.are_channels_active() {
@@ -561,35 +570,50 @@ impl Vsu {
                 }
             }
             VOICE_1_PLAY_CONTROL => self.voice1.write_play_control_reg(value),
-            VOICE_1_VOLUME => self.voice1.write_volume_reg(value),
+            VOICE_1_VOLUME => {
+                self.voice1.write_volume_reg(value);
+                //self.dump_data.push(value);
+            }
             VOICE_1_FREQUENCY_LOW => self.voice1.write_frequency_low_reg(value),
             VOICE_1_FREQUENCY_HIGH => self.voice1.write_frequency_high_reg(value),
             VOICE_1_ENVELOPE_DATA => self.voice1.write_envelope_data_reg(value),
             VOICE_1_ENVELOPE_CONTROL => self.voice1.write_envelope_control_reg(value),
             VOICE_1_PCM_WAVE => self.voice1.write_pcm_wave_reg(value),
             VOICE_2_PLAY_CONTROL => self.voice2.write_play_control_reg(value),
-            VOICE_2_VOLUME => self.voice2.write_volume_reg(value),
+            VOICE_2_VOLUME => {
+                self.voice2.write_volume_reg(value);
+                //self.dump_data.push(value);
+            }
             VOICE_2_FREQUENCY_LOW => self.voice2.write_frequency_low_reg(value),
             VOICE_2_FREQUENCY_HIGH => self.voice2.write_frequency_high_reg(value),
             VOICE_2_ENVELOPE_DATA => self.voice2.write_envelope_data_reg(value),
             VOICE_2_ENVELOPE_CONTROL => self.voice2.write_envelope_control_reg(value),
             VOICE_2_PCM_WAVE => self.voice2.write_pcm_wave_reg(value),
             VOICE_3_PLAY_CONTROL => self.voice3.write_play_control_reg(value),
-            VOICE_3_VOLUME => self.voice3.write_volume_reg(value),
+            VOICE_3_VOLUME => {
+                self.voice3.write_volume_reg(value);
+                //self.dump_data.push(value);
+            }
             VOICE_3_FREQUENCY_LOW => self.voice3.write_frequency_low_reg(value),
             VOICE_3_FREQUENCY_HIGH => self.voice3.write_frequency_high_reg(value),
             VOICE_3_ENVELOPE_DATA => self.voice3.write_envelope_data_reg(value),
             VOICE_3_ENVELOPE_CONTROL => self.voice3.write_envelope_control_reg(value),
             VOICE_3_PCM_WAVE => self.voice3.write_pcm_wave_reg(value),
             VOICE_4_PLAY_CONTROL => self.voice4.write_play_control_reg(value),
-            VOICE_4_VOLUME => self.voice4.write_volume_reg(value),
+            VOICE_4_VOLUME => {
+                self.voice4.write_volume_reg(value);
+                //self.dump_data.push(value);
+            }
             VOICE_4_FREQUENCY_LOW => self.voice4.write_frequency_low_reg(value),
             VOICE_4_FREQUENCY_HIGH => self.voice4.write_frequency_high_reg(value),
             VOICE_4_ENVELOPE_DATA => self.voice4.write_envelope_data_reg(value),
             VOICE_4_ENVELOPE_CONTROL => self.voice4.write_envelope_control_reg(value),
             VOICE_4_PCM_WAVE => self.voice4.write_pcm_wave_reg(value),
             VOICE_5_PLAY_CONTROL => self.voice5.write_play_control_reg(value),
-            VOICE_5_VOLUME => self.voice5.write_volume_reg(value),
+            VOICE_5_VOLUME => {
+                self.voice5.write_volume_reg(value);
+                self.dump_data.push(value);
+            }
             VOICE_5_FREQUENCY_LOW => self.voice5.write_frequency_low_reg(value),
             VOICE_5_FREQUENCY_HIGH => self.voice5.write_frequency_high_reg(value),
             VOICE_5_ENVELOPE_DATA => self.voice5.write_envelope_data_reg(value),
@@ -743,4 +767,70 @@ impl Vsu {
         self.voice5.reg_play_control.enable ||
         self.voice6.reg_play_control.enable
     }
+}
+
+impl Drop for Vsu {
+    fn drop(&mut self) {
+        let output_file_name = "tesoft-5.wav";
+
+        let file = File::create(output_file_name).unwrap();
+        let mut writer = BufWriter::new(file);
+
+        let sample_rate = 8333;
+
+        let num_frames = self.dump_data.len();
+
+        const NUM_CHANNELS: usize = 1;
+        const BITS_PER_SAMPLE: usize = 16;
+
+        let data_chunk_size = num_frames * NUM_CHANNELS * BITS_PER_SAMPLE / 8;
+
+        // RIFF header
+        write_str(&mut writer, "RIFF").unwrap();
+        write_u32(&mut writer, (data_chunk_size + 36) as _).unwrap();
+        write_str(&mut writer, "WAVE").unwrap();
+
+        // Format sub-chunk
+        write_str(&mut writer, "fmt ").unwrap();
+        write_u32(&mut writer, 16).unwrap();
+        write_u16(&mut writer, 1).unwrap(); // WAVE_FORMAT_PCM
+        write_u16(&mut writer, NUM_CHANNELS as _).unwrap();
+        write_u32(&mut writer, sample_rate as _).unwrap();
+        write_u32(&mut writer, (sample_rate * NUM_CHANNELS * BITS_PER_SAMPLE / 8) as _).unwrap();
+        write_u16(&mut writer, (NUM_CHANNELS * BITS_PER_SAMPLE / 8) as _).unwrap();
+        write_u16(&mut writer, BITS_PER_SAMPLE as _).unwrap();
+
+        // Data sub-chunk
+        write_str(&mut writer, "data").unwrap();
+        write_u32(&mut writer, data_chunk_size as _).unwrap(); 
+
+        for byte in self.dump_data.clone() {
+            let sample = ((byte as u16) & 0x0f) << 11;
+            write_u16(&mut writer, sample as _).unwrap();
+        }
+
+        println!("Hello, world!");
+    }
+}
+
+fn write_str<B: Write>(writer: &mut BufWriter<B>, value: &str) -> io::Result<()> {
+    writer.write_all(value.as_bytes())?;
+
+    Ok(())
+}
+
+fn write_u16<B: Write>(writer: &mut BufWriter<B>, value: u16) -> io::Result<()> {
+    let buf = [value as u8, (value >> 8) as u8];
+
+    writer.write_all(&buf)?;
+
+    Ok(())
+}
+
+fn write_u32<B: Write>(writer: &mut BufWriter<B>, value: u32) -> io::Result<()> {
+    let buf = [value as u8, (value >> 8) as u8, (value >> 16) as u8, (value >> 24) as u8];
+
+    writer.write_all(&buf)?;
+
+    Ok(())
 }

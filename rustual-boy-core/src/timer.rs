@@ -49,6 +49,8 @@ impl Timer {
     }
 
     pub fn write_control_reg(&mut self, value: u8) {
+        println!("Timer control reg written: 0x{:02x}", value);
+
         self.interval = if ((value >> 4) & 0x01) == 0 {
             Interval::Large
         } else {
@@ -101,6 +103,8 @@ impl Timer {
                     self.counter = if self.reload_pending || self.counter == 0 {
                         self.reload_pending = false;
 
+                        println!("Timer reload: {}", self.reload);
+
                         self.reload
                     } else {
                         self.counter - 1
@@ -109,6 +113,8 @@ impl Timer {
                     self.zero_status = self.counter == 0;
 
                     if self.zero_status && self.zero_interrupt_enable {
+                        println!("Timer interrupt fire");
+
                         self.zero_interrupt = true;
                     }
                 }
