@@ -132,6 +132,8 @@ pub struct V810 {
     psw_nmi_pending: bool,
     psw_interrupt_mask_level: usize,
 
+    is_halted: bool,
+
     pub cache: Cache,
 
     pub watchpoints: HashSet<u32>,
@@ -168,6 +170,8 @@ impl V810 {
             psw_exception_pending: false,
             psw_nmi_pending: true,
             psw_interrupt_mask_level: 0,
+
+            is_halted: false,
 
             cache: Cache::new(),
 
@@ -263,6 +267,10 @@ impl V810 {
     }
 
     pub fn step(&mut self, interconnect: &mut Interconnect) -> (usize, bool) {
+        if self.is_halted {
+            return (1, false);
+        }
+
         let original_pc = self.reg_pc;
 
         let (first_halfword, _) = self.cache.read_halfword(interconnect, original_pc);
@@ -545,6 +553,7 @@ impl V810 {
                 }),
                 OPCODE_BITS_HALT => format_ii!(|_, _| {
                     next_pc = original_pc;
+                    self.is_halted = true;
                 }),
                 OPCODE_BITS_LDSR => format_ii!(|imm5, reg2| {
                     let value = self.reg_gpr(reg2);
@@ -1007,6 +1016,10 @@ impl V810 {
             interrupt_level += 1;
         }
         self.reg_eipc = self.reg_pc;
+        if self.is_halted {
+            self.reg_eipc = self.reg_eipc.wrapping_add(2);
+            self.is_halted = false;
+        }
         self.reg_eipsw = self.reg_psw();
         self.reg_ecr = exception_code;
         self.psw_exception_pending = true;
