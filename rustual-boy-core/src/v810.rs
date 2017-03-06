@@ -4,6 +4,22 @@ use interconnect::*;
 use std::collections::HashSet;
 use std::fmt;
 
+#[derive(Clone,Copy)]
+pub enum TraceEntry {
+    Disp16(i16),
+    Disp32(u32),
+    Exec(usize),
+    Gpr(usize, u32),
+    Imm5(usize),
+    Imm16(u16),
+    MemByte(u32, u8),
+    MemHalfword(u32, u16),
+    MemWord(u32, u32),
+    Pc(u32),
+    Psw(u32),
+    SysReg(usize, u32),
+}
+
 #[derive(Copy, Clone, Default)]
 pub struct CacheEntry {
     pub tag: u32,
@@ -136,6 +152,9 @@ pub struct V810 {
 
     pub cache: Cache,
 
+    trace_enabled: bool,
+    pub trace_entries: Vec<TraceEntry>,
+
     pub watchpoints: HashSet<u32>,
 }
 
@@ -175,8 +194,19 @@ impl V810 {
 
             cache: Cache::new(),
 
+            trace_enabled: false,
+            trace_entries: Vec::new(),
+
             watchpoints: HashSet::new(),
         }
+    }
+
+    pub fn set_trace_enabled(&mut self, enable: bool) {
+        self.trace_enabled = enable;
+    }
+
+    pub fn is_trace_enabled(&self) -> bool {
+        self.trace_enabled
     }
 
     pub fn reg_pc(&self) -> u32 {
@@ -215,6 +245,34 @@ impl V810 {
                 let reg_float_ptr = reg_ptr as *mut f32;
                 *reg_float_ptr = value;
             }
+        }
+    }
+
+    pub fn reg_chcw(&self) -> u32 {
+        match self.cache.is_enabled() {
+            true => 2,
+            false => 0,
+        }
+    }
+
+    fn set_reg_chcw(&mut self, value: u32) {
+        let enable = (value >> 1) & 0x01 == 1;
+        if enable != self.cache.is_enabled() {
+            logln!(Log::Cpu, "chcw cache enable changed to {}", enable);
+            self.cache.set_is_enabled(enable);
+        }
+
+        if value & 0x01 == 1 {
+            let entry_count = ((value >> 8) & 0x7ffff) as usize;
+            let entry_start = (value >> 20) as usize;
+            logln!(Log::Cpu, "chcw request to clear cache for start entry: {}, entry count: {}", entry_start, entry_count);
+            self.cache.clear_entries(entry_start, entry_count);
+        } else if (value >> 4) & 0x01 == 1 {
+            let addr = value & 0xffffff00;
+            logln!(Log::Cpu, "WARNING: chcw request to dump instruction cache to 0x{:08x} not implemented yet", addr);
+        } else if (value >> 5) & 0x01 == 1 {
+            let addr = value & 0xffffff00;
+            logln!(Log::Cpu, "WARNING: chcw request to restore instruction cache from 0x{:08x} not implemented yet", addr);
         }
     }
 
@@ -273,6 +331,26 @@ impl V810 {
 
         let original_pc = self.reg_pc;
 
+        #[cfg(not(feature = "cpu-trace"))]
+        macro_rules! trace_add {
+            ($($arg:expr),*) => {};
+        }
+
+        #[cfg(feature = "cpu-trace")]
+        macro_rules! trace_add {
+            ($te:expr) => {
+                if self.trace_enabled {
+                    let trace_entry = $te;
+                    self.trace_entries.push(trace_entry);
+                }
+            };
+        }
+
+        #[cfg(feature = "cpu-trace")]
+        self.trace_entries.clear();
+        trace_add!(TraceEntry::Pc(self.reg_pc()));
+        trace_add!(TraceEntry::Psw(self.reg_psw()));
+
         let (first_halfword, _) = self.cache.read_halfword(interconnect, original_pc);
         let mut next_pc = original_pc.wrapping_add(2);
 
@@ -312,6 +390,9 @@ impl V810 {
                     let reg1 = (first_halfword & 0x1f) as usize;
                     let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
 
+                    trace_add!(TraceEntry::Gpr(reg1, self.reg_gpr(reg1)));
+                    trace_add!(TraceEntry::Gpr(reg2, self.reg_gpr(reg2)));
+
                     $f(reg1, reg2);
                 });
             }
@@ -320,6 +401,10 @@ impl V810 {
                 ($f:expr) => ({
                     let imm5 = (first_halfword & 0x1f) as usize;
                     let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+
+                    trace_add!(TraceEntry::Imm5(imm5));
+                    trace_add!(TraceEntry::Gpr(reg2, self.reg_gpr(reg2)));
+
                     $f(imm5, reg2);
                 })
             }
@@ -331,6 +416,9 @@ impl V810 {
 
                     let disp = ((((((first_halfword as i16) << 6) >> 6) as u32) << 16) | (second_halfword as u32)) & 0xfffffffe;
                     let target = self.reg_pc.wrapping_add(disp);
+
+                    trace_add!(TraceEntry::Disp32(disp));
+
                     $f(target);
                 })
             }
@@ -343,6 +431,11 @@ impl V810 {
                     let reg1 = (first_halfword & 0x1f) as usize;
                     let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
                     let imm16 = second_halfword;
+
+                    trace_add!(TraceEntry::Gpr(reg1, self.reg_gpr(reg1)));
+                    trace_add!(TraceEntry::Gpr(reg2, self.reg_gpr(reg2)));
+                    trace_add!(TraceEntry::Imm16(imm16));
+
                     $f(reg1, reg2, imm16);
                 })
             }
@@ -355,6 +448,11 @@ impl V810 {
                     let reg1 = (first_halfword & 0x1f) as usize;
                     let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
                     let disp16 = second_halfword as i16;
+
+                    trace_add!(TraceEntry::Gpr(reg1, self.reg_gpr(reg1)));
+                    trace_add!(TraceEntry::Gpr(reg2, self.reg_gpr(reg2)));
+                    trace_add!(TraceEntry::Disp16(disp16));
+
                     $f(reg1, reg2, disp16);
                 })
             }
@@ -557,45 +655,41 @@ impl V810 {
                 }),
                 OPCODE_BITS_LDSR => format_ii!(|imm5, reg2| {
                     let value = self.reg_gpr(reg2);
+
                     match imm5 {
                         OPCODE_SYSTEM_REGISTER_ID_EIPC => {
+                            trace_add!(TraceEntry::SysReg(imm5, self.reg_eipc));
                             self.reg_eipc = value;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_EIPSW => {
+                            trace_add!(TraceEntry::SysReg(imm5, self.reg_eipsw));
                             self.reg_eipsw = value;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_FEPC => {
+                            trace_add!(TraceEntry::SysReg(imm5, 0));
                             logln!(Log::Cpu, "WARNING: ldsr fepc not yet implemented (value: 0x{:08x})", value);
                         }
                         OPCODE_SYSTEM_REGISTER_ID_FEPSW => {
+                            trace_add!(TraceEntry::SysReg(imm5, 0));
                             logln!(Log::Cpu, "WARNING: ldsr fepsw not yet implemented (value: 0x{:08x})", value);
                         }
                         OPCODE_SYSTEM_REGISTER_ID_ECR => {
+                            trace_add!(TraceEntry::SysReg(imm5, self.reg_ecr as u32));
                             self.reg_ecr = value as _;
                         }
-                        OPCODE_SYSTEM_REGISTER_ID_PSW => self.set_reg_psw(value),
-                        OPCODE_SYSTEM_REGISTER_ID_CHCW => {
-                            logln!(Log::Cpu, "WARNING: ldsr chcw not fully implemented (value: 0x{:08x})", value);
-                            let enable = (value >> 1) & 0x01 == 1;
-                            if enable != self.cache.is_enabled() {
-                                logln!(Log::Cpu, "ldsr chcw cache enable changed to {}", enable);
-                                self.cache.set_is_enabled(enable);
-                            }
-
-                            if value & 0x01 == 1 {
-                                let entry_count = ((value >> 8) & 0x7ffff) as usize;
-                                let entry_start = (value >> 20) as usize;
-                                logln!(Log::Cpu, "ldsr chcw request to clear cache for start entry: {}, entry count: {}", entry_start, entry_count);
-                                self.cache.clear_entries(entry_start, entry_count);
-                            } else if (value >> 4) & 0x01 == 1 {
-                                let addr = value & 0xffffff00;
-                                logln!(Log::Cpu, "WARNING: ldsr chcw request to dump instruction cache to 0x{:08x} not implemented yet", addr);
-                            } else if (value >> 5) & 0x01 == 1 {
-                                let addr = value & 0xffffff00;
-                                logln!(Log::Cpu, "WARNING: ldsr chcw request to restore instruction cache from 0x{:08x} not implemented yet", addr);
-                            }
+                        OPCODE_SYSTEM_REGISTER_ID_PSW => {
+                            trace_add!(TraceEntry::SysReg(imm5, self.reg_psw()));
+                            self.set_reg_psw(value);
                         }
-                        _ => logln!(Log::Cpu, "WARNING: Unrecognized system register: {}", imm5),
+                        OPCODE_SYSTEM_REGISTER_ID_CHCW => {
+                            trace_add!(TraceEntry::SysReg(imm5, self.reg_chcw()));
+                            self.set_reg_chcw(value);
+                            logln!(Log::Cpu, "WARNING: ldsr chcw not fully implemented (value: 0x{:08x})", value);
+                        }
+                        _ => {
+                             trace_add!(TraceEntry::SysReg(imm5, 0));
+                             logln!(Log::Cpu, "WARNING: Unrecognized system register: {}", imm5)
+                        }
                     }
                 }),
                 OPCODE_BITS_STSR => format_ii!(|imm5, reg2| {
@@ -614,16 +708,16 @@ impl V810 {
                         OPCODE_SYSTEM_REGISTER_ID_PSW => self.reg_psw(),
                         OPCODE_SYSTEM_REGISTER_ID_CHCW => {
                             logln!(Log::Cpu, "WARNING: stsr chcw not fully implemented");
-                            match self.cache.is_enabled() {
-                                true => 2,
-                                false => 0,
-                            }
+                            self.reg_chcw()
                         }
                         _ => {
                             logln!(Log::Cpu, "WARNING: Unrecognized system register: {}", imm5);
                             0
                         }
                     };
+
+                    trace_add!(TraceEntry::SysReg(imm5, value));
+
                     self.set_reg_gpr(reg2, value);
                 }),
                 OPCODE_BITS_SEI => format_ii!(|_, _| {
@@ -640,9 +734,19 @@ impl V810 {
                             let mut dst_bit_offset = self.reg_gpr(26) & 0x1f;
                             let mut num_bits = self.reg_gpr(28);
 
+                            trace_add!(TraceEntry::Gpr(26, self.reg_gpr(26)));
+                            trace_add!(TraceEntry::Gpr(27, self.reg_gpr(27)));
+                            trace_add!(TraceEntry::Gpr(28, self.reg_gpr(28)));
+                            trace_add!(TraceEntry::Gpr(29, self.reg_gpr(29)));
+                            trace_add!(TraceEntry::Gpr(30, self.reg_gpr(30)));
+
                             while num_bits > 0 {
                                 let src_word = read_word(interconnect, src_word_addr);
                                 let dst_word = read_word(interconnect, dst_word_addr);
+
+                                trace_add!(TraceEntry::MemWord(src_word_addr, src_word));
+                                trace_add!(TraceEntry::MemWord(dst_word_addr, dst_word));
+
                                 let src_bit = (src_word >> src_bit_offset) & 0x01;
                                 let dst_bit = (dst_word >> dst_bit_offset) & 0x01;
                                 let res_bit = $f(src_bit, dst_bit) & 0x01;
@@ -738,6 +842,9 @@ impl V810 {
                     let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                     trigger_watchpoint |= self.check_watchpoints(addr);
                     let value = (interconnect.read_byte(addr) as i8) as u32;
+
+                    trace_add!(TraceEntry::MemByte(addr, interconnect.read_byte(addr)));
+
                     self.set_reg_gpr(reg2, value);
                     num_cycles = 4;
                 }),
@@ -746,6 +853,9 @@ impl V810 {
                     let addr = addr & 0xfffffffe;
                     trigger_watchpoint |= self.check_watchpoints(addr);
                     let value = (interconnect.read_halfword(addr) as i16) as u32;
+
+                    trace_add!(TraceEntry::MemHalfword(addr, interconnect.read_halfword(addr)));
+
                     self.set_reg_gpr(reg2, value);
                     num_cycles = 4;
                 }),
@@ -754,12 +864,18 @@ impl V810 {
                     let addr = addr & 0xfffffffc;
                     trigger_watchpoint |= self.check_watchpoints(addr);
                     let value = read_word(interconnect, addr);
+
+                    trace_add!(TraceEntry::MemWord(addr, value));
+
                     self.set_reg_gpr(reg2, value);
                     num_cycles = 4;
                 }),
                 OPCODE_BITS_STB | OPCODE_BITS_OUTB => format_vi!(|reg1, reg2, disp16| {
                     let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                     trigger_watchpoint |= self.check_watchpoints(addr);
+
+                    trace_add!(TraceEntry::MemByte(addr, interconnect.read_byte(addr)));
+
                     let value = self.reg_gpr(reg2) as u8;
                     interconnect.write_byte(addr, value);
                     num_cycles = 4;
@@ -768,6 +884,9 @@ impl V810 {
                     let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                     let addr = addr & 0xfffffffe;
                     trigger_watchpoint |= self.check_watchpoints(addr);
+
+                    trace_add!(TraceEntry::MemHalfword(addr, interconnect.read_halfword(addr)));
+
                     let value = self.reg_gpr(reg2) as u16;
                     interconnect.write_halfword(addr, value);
                     num_cycles = 4;
@@ -776,6 +895,9 @@ impl V810 {
                     let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                     let addr = addr & 0xfffffffc;
                     trigger_watchpoint |= self.check_watchpoints(addr);
+
+                    trace_add!(TraceEntry::MemWord(addr, read_word(interconnect, addr)));
+
                     let value = self.reg_gpr(reg2);
                     write_word(interconnect, addr, value);
                     num_cycles = 4;
@@ -784,6 +906,9 @@ impl V810 {
                     let addr = self.reg_gpr(reg1).wrapping_add(disp16 as u32);
                     trigger_watchpoint |= self.check_watchpoints(addr);
                     let value = interconnect.read_byte(addr) as u32;
+
+                    trace_add!(TraceEntry::MemByte(addr, interconnect.read_byte(addr)));
+
                     self.set_reg_gpr(reg2, value);
                     num_cycles = 4;
                 }),
@@ -792,6 +917,9 @@ impl V810 {
                     let addr = addr & 0xfffffffe;
                     trigger_watchpoint |= self.check_watchpoints(addr);
                     let value = interconnect.read_halfword(addr) as u32;
+
+                    trace_add!(TraceEntry::MemHalfword(addr, interconnect.read_halfword(addr)));
+
                     self.set_reg_gpr(reg2, value);
                     num_cycles = 4;
                 }),
@@ -801,6 +929,9 @@ impl V810 {
 
                     let reg1 = (first_halfword & 0x1f) as usize;
                     let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+
+                    trace_add!(TraceEntry::Gpr(reg1, self.reg_gpr(reg1)));
+                    trace_add!(TraceEntry::Gpr(reg2, self.reg_gpr(reg2)));
 
                     let subop_bits = second_halfword >> 10;
 
@@ -917,9 +1048,49 @@ impl V810 {
             }
         }
 
+        trace_add!(TraceEntry::Exec(num_cycles));
+
         self.reg_pc = next_pc;
 
+        #[cfg(feature = "cpu-trace")]
+        self.trace_post_exec_data(interconnect);
+
         (num_cycles, trigger_watchpoint)
+    }
+
+    #[cfg(feature = "cpu-trace")]
+    fn trace_post_exec_data(&mut self, interconnect: &mut Interconnect) {
+        if self.trace_enabled {
+            let mut post_entries: Vec<TraceEntry> = Vec::new();
+            for trace_entry in &self.trace_entries {
+                match *trace_entry {
+                    TraceEntry::Disp16(disp16) => post_entries.push(TraceEntry::Disp16(disp16)),
+                    TraceEntry::Disp32(disp32) => post_entries.push(TraceEntry::Disp32(disp32)),
+                    TraceEntry::Exec(_) => { },
+                    TraceEntry::Gpr(reg, _) => post_entries.push(TraceEntry::Gpr(reg, self.reg_gpr(reg))),
+                    TraceEntry::Imm5(imm5) => post_entries.push(TraceEntry::Imm5(imm5)),
+                    TraceEntry::Imm16(imm16) => post_entries.push(TraceEntry::Imm16(imm16)),
+                    TraceEntry::MemByte(addr, _) => post_entries.push(TraceEntry::MemByte(addr, interconnect.read_byte(addr))),
+                    TraceEntry::MemHalfword(addr, _) => post_entries.push(TraceEntry::MemHalfword(addr, interconnect.read_halfword(addr))),
+                    TraceEntry::MemWord(addr, _) => post_entries.push(TraceEntry::MemWord(addr, read_word(interconnect, addr))),
+                    TraceEntry::Pc(_) => post_entries.push(TraceEntry::Pc(self.reg_pc())),
+                    TraceEntry::Psw(_) => post_entries.push(TraceEntry::Psw(self.reg_psw())),
+                    TraceEntry::SysReg(reg, _) => {
+                        let value = match reg {
+                            OPCODE_SYSTEM_REGISTER_ID_EIPC => self.reg_eipc,
+                            OPCODE_SYSTEM_REGISTER_ID_EIPSW => self.reg_eipsw,
+                            OPCODE_SYSTEM_REGISTER_ID_ECR => self.reg_ecr as u32,
+                            OPCODE_SYSTEM_REGISTER_ID_PSW => self.reg_psw(),
+                            OPCODE_SYSTEM_REGISTER_ID_CHCW => self.reg_chcw(),
+                            _ => 0,
+                        };
+                        post_entries.push(TraceEntry::SysReg(reg, value))
+                    },
+
+                }
+            }
+            self.trace_entries.append(&mut post_entries);
+        }
     }
 
     fn check_watchpoints(&self, addr: u32) -> bool {

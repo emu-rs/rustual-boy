@@ -23,6 +23,7 @@ pub enum Command {
     Watchpoint,
     AddWatchpoint(u32),
     RemoveWatchpoint(u32),
+    CpuTrace,
     Exit,
     Repeat,
 }
@@ -136,6 +137,11 @@ fn command<I: Stream<Item=char>>(input: I) -> ParseResult<Command, I> {
         .map(|(_, _, addr)| Command::RemoveWatchpoint(addr))
         .boxed();
 
+    let cpu_trace =
+        choice([try(string("cputrace")), try(string("ct"))])
+        .map(|_| Command::CpuTrace)
+        .boxed();
+
     let exit =
         choice([try(string("exit")), try(string("quit")), try(string("e")), try(string("x")), try(string("q"))])
         .map(|_| Command::Exit)
@@ -161,6 +167,7 @@ fn command<I: Stream<Item=char>>(input: I) -> ParseResult<Command, I> {
             watchpoint,
             add_watchpoint,
             remove_watchpoint,
+            cpu_trace,
             exit,
             repeat,
         ]

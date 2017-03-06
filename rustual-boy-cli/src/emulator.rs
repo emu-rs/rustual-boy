@@ -9,6 +9,7 @@ use rustual_boy_core::sram::Sram;
 use rustual_boy_core::instruction::*;
 use rustual_boy_core::game_pad::Button;
 use rustual_boy_core::virtual_boy::VirtualBoy;
+use rustual_boy_core::v810::TraceEntry;
 
 use rustual_boy_middleware::{Anaglyphizer, GammaAdjustSink, MostRecentSink};
 
@@ -214,6 +215,7 @@ impl Emulator {
                     println!("eipc: 0x{:08x}", self.virtual_boy.cpu.reg_eipc());
                     println!("eipsw: 0x{:08x}", self.virtual_boy.cpu.reg_eipsw());
                     println!("ecr: 0x{:08x}", self.virtual_boy.cpu.reg_ecr());
+                    println!("chcw: 0x{:08x}", self.virtual_boy.cpu.reg_chcw());
                 }
                 Ok(Command::ShowCpuCache) => {
                     println!("CPU Instruction Cached enable: {}", self.virtual_boy.cpu.cache.is_enabled());
@@ -226,13 +228,37 @@ impl Emulator {
                 },
                 Ok(Command::Step(count)) => {
                     for _ in 0..count {
+                        self.disassemble_instruction();
                         self.step(video_frame_sink, audio_frame_sink);
                         self.cursor = self.virtual_boy.cpu.reg_pc();
-                        self.disassemble_instruction();
+                        if self.virtual_boy.cpu.is_trace_enabled() {
+                            print!("    before");
+                            for trace_entry in &self.virtual_boy.cpu.trace_entries {
+                                match *trace_entry {
+                                    TraceEntry::Disp16(disp16) => print!(" disp16: {}", disp16),
+                                    TraceEntry::Disp32(disp32) => print!(" disp32: {}", disp32),
+                                    TraceEntry::Exec(num_cycles) => {
+                                        println!(" cpu_cycles: {}", num_cycles);
+                                        print!("     after");
+                                    },
+                                    TraceEntry::Gpr(reg, data) => print!(" r{}: 0x{:08x}", reg, data),
+                                    TraceEntry::Imm5(imm5) => print!(" imm5: {}", imm5),
+                                    TraceEntry::Imm16(imm16) => print!(" imm16: {}", imm16),
+                                    TraceEntry::MemByte(addr, data) => print!(" mem.b: [addr: 0x{:08x}, data: 0x{:02x}]", addr, data),
+                                    TraceEntry::MemHalfword(addr, data) => print!(" mem.h: [addr: 0x{:08x}, data: 0x{:04x}]", addr, data),
+                                    TraceEntry::MemWord(addr, data) => print!(" mem.w: [addr: 0x{:08x}, data: 0x{:08x}]", addr, data),
+                                    TraceEntry::Pc(data) => print!(" PC: 0x{:08x}", data),
+                                    TraceEntry::Psw(data) => print!(" PSW: 0x{:08x}", data),
+                                    TraceEntry::SysReg(reg, data) => print!(" sysr{}: 0x{:08x}", reg, data),
+                                }
+                            }
+                            println!();
+                        }
                     }
                 }
                 Ok(Command::Continue) => {
                     self.mode = Mode::Running;
+                    self.virtual_boy.cpu.set_trace_enabled(false);
                     self.time_source_start_time_ns = self.time_source.time_ns() - (self.emulated_cycles * CPU_CYCLE_TIME_NS);
                 }
                 Ok(Command::Goto(addr)) => {
@@ -302,6 +328,15 @@ impl Emulator {
                 Ok(Command::RemoveWatchpoint(addr)) => {
                     if !self.virtual_boy.cpu.watchpoints.remove(&addr) {
                         println!("Watchpoint at 0x{:08x} does not exist", addr);
+                    }
+                }
+                Ok(Command::CpuTrace) => {
+                    if cfg!(feature = "cpu-trace") {
+                        let trace_enabled = self.virtual_boy.cpu.is_trace_enabled();
+                        self.virtual_boy.cpu.set_trace_enabled(!trace_enabled);
+                        println!("cpu trace enabled: {}", !trace_enabled);
+                    } else {
+                        println!("cputrace requires --features cpu-trace");
                     }
                 }
                 Ok(Command::Exit) => {
