@@ -133,6 +133,7 @@ pub struct V810 {
     psw_interrupt_mask_level: usize,
 
     is_halted: bool,
+    enter_exception_cycles: usize,
 
     pub cache: Cache,
 
@@ -172,6 +173,7 @@ impl V810 {
             psw_interrupt_mask_level: 0,
 
             is_halted: false,
+            enter_exception_cycles: 0,
 
             cache: Cache::new(),
 
@@ -917,6 +919,11 @@ impl V810 {
             }
         }
 
+        if self.enter_exception_cycles > 0 {
+            num_cycles += self.enter_exception_cycles;
+            self.enter_exception_cycles = 0;
+        }
+
         self.reg_pc = next_pc;
 
         (num_cycles, trigger_watchpoint)
@@ -1025,6 +1032,7 @@ impl V810 {
         self.psw_exception_pending = true;
         self.psw_interrupt_mask_level = interrupt_level;
         self.reg_pc = 0xffff0000 | (exception_code as u32);
+        self.enter_exception_cycles = 10;
     }
 
     fn return_from_exception(&mut self) -> u32 {
