@@ -588,12 +588,12 @@ impl Vip {
     fn frame_clock(&mut self, raise_interrupt: &mut bool) {
         logln!(Log::Vip, "Frame clock rising edge");
 
-        if self.reg_display_control_display_enable {
-            self.reg_interrupt_pending_start_of_display_frame = true;
-            if self.reg_interrupt_enable_start_of_display_frame {
-                *raise_interrupt = true;
-            }
+        self.reg_interrupt_pending_start_of_display_frame = true;
+        if self.reg_interrupt_enable_start_of_display_frame {
+            *raise_interrupt = true;
+        }
 
+        if self.reg_display_control_display_enable {
             self.begin_display_process();
         }
 
