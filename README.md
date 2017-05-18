@@ -51,7 +51,7 @@ Games marked 💖 and 💔 are all included in the compatibility metric.
 | SD Gundam Dimension War | N/A | 💖 | |
 | Space Invaders Virtual Collection | N/A | | Lazers aren't visible on most of the screen in "Virtual 3D" mode |
 | Space Squash | N/A | | Game doesn't start; seems to be waiting on an interrupt (see commits [7423524](https://github.com/emu-rs/rustual-boy/commit/74235249a1abfca8d4b3d80e8c3c6b37230679a2) and [0ff9c61](https://github.com/emu-rs/rustual-boy/commit/0ff9c61efb188832680292a11c1a24c5c4f25360) for some investigation) |
-| Teleroboxer | 💖 | 💖 | |
+| Teleroboxer | 💔 | 💔 | Small audio glitches during screen transitions after demo mode wins games |
 | V-Tetris | N/A | 💖 | |
 | Vertical Force | 💖 | 💖 | |
 | Virtual Bowling | N/A | 💔 | Small graphical glitch in the intro sequence, samples play at the wrong rate |
