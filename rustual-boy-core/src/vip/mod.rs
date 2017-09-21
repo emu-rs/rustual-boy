@@ -14,10 +14,10 @@ pub const DISPLAY_PIXELS: usize = DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y;
 const DRAWING_BLOCK_HEIGHT: usize = 8;
 const DRAWING_BLOCK_COUNT: usize = DISPLAY_RESOLUTION_Y / DRAWING_BLOCK_HEIGHT;
 
-// 20mhz / (1s / 5ms) = 100000 clocks
-const DISPLAY_FRAME_QUARTER_PERIOD: usize = 100000;
+// 20mhz / (1s / 2.5ms) = 50000 clocks
+const DISPLAY_FRAME_EIGHTH_PERIOD: usize = 50000;
 
-const DRAWING_PERIOD: usize = DISPLAY_FRAME_QUARTER_PERIOD * 2;
+const DRAWING_PERIOD: usize = DISPLAY_FRAME_EIGHTH_PERIOD * 2;
 const DRAWING_BLOCK_PERIOD: usize = DRAWING_PERIOD / DRAWING_BLOCK_COUNT;
 
 // 20mhz / (1s / 56us) = 1120 clocks
@@ -108,8 +108,8 @@ pub struct Vip {
 
     reg_clear_color: u8,
 
-    display_frame_quarter_clock_counter: usize,
-    display_frame_quarter_counter: usize,
+    display_frame_eighth_clock_counter: usize,
+    display_frame_eighth_counter: usize,
 
     drawing_block_counter: usize,
     drawing_sbout_counter: usize,
@@ -177,8 +177,8 @@ impl Vip {
 
             reg_clear_color: 0,
 
-            display_frame_quarter_clock_counter: 0,
-            display_frame_quarter_counter: 0,
+            display_frame_eighth_clock_counter: 0,
+            display_frame_eighth_counter: 0,
 
             drawing_block_counter: 0,
             drawing_sbout_counter: 0,
@@ -265,12 +265,7 @@ impl Vip {
             }
             DISPLAY_CONTROL_READ_REG => {
                 let scan_ready = true; // TODO
-                // TODO: Not entirely sure this is correct
-                let frame_clock = match self.display_state {
-                    DisplayState::Idle => true,
-                    _ => false
-                };
-                let mem_refresh = false; // TODO
+                let mem_refresh = true; // TODO
                 let column_table_addr_lock = false; // TODO
 
                 (if self.reg_display_control_display_enable { 1 } else { 0 } << 1) |
@@ -280,7 +275,7 @@ impl Vip {
                     DisplayState::RightFramebuffer => if self.display_first_framebuffers { 0b0010 } else { 0b1000 },
                 } << 2) |
                 (if scan_ready { 1 } else { 0 } << 6) |
-                (if frame_clock { 1 } else { 0 } << 7) |
+                (if self.display_frame_eighth_counter < 4 { 1 } else { 0 } << 7) |
                 (if mem_refresh { 1 } else { 0 } << 8) |
                 (if self.reg_display_control_sync_enable { 1 } else { 0 } << 9) |
                 (if column_table_addr_lock { 1 } else { 0 } << 10)
@@ -318,6 +313,7 @@ impl Vip {
                 (if drawing_to_frame_buffer_1 { 1 } else { 0 } << 3) |
                 (if drawing_exceeds_frame_period { 1 } else { 0 } << 4) |
                 ((self.reg_drawing_control_sbcount as u16) << 8) |
+                // TODO: This particular bit seems to strobe much faster than we do here on hw, look more into that
                 (if self.reg_drawing_control_sbout { 1 } else { 0 } << 15)
             }
             DRAWING_CONTROL_WRITE_REG => {
@@ -499,11 +495,16 @@ impl Vip {
         let mut raise_interrupt = false;
 
         for _ in 0..cycles {
-            self.display_frame_quarter_clock_counter += 1;
-            if self.display_frame_quarter_clock_counter >= DISPLAY_FRAME_QUARTER_PERIOD {
-                self.display_frame_quarter_clock_counter = 0;
+            self.display_frame_eighth_clock_counter += 1;
+            if self.display_frame_eighth_clock_counter >= DISPLAY_FRAME_EIGHTH_PERIOD {
+                self.display_frame_eighth_clock_counter = 0;
 
-                match self.display_frame_quarter_counter {
+                self.display_frame_eighth_counter = match self.display_frame_eighth_counter {
+                    7 => 0,
+                    _ => self.display_frame_eighth_counter + 1
+                };
+
+                match self.display_frame_eighth_counter {
                     0 => {
                         self.frame_clock(&mut raise_interrupt);
                     }
@@ -514,21 +515,19 @@ impl Vip {
                             self.begin_left_framebuffer_display_process();
                         }
                     }
-                    2 => {
+                    3 => {
                         if self.reg_display_control_display_enable {
                             if let DisplayState::LeftFramebuffer = self.display_state {
-                                self.reg_interrupt_pending_left_display_finished = true;
-                                if self.reg_interrupt_enable_left_display_finished {
-                                    raise_interrupt = true;
-                                }
-                            }
-
-                            if self.reg_display_control_sync_enable {
-                                self.begin_right_framebuffer_display_process();
+                                self.end_left_framebuffer_display_process(&mut raise_interrupt);
                             }
                         }
                     }
-                    _ => {
+                    5 => {
+                        if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
+                            self.begin_right_framebuffer_display_process();
+                        }
+                    }
+                    7 => {
                         if self.reg_display_control_display_enable {
                             if let DisplayState::RightFramebuffer = self.display_state {
                                 self.reg_interrupt_pending_right_display_finished = true;
@@ -540,12 +539,8 @@ impl Vip {
                             self.end_display_process();
                         }
                     }
+                    _ => {}
                 }
-
-                self.display_frame_quarter_counter = match self.display_frame_quarter_counter {
-                    3 => 0,
-                    _ => self.display_frame_quarter_counter + 1
-                };
             }
 
             if let DrawingState::Drawing = self.drawing_state {
@@ -562,8 +557,6 @@ impl Vip {
                                 self.begin_drawing_block();
                             }
                         } else {
-                            self.reg_drawing_control_sbcount = 0;
-
                             self.end_drawing_process();
                             self.reg_interrupt_pending_drawing_finished = true;
                             if self.reg_interrupt_enable_drawing_finished {
@@ -668,6 +661,17 @@ impl Vip {
     fn begin_left_framebuffer_display_process(&mut self) {
         logln!(Log::Vip, "Start left framebuffer display process");
         self.display_state = DisplayState::LeftFramebuffer;
+    }
+
+    fn end_left_framebuffer_display_process(&mut self, raise_interrupt: &mut bool) {
+        logln!(Log::Vip, "End left framebuffer display process");
+
+        self.display_state = DisplayState::Idle;
+
+        self.reg_interrupt_pending_left_display_finished = true;
+        if self.reg_interrupt_enable_left_display_finished {
+            *raise_interrupt = true;
+        }
     }
 
     fn begin_right_framebuffer_display_process(&mut self) {
