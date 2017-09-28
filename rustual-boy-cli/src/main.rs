@@ -1,5 +1,3 @@
-extern crate encoding;
-
 extern crate minifb;
 
 extern crate cpal;
