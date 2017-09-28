@@ -18,6 +18,7 @@ mod argparse;
 mod logging;
 mod command;
 mod cpal_driver;
+mod inspector;
 mod emulator;
 mod system_time_source;
 mod wave_file_buffer_sink;

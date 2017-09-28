@@ -1,6 +1,7 @@
 use minifb::{WindowOptions, Window, Key, KeyRepeat, Scale};
 
 use command::*;
+use inspector::*;
 
 use rustual_boy_core::sinks::{AudioFrame, Sink, SinkRef, VideoFrame};
 use rustual_boy_core::time_source::TimeSource;
@@ -42,6 +43,8 @@ pub struct Emulator {
     pub virtual_boy: VirtualBoy,
     mode: Mode,
 
+    inspector: Inspector,
+
     breakpoints: HashSet<u32>,
 
     labels: HashMap<String, u32>,
@@ -78,6 +81,8 @@ impl Emulator {
 
             virtual_boy: VirtualBoy::new(rom, sram),
             mode: Mode::Running,
+
+            inspector: Inspector::new(),
 
             breakpoints: HashSet::new(),
 
@@ -137,12 +142,14 @@ impl Emulator {
                     }
 
                     self.window.update();
+                    self.inspector.update(&mut self.virtual_boy);
                 }
             }
 
             if let Some(frame) = video_frame_sink.into_inner().into_inner().into_inner() {
                 let frame: Vec<u32> = frame.into_iter().map(|x| x.into()).collect();
                 self.window.update_with_buffer(&frame);
+                self.inspector.update(&mut self.virtual_boy);
 
                 if self.mode == Mode::Running {
                     // We only want to update the key state when a frame is actually pushed
