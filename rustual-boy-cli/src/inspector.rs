@@ -1,8 +1,9 @@
 extern crate wisegui;
 
+use simd::*;
+
 use self::wisegui::*;
 
-use rustual_boy_core::mem_map::*;
 use rustual_boy_core::virtual_boy::*;
 
 use minifb::{MouseButton, MouseMode, WindowOptions, Window, Scale};
@@ -41,13 +42,11 @@ pub struct Inspector {
 
     context: Context,
 
-    wrams: Vec<Vec<u8>>,
-    wrams_index: u32,
-    wram_access_color: Vec<u8>,
+    wram: Vec<u8x16>,
+    wram_access_color: Vec<u8x16>,
 
-    vrams: Vec<Vec<u8>>,
-    vrams_index: u32,
-    vram_access_color: Vec<u8>,
+    vram: Vec<u8x16>,
+    vram_access_color: Vec<u8x16>,
 }
 
 impl Inspector {
@@ -68,13 +67,11 @@ impl Inspector {
 
             context: Context::new(Box::new(VirtualBoyPalette)),
 
-            wrams: vec![vec![0; 0x10000]; 2],
-            wrams_index: 0,
-            wram_access_color: vec![0; 0x10000],
+            wram: vec![u8x16::splat(0); 0x10000 / 16],
+            wram_access_color: vec![u8x16::splat(0); 0x10000 / 16],
 
-            vrams: vec![vec![0; 0x40000]; 2],
-            vrams_index: 0,
-            vram_access_color: vec![0; 0x40000],
+            vram: vec![u8x16::splat(0); 0x40000 / 16],
+            vram_access_color: vec![u8x16::splat(0); 0x40000 / 16],
         }
     }
 
@@ -118,8 +115,24 @@ impl Inspector {
             painter.rect(margin, margin, 256, 256, None, Some(Color::Lightest));
         }
 
-        for i in 0..0x10000 {
-            self.wrams[self.wrams_index as usize][i as usize] = virtual_boy.interconnect.read_byte(WRAM_START + i);
+        for i in 0..0x10000 / 16 {
+            let bytes = u8x16::load(&virtual_boy.interconnect.wram.bytes(), i * 16);
+            let last_bytes = self.wram[i as usize];
+
+            let last_access_color = self.wram_access_color[i as usize];
+
+            let different_bytes = bytes.ne(last_bytes);
+            let last_access_color_gt_0 = last_access_color.gt(u8x16::splat(0));
+
+            let _255s = u8x16::splat(255);
+            let _0s = u8x16::splat(0);
+
+            // different_bytes { 255 } else last_access_color_gt_0 { last_access_color_gt_0 - 1 } else { 0 }
+
+            let tmp = last_access_color_gt_0.select(last_access_color - u8x16::splat(1), _0s);
+            self.wram_access_color[i as usize] = different_bytes.select(_255s, tmp);
+
+            self.wram[i as usize] = bytes;
         }
 
         for y in 0..256 {
@@ -128,29 +141,37 @@ impl Inspector {
                 break;
             }
 
-            for x in 0..256 {
-                let pixel_x = x + margin;
+            for x in 0..256 / 16 {
+                let pixel_x = x * 16 + margin;
                 if pixel_x >= self.width {
                     break;
                 }
 
-                let buffer_index = (y * 256 + x) as usize;
-                let byte = self.wrams[self.wrams_index as usize][buffer_index];
-                let last_byte = self.wrams[1 - self.wrams_index as usize][buffer_index];
-                self.wram_access_color[buffer_index] = if byte != last_byte {
-                    255
-                } else if self.wram_access_color[buffer_index] > 0 {
-                    self.wram_access_color[buffer_index] - 1
-                } else {
-                    0
-                };
-                let color = ((byte as u32) << 16) | (self.wram_access_color[buffer_index] as u32);
+                let buffer_index = (y * 256 / 16 + x) as usize;
 
-                self.buffer[(pixel_y * self.width + pixel_x) as usize] = color;
+                let reds = self.wram[buffer_index];
+                let blues = self.wram_access_color[buffer_index];
+
+                for i in 0..4 {
+                    let reds =
+                        u32x4::new(
+                            reds.extract(i * 4 + 0) as _,
+                            reds.extract(i * 4 + 1) as _,
+                            reds.extract(i * 4 + 2) as _,
+                            reds.extract(i * 4 + 3) as _);
+                    let blues =
+                        u32x4::new(
+                            blues.extract(i * 4 + 0) as _,
+                            blues.extract(i * 4 + 1) as _,
+                            blues.extract(i * 4 + 2) as _,
+                            blues.extract(i * 4 + 3) as _);
+
+                    let colors: u32x4 = (reds << 16) | blues;
+
+                    colors.store(&mut self.buffer, (pixel_y * self.width + pixel_x + (i as i32) * 4) as usize);
+                }
             }
         }
-
-        self.wrams_index = 1 - self.wrams_index;
     }
 
     fn vram_view(&mut self, virtual_boy: &mut VirtualBoy) {
@@ -165,8 +186,24 @@ impl Inspector {
             painter.rect(start_x, start_y, 512, 512, None, Some(Color::Lightest));
         }
 
-        for i in 0..0x40000 {
-            self.vrams[self.vrams_index as usize][i as usize] = virtual_boy.interconnect.read_byte(i);
+        for i in 0..0x40000 / 16 {
+            let bytes = u8x16::load(&virtual_boy.interconnect.vip.vram(), i * 16);
+            let last_bytes = self.vram[i as usize];
+
+            let last_access_color = self.vram_access_color[i as usize];
+
+            let different_bytes = bytes.ne(last_bytes);
+            let last_access_color_gt_0 = last_access_color.gt(u8x16::splat(0));
+
+            let _255s = u8x16::splat(255);
+            let _0s = u8x16::splat(0);
+
+            // different_bytes { 255 } else last_access_color_gt_0 { last_access_color_gt_0 - 1 } else { 0 }
+
+            let tmp = last_access_color_gt_0.select(last_access_color - u8x16::splat(1), _0s);
+            self.vram_access_color[i as usize] = different_bytes.select(_255s, tmp);
+
+            self.vram[i as usize] = bytes;
         }
 
         for y in 0..512 {
@@ -175,28 +212,36 @@ impl Inspector {
                 break;
             }
 
-            for x in 0..512 {
-                let pixel_x = x + start_x;
+            for x in 0..512 / 16 {
+                let pixel_x = x * 16 + start_x;
                 if pixel_x >= self.width {
                     break;
                 }
 
-                let buffer_index = (y * 512 + x) as usize;
-                let byte = self.vrams[self.vrams_index as usize][buffer_index];
-                let last_byte = self.vrams[1 - self.vrams_index as usize][buffer_index];
-                self.vram_access_color[buffer_index] = if byte != last_byte {
-                    255
-                } else if self.vram_access_color[buffer_index] > 0 {
-                    self.vram_access_color[buffer_index] - 1
-                } else {
-                    0
-                };
-                let color = ((byte as u32) << 16) | (self.vram_access_color[buffer_index] as u32);
+                let buffer_index = (y * 512 / 16 + x) as usize;
 
-                self.buffer[(pixel_y * self.width + pixel_x) as usize] = color;
+                let reds = self.vram[buffer_index];
+                let blues = self.vram_access_color[buffer_index];
+
+                for i in 0..4 {
+                    let reds =
+                        u32x4::new(
+                            reds.extract(i * 4 + 0) as _,
+                            reds.extract(i * 4 + 1) as _,
+                            reds.extract(i * 4 + 2) as _,
+                            reds.extract(i * 4 + 3) as _);
+                    let blues =
+                        u32x4::new(
+                            blues.extract(i * 4 + 0) as _,
+                            blues.extract(i * 4 + 1) as _,
+                            blues.extract(i * 4 + 2) as _,
+                            blues.extract(i * 4 + 3) as _);
+
+                    let colors: u32x4 = (reds << 16) | blues;
+
+                    colors.store(&mut self.buffer, (pixel_y * self.width + pixel_x + (i as i32) * 4) as usize);
+                }
             }
         }
-
-        self.vrams_index = 1 - self.vrams_index;
     }
 }

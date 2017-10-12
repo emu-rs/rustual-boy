@@ -57,7 +57,7 @@ enum ObjGroup {
 }
 
 pub struct Vip {
-    _vram: Box<[u8]>,
+    vram: Box<[u8]>,
     vram_ptr: *mut u8,
 
     display_state: DisplayState,
@@ -126,7 +126,7 @@ impl Vip {
         let vram_ptr = vram.as_mut_ptr();
 
         Vip {
-            _vram: vram,
+            vram: vram,
             vram_ptr: vram_ptr,
 
             display_state: DisplayState::Idle,
@@ -188,6 +188,10 @@ impl Vip {
             display_first_framebuffers: false,
             last_clear_color: 0,
         }
+    }
+
+    pub fn vram(&self) -> &[u8] {
+        &self.vram
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {

@@ -9,6 +9,8 @@ extern crate clap;
 
 extern crate combine;
 
+extern crate simd;
+
 extern crate rustual_boy_core;
 
 extern crate rustual_boy_middleware;

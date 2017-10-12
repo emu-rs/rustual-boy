@@ -27,6 +27,7 @@ rustual-boy-middleware = { path = "../rustual-boy-middleware" }
 rustual-boy-core = { path = "../rustual-boy-core" }
 clap = "2.0.0"
 combine = "2.2.0"
+simd = "0.2.0"
 
 [dependencies.wisegui]
 path = "../../wisegui/wisegui/"
