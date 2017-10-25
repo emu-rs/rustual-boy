@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use cpal::{EventLoop, Voice, UnknownTypeBuffer, get_default_endpoint};
+use cpal::{EventLoop, Voice, UnknownTypeBuffer, default_endpoint};
 
 use futures::stream::Stream;
 use futures::task::{self, Executor, Run};
@@ -100,9 +100,9 @@ impl CpalDriver {
             return Err(format!("desired_latency_ms must be greater than 0").into());
         }
 
-        let endpoint = get_default_endpoint().expect("Failed to get audio endpoint");
+        let endpoint = default_endpoint().expect("Failed to get audio endpoint");
 
-        let format = endpoint.get_supported_formats_list()
+        let format = endpoint.supported_formats()
             .expect("Failed to get supported format list for endpoint")
             .find(|format| format.channels.len() == 2)
             .expect("Failed to find format with 2 channels");
