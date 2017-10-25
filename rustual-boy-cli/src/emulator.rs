@@ -163,7 +163,7 @@ impl Emulator {
     fn step(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> (usize, bool) {
         let ret = self.virtual_boy.step(video_frame_sink, audio_frame_sink);
 
-        self.emulated_cycles += ret.0 as _;
+        self.emulated_cycles += ret.0 as u64;
 
         ret
     }
