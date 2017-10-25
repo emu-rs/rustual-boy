@@ -37,11 +37,13 @@ matrix:
       os: osx
       rust: beta
 
-# Required for ALSA on linux
 addons:
   apt:
     packages:
+      # Required for ALSA on linux (used by CPAL)
       - libasound2-dev
+      # Required for xorg on linux (used by minifb)
+      - xorg-dev
 
 before_install: set -e
 
