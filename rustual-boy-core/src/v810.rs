@@ -115,6 +115,8 @@ pub struct V810 {
     reg_eipc: u32,
     reg_eipsw: u32,
     reg_ecr: u16,
+    reg_fepc: u32,
+    reg_fepsw: u32,
 
     psw_zero: bool,
     psw_sign: bool,
@@ -151,9 +153,11 @@ impl V810 {
             _reg_gpr: reg_gpr,
             reg_gpr_ptr: reg_gpr_ptr,
 
-            reg_eipc: 0xdeadbeef,
+            reg_eipc: 0xdeadbeee, // lowest bit is always 0
             reg_eipsw: 0xdeadbeef,
             reg_ecr: 0xfff0,
+            reg_fepc: 0xdeadbeee, // lowest bit is always 0
+            reg_fepsw: 0xdeadbeef,
 
             psw_zero: false,
             psw_sign: false,
@@ -559,16 +563,16 @@ impl V810 {
                     let value = self.reg_gpr(reg2);
                     match imm5 {
                         OPCODE_SYSTEM_REGISTER_ID_EIPC => {
-                            self.reg_eipc = value;
+                            self.reg_eipc = value & 0xfffffffe;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_EIPSW => {
                             self.reg_eipsw = value;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_FEPC => {
-                            logln!(Log::Cpu, "WARNING: ldsr fepc not yet implemented (value: 0x{:08x})", value);
+                            self.reg_fepc = value & 0xfffffffe;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_FEPSW => {
-                            logln!(Log::Cpu, "WARNING: ldsr fepsw not yet implemented (value: 0x{:08x})", value);
+                            self.reg_fepsw = value;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_ECR => {
                             self.reg_ecr = value as _;
@@ -602,14 +606,8 @@ impl V810 {
                     let value = match imm5 {
                         OPCODE_SYSTEM_REGISTER_ID_EIPC => self.reg_eipc,
                         OPCODE_SYSTEM_REGISTER_ID_EIPSW => self.reg_eipsw,
-                        OPCODE_SYSTEM_REGISTER_ID_FEPC => {
-                            logln!(Log::Cpu, "WARNING: stsr fepc not yet implemented");
-                            0
-                        }
-                        OPCODE_SYSTEM_REGISTER_ID_FEPSW => {
-                            logln!(Log::Cpu, "WARNING: stsr fepsw not yet implemented");
-                            0
-                        }
+                        OPCODE_SYSTEM_REGISTER_ID_FEPC => self.reg_fepc,
+                        OPCODE_SYSTEM_REGISTER_ID_FEPSW => self.reg_fepsw,
                         OPCODE_SYSTEM_REGISTER_ID_ECR => self.reg_ecr as _,
                         OPCODE_SYSTEM_REGISTER_ID_PSW => self.reg_psw(),
                         OPCODE_SYSTEM_REGISTER_ID_CHCW => {
@@ -1015,6 +1013,7 @@ impl V810 {
         if interrupt_level < 15 {
             interrupt_level += 1;
         }
+        // TODO: Duplexed exception
         self.reg_eipc = self.reg_pc;
         if self.is_halted {
             self.reg_eipc = self.reg_eipc.wrapping_add(2);
