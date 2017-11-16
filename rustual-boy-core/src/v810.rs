@@ -154,10 +154,10 @@ impl V810 {
             reg_gpr_ptr: reg_gpr_ptr,
 
             reg_eipc: 0xdeadbeee, // lowest bit is always 0
-            reg_eipsw: 0xdeadbeef,
+            reg_eipsw: 0xdeadbeef & 0x000ff3ff,
             reg_ecr: 0xfff0,
             reg_fepc: 0xdeadbeee, // lowest bit is always 0
-            reg_fepsw: 0xdeadbeef,
+            reg_fepsw: 0xdeadbeef & 0x000ff3ff,
 
             psw_zero: false,
             psw_sign: false,
@@ -566,13 +566,13 @@ impl V810 {
                             self.reg_eipc = value & 0xfffffffe;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_EIPSW => {
-                            self.reg_eipsw = value;
+                            self.reg_eipsw = value & 0x000ff3ff;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_FEPC => {
                             self.reg_fepc = value & 0xfffffffe;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_FEPSW => {
-                            self.reg_fepsw = value;
+                            self.reg_fepsw = value & 0x000ff3ff;
                         }
                         OPCODE_SYSTEM_REGISTER_ID_ECR => {
                             self.reg_ecr = value as _;
