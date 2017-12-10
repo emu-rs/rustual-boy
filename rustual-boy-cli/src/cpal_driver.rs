@@ -13,6 +13,8 @@ use std::sync::{Arc, Mutex};
 use std::iter::Iterator;
 use std::thread::{self, JoinHandle};
 
+use std::cmp::Ordering;
+
 pub type CpalDriverError = Cow<'static, str>;
 
 pub struct RingBuffer {
@@ -102,9 +104,22 @@ impl CpalDriver {
 
         let endpoint = default_endpoint().expect("Failed to get audio endpoint");
 
+        let compare_sample_rates = |x: u32, y:u32| -> Ordering {
+            if x < sample_rate && y > sample_rate {
+                return Ordering::Greater;
+            } else if x > sample_rate && y < sample_rate {
+                return Ordering::Less;
+            } else if x < sample_rate && y < sample_rate {
+                return x.cmp(&y).reverse();
+            } else {
+                return x.cmp(&y);
+            }
+        };
+
         let format = endpoint.supported_formats()
             .expect("Failed to get supported format list for endpoint")
-            .find(|format| format.channels.len() == 2)
+            .filter(|format| format.channels.len() == 2)
+            .min_by(|x, y| compare_sample_rates(x.samples_rate.0, y.samples_rate.0))
             .expect("Failed to find format with 2 channels");
 
         let buffer_frames = (sample_rate * desired_latency_ms / 1000 * 2) as usize;
