@@ -160,7 +160,7 @@ impl Emulator {
         }
     }
 
-    fn step(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> (usize, bool) {
+    fn step(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> (u32, bool) {
         let ret = self.virtual_boy.step(video_frame_sink, audio_frame_sink);
 
         self.emulated_cycles += ret.0 as u64;
@@ -245,8 +245,8 @@ impl Emulator {
 
                     self.print_labels_at_cursor();
 
-                    const NUM_ROWS: usize = 16;
-                    const NUM_COLS: usize = 16;
+                    const NUM_ROWS: u32 = 16;
+                    const NUM_COLS: u32 = 16;
                     for _ in 0..NUM_ROWS {
                         print!("0x{:08x}  ", self.cursor);
                         for x in 0..NUM_COLS {
@@ -360,8 +360,8 @@ impl Emulator {
 
         match instruction_format {
             InstructionFormat::I => {
-                let reg1 = (first_halfword & 0x1f) as usize;
-                let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+                let reg1 = (first_halfword & 0x1f) as u32;
+                let reg2 = ((first_halfword >> 5) & 0x1f) as u32;
                 if opcode == Opcode::Jmp {
                     println!("jmp [r{}]", reg1);
                 } else {
@@ -369,8 +369,8 @@ impl Emulator {
                 }
             }
             InstructionFormat::II => {
-                let imm5 = (first_halfword & 0x1f) as usize;
-                let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+                let imm5 = (first_halfword & 0x1f) as u32;
+                let reg2 = ((first_halfword >> 5) & 0x1f) as u32;
                 match opcode {
                     Opcode::BitString => {
                         let bit_string_op = opcode.bit_string_op(imm5);
@@ -397,16 +397,16 @@ impl Emulator {
                 println!("{} {} (0x{:08x})", opcode, disp26 as i32, target);
             }
             InstructionFormat::V => {
-                let reg1 = (first_halfword & 0x1f) as usize;
-                let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+                let reg1 = (first_halfword & 0x1f) as u32;
+                let reg2 = ((first_halfword >> 5) & 0x1f) as u32;
 
                 let imm16 = second_halfword;
 
                 println!("{} {:#x}, r{}, r{}", opcode, imm16, reg1, reg2);
             }
             InstructionFormat::VI => {
-                let reg1 = (first_halfword & 0x1f) as usize;
-                let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+                let reg1 = (first_halfword & 0x1f) as u32;
+                let reg2 = ((first_halfword >> 5) & 0x1f) as u32;
 
                 let disp16 = second_halfword as i16;
 
@@ -416,8 +416,8 @@ impl Emulator {
                 }
             }
             InstructionFormat::VII => {
-                let reg1 = (first_halfword & 0x1f) as usize;
-                let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
+                let reg1 = (first_halfword & 0x1f) as u32;
+                let reg2 = ((first_halfword >> 5) & 0x1f) as u32;
 
                 let subop_bits = second_halfword >> 10;
 

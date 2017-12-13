@@ -17,7 +17,7 @@ impl VirtualBoy {
         }
     }
 
-    pub fn step(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> (usize, bool) {
+    pub fn step(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> (u32, bool) {
         let ret = self.cpu.step(&mut self.interconnect);
 
         if let Some(exception_code) = self.interconnect.cycles(ret.0, video_frame_sink, audio_frame_sink) {

@@ -1,8 +1,8 @@
 // 20mhz / (1s / 100us) = 2000
-const LARGE_INTERVAL_PERIOD: usize = 2000;
+const LARGE_INTERVAL_PERIOD: u32 = 2000;
 
 // 20mhz / (1s / 20us) = 400
-const SMALL_INTERVAL_PERIOD: usize = 400;
+const SMALL_INTERVAL_PERIOD: u32 = 400;
 
 enum Interval {
     Large,
@@ -17,7 +17,7 @@ pub struct Timer {
     reload: u16,
     counter: u16,
 
-    tick_counter: usize,
+    tick_counter: u32,
     zero_interrupt: bool,
 }
 
@@ -80,7 +80,7 @@ impl Timer {
         self.counter = self.reload;
     }
 
-    pub fn cycles(&mut self, cycles: usize) -> bool {
+    pub fn cycles(&mut self, cycles: u32) -> bool {
         if self.enable {
             for _ in 0..cycles {
                 let tick_period = match self.interval {

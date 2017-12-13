@@ -71,14 +71,14 @@ pub const OPCODE_BITS_OUTH: u16 = 0b111101;
 pub const OPCODE_BITS_EXTENDED: u16 = 0b111110;
 pub const OPCODE_BITS_OUTW: u16 = 0b111111;
 
-pub const OPCODE_BITS_BIT_STRING_OP_ORBSU: usize = 0b01000;
-pub const OPCODE_BITS_BIT_STRING_OP_ANDBSU: usize = 0b01001;
-pub const OPCODE_BITS_BIT_STRING_OP_XORBSU: usize = 0b01010;
-pub const OPCODE_BITS_BIT_STRING_OP_MOVBSU: usize = 0b01011;
-pub const OPCODE_BITS_BIT_STRING_OP_ORNBSU: usize = 0b01100;
-pub const OPCODE_BITS_BIT_STRING_OP_ANDNBSU: usize = 0b01101;
-pub const OPCODE_BITS_BIT_STRING_OP_XORNBSU: usize = 0b01110;
-pub const OPCODE_BITS_BIT_STRING_OP_NOTBSU: usize = 0b01111;
+pub const OPCODE_BITS_BIT_STRING_OP_ORBSU: u32 = 0b01000;
+pub const OPCODE_BITS_BIT_STRING_OP_ANDBSU: u32 = 0b01001;
+pub const OPCODE_BITS_BIT_STRING_OP_XORBSU: u32 = 0b01010;
+pub const OPCODE_BITS_BIT_STRING_OP_MOVBSU: u32 = 0b01011;
+pub const OPCODE_BITS_BIT_STRING_OP_ORNBSU: u32 = 0b01100;
+pub const OPCODE_BITS_BIT_STRING_OP_ANDNBSU: u32 = 0b01101;
+pub const OPCODE_BITS_BIT_STRING_OP_XORNBSU: u32 = 0b01110;
+pub const OPCODE_BITS_BIT_STRING_OP_NOTBSU: u32 = 0b01111;
 
 pub const OPCODE_BITS_SUB_OP_CMPF_S: u16 = 0b000000;
 pub const OPCODE_BITS_SUB_OP_CVT_WS: u16 = 0b000010;
@@ -93,30 +93,30 @@ pub const OPCODE_BITS_SUB_OP_REV: u16 = 0b001010;
 pub const OPCODE_BITS_SUB_OP_TRNC_SW: u16 = 0b001011;
 pub const OPCODE_BITS_SUB_OP_MPYHW: u16 = 0b001100;
 
-pub const OPCODE_SYSTEM_REGISTER_ID_EIPC: usize = 0;
-pub const OPCODE_SYSTEM_REGISTER_ID_EIPSW: usize = 1;
-pub const OPCODE_SYSTEM_REGISTER_ID_FEPC: usize = 2;
-pub const OPCODE_SYSTEM_REGISTER_ID_FEPSW: usize = 3;
-pub const OPCODE_SYSTEM_REGISTER_ID_ECR: usize = 4;
-pub const OPCODE_SYSTEM_REGISTER_ID_PSW: usize = 5;
-pub const OPCODE_SYSTEM_REGISTER_ID_CHCW: usize = 24;
+pub const OPCODE_SYSTEM_REGISTER_ID_EIPC: u32 = 0;
+pub const OPCODE_SYSTEM_REGISTER_ID_EIPSW: u32 = 1;
+pub const OPCODE_SYSTEM_REGISTER_ID_FEPC: u32 = 2;
+pub const OPCODE_SYSTEM_REGISTER_ID_FEPSW: u32 = 3;
+pub const OPCODE_SYSTEM_REGISTER_ID_ECR: u32 = 4;
+pub const OPCODE_SYSTEM_REGISTER_ID_PSW: u32 = 5;
+pub const OPCODE_SYSTEM_REGISTER_ID_CHCW: u32 = 24;
 
-pub const OPCODE_CONDITION_BITS_V: usize = 0x00;
-pub const OPCODE_CONDITION_BITS_C: usize = 0x01;
-pub const OPCODE_CONDITION_BITS_Z: usize = 0x02;
-pub const OPCODE_CONDITION_BITS_NH: usize = 0x03;
-pub const OPCODE_CONDITION_BITS_N: usize = 0x04;
-pub const OPCODE_CONDITION_BITS_T: usize = 0x05;
-pub const OPCODE_CONDITION_BITS_LT: usize = 0x06;
-pub const OPCODE_CONDITION_BITS_LE: usize = 0x07;
-pub const OPCODE_CONDITION_BITS_NV: usize = 0x08;
-pub const OPCODE_CONDITION_BITS_NC: usize = 0x09;
-pub const OPCODE_CONDITION_BITS_NZ: usize = 0x0a;
-pub const OPCODE_CONDITION_BITS_H: usize = 0x0b;
-pub const OPCODE_CONDITION_BITS_P: usize = 0x0c;
-pub const OPCODE_CONDITION_BITS_F: usize = 0x0d;
-pub const OPCODE_CONDITION_BITS_GE: usize = 0x0e;
-pub const OPCODE_CONDITION_BITS_GT: usize = 0x0f;
+pub const OPCODE_CONDITION_BITS_V: u32 = 0x00;
+pub const OPCODE_CONDITION_BITS_C: u32 = 0x01;
+pub const OPCODE_CONDITION_BITS_Z: u32 = 0x02;
+pub const OPCODE_CONDITION_BITS_NH: u32 = 0x03;
+pub const OPCODE_CONDITION_BITS_N: u32 = 0x04;
+pub const OPCODE_CONDITION_BITS_T: u32 = 0x05;
+pub const OPCODE_CONDITION_BITS_LT: u32 = 0x06;
+pub const OPCODE_CONDITION_BITS_LE: u32 = 0x07;
+pub const OPCODE_CONDITION_BITS_NV: u32 = 0x08;
+pub const OPCODE_CONDITION_BITS_NC: u32 = 0x09;
+pub const OPCODE_CONDITION_BITS_NZ: u32 = 0x0a;
+pub const OPCODE_CONDITION_BITS_H: u32 = 0x0b;
+pub const OPCODE_CONDITION_BITS_P: u32 = 0x0c;
+pub const OPCODE_CONDITION_BITS_F: u32 = 0x0d;
+pub const OPCODE_CONDITION_BITS_GE: u32 = 0x0e;
+pub const OPCODE_CONDITION_BITS_GT: u32 = 0x0f;
 
 #[derive(PartialEq, Eq)]
 pub enum Opcode {
@@ -343,7 +343,7 @@ impl Opcode {
         }
     }
 
-    pub fn bit_string_op(&self, bit_string_op: usize) -> BitStringOp {
+    pub fn bit_string_op(&self, bit_string_op: u32) -> BitStringOp {
         match bit_string_op {
             OPCODE_BITS_BIT_STRING_OP_ORBSU => BitStringOp::Orbsu,
             OPCODE_BITS_BIT_STRING_OP_ANDBSU => BitStringOp::Andbsu,
@@ -375,7 +375,7 @@ impl Opcode {
         }
     }
 
-    pub fn system_register(&self, imm5: usize) -> SystemRegister {
+    pub fn system_register(&self, imm5: u32) -> SystemRegister {
         match imm5 {
             OPCODE_SYSTEM_REGISTER_ID_EIPC => SystemRegister::Eipc,
             OPCODE_SYSTEM_REGISTER_ID_EIPSW => SystemRegister::Eipsw,
@@ -552,7 +552,7 @@ pub enum SystemRegister {
     Ecr,
     Psw,
     Chcw,
-    Unknown(usize),
+    Unknown(u32),
 }
 
 impl fmt::Display for SystemRegister {

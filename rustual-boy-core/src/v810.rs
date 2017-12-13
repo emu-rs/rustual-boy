@@ -24,8 +24,8 @@ pub enum CacheResult {
 }
 
 pub struct Cache {
-    hits: usize,
-    misses: usize,
+    hits: u64,
+    misses: u64,
     is_enabled: bool,
     entries: Box<[CacheEntry; 128]>,
 }
@@ -101,7 +101,7 @@ impl Cache {
         return self.entries[entry];
     }
 
-    pub fn stats(&self) -> (usize, usize) {
+    pub fn stats(&self) -> (u64, u64) {
         return (self.hits, self.misses);
     }
 }
@@ -132,7 +132,7 @@ pub struct V810 {
     psw_address_trap_enable: bool,
     psw_exception_pending: bool,
     psw_nmi_pending: bool,
-    psw_interrupt_mask_level: usize,
+    psw_interrupt_mask_level: u32,
 
     is_halted: bool,
 
@@ -249,7 +249,7 @@ impl V810 {
         (if self.psw_address_trap_enable { 1 << 13 } else { 0 }) |
         (if self.psw_exception_pending { 1 << 14 } else { 0 }) |
         (if self.psw_nmi_pending { 1 << 15 } else { 0 }) |
-        (self.psw_interrupt_mask_level as u32) << 16
+        self.psw_interrupt_mask_level << 16
     }
 
     pub fn set_reg_psw(&mut self, value: u32) {
@@ -267,10 +267,10 @@ impl V810 {
         self.psw_address_trap_enable = ((value >> 13) & 0x01) != 0;
         self.psw_exception_pending = ((value >> 14) & 0x01) != 0;
         self.psw_nmi_pending = ((value >> 15) & 0x01) != 0;
-        self.psw_interrupt_mask_level = ((value as usize) >> 16) & 0x0f;
+        self.psw_interrupt_mask_level = (value >> 16) & 0x0f;
     }
 
-    pub fn step(&mut self, interconnect: &mut Interconnect) -> (usize, bool) {
+    pub fn step(&mut self, interconnect: &mut Interconnect) -> (u32, bool) {
         if self.is_halted {
             return (1, false);
         }
@@ -322,7 +322,7 @@ impl V810 {
 
             macro_rules! format_ii {
                 ($f:expr) => ({
-                    let imm5 = (first_halfword & 0x1f) as usize;
+                    let imm5 = (first_halfword & 0x1f) as u32;
                     let reg2 = ((first_halfword >> 5) & 0x1f) as usize;
                     $f(imm5, reg2);
                 })
@@ -530,13 +530,13 @@ impl V810 {
                 }),
                 OPCODE_BITS_SHL_IMM => format_ii!(|imm5, reg2| {
                     let lhs = self.reg_gpr(reg2);
-                    let rhs = imm5 as u32;
+                    let rhs = imm5;
                     let res = self.shl_and_set_flags(lhs, rhs);
                     self.set_reg_gpr(reg2, res);
                 }),
                 OPCODE_BITS_SHR_IMM => format_ii!(|imm5, reg2| {
                     let lhs = self.reg_gpr(reg2);
-                    let rhs = imm5 as u32;
+                    let rhs = imm5;
                     let res = self.shr_and_set_flags(lhs, rhs);
                     self.set_reg_gpr(reg2, res);
                 }),
@@ -547,7 +547,7 @@ impl V810 {
                 }),
                 OPCODE_BITS_SAR_IMM => format_ii!(|imm5, reg2| {
                     let lhs = self.reg_gpr(reg2);
-                    let rhs = imm5 as u32;
+                    let rhs = imm5;
                     let res = self.sar_and_set_flags(lhs, rhs);
                     self.set_reg_gpr(reg2, res);
                 }),
@@ -943,7 +943,7 @@ impl V810 {
     fn shl_and_set_flags(&mut self, lhs: u32, rhs: u32) -> u32 {
         let mut res = lhs;
         let mut carry = false;
-        let shift = (rhs as usize) & 0x1f;
+        let shift = rhs & 0x1f;
         for _ in 0..shift {
             carry = (res & 0x80000000) != 0;
             res <<= 1;
@@ -957,7 +957,7 @@ impl V810 {
     fn shr_and_set_flags(&mut self, lhs: u32, rhs: u32) -> u32 {
         let mut res = lhs;
         let mut carry = false;
-        let shift = (rhs as usize) & 0x1f;
+        let shift = rhs & 0x1f;
         for _ in 0..shift {
             carry = (res & 0x00000001) != 0;
             res >>= 1;
@@ -971,7 +971,7 @@ impl V810 {
     fn sar_and_set_flags(&mut self, lhs: u32, rhs: u32) -> u32 {
         let mut res = lhs;
         let mut carry = false;
-        let shift = (rhs as usize) & 0x1f;
+        let shift = rhs & 0x1f;
         for _ in 0..shift {
             let sign = res & 0x80000000;
             carry = (res & 0x00000001) != 0;
@@ -1000,7 +1000,7 @@ impl V810 {
             return;
         }
 
-        let interrupt_level = (exception_code as usize >> 4) & 0x0f;
+        let interrupt_level = ((exception_code as u32) >> 4) & 0x0f;
         if interrupt_level < self.psw_interrupt_mask_level {
             return;
         }
@@ -1008,7 +1008,7 @@ impl V810 {
         self.enter_exception(exception_code, interrupt_level);
     }
 
-    fn enter_exception(&mut self, exception_code: u16, mut interrupt_level: usize) {
+    fn enter_exception(&mut self, exception_code: u16, mut interrupt_level: u32) {
         logln!(Log::Cpu, "Entering exception (code: 0x{:04x})", exception_code);
         if interrupt_level < 15 {
             interrupt_level += 1;
@@ -1034,7 +1034,7 @@ impl V810 {
     }
 }
 
-fn sign_extend_imm5(imm5: usize) -> u32 {
+fn sign_extend_imm5(imm5: u32) -> u32 {
     (((imm5 as i32) << 27) >> 27) as _
 }
 

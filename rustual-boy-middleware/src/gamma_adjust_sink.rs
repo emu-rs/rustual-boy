@@ -42,7 +42,7 @@ impl<T: Sink<ColorFrame>> GammaAdjustSink<T> {
 impl<T: Sink<ColorFrame>> Sink<ColorFrame> for GammaAdjustSink<T> {
     fn append(&mut self, frame: ColorFrame) {
         let mut output = Vec::new();
-        output.reserve_exact(DISPLAY_PIXELS);
+        output.reserve_exact(DISPLAY_PIXELS as usize);
 
         unsafe {
             let input_buffer_ptr = frame.as_ptr();
@@ -59,7 +59,7 @@ impl<T: Sink<ColorFrame>> Sink<ColorFrame> for GammaAdjustSink<T> {
                     *output_buffer_ptr.offset(i) = (output_r, output_g, output_b).into();
                 }
             }
-            output.set_len(DISPLAY_PIXELS);
+            output.set_len(DISPLAY_PIXELS as usize);
         }
         self.inner.append(output.into_boxed_slice());
     }

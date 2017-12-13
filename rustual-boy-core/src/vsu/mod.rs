@@ -7,42 +7,42 @@ use self::mem_map::*;
 // Docs claim the sample rate is 41.7khz, but my calculations indicate it should be 41666.66hz repeating
 //  (see SAMPLE_CLOCK_PERIOD calculation below), so we take the nearest whole-number sample rate to that.
 //  Note that the documentation rounds values in a lot of places, so that's probably what happened here.
-pub const SAMPLE_RATE: usize = 41667;
+pub const SAMPLE_RATE: u32 = 41667;
 
 // 20mhz / 41.7khz = ~480 clocks
-const SAMPLE_CLOCK_PERIOD: usize = 480;
+const SAMPLE_CLOCK_PERIOD: u32 = 480;
 
 // 20mhz / 260.4hz = ~76805 clocks
-const DURATION_CLOCK_PERIOD: usize = 76805;
+const DURATION_CLOCK_PERIOD: u32 = 76805;
 
 // 20mhz / 65.1hz = ~307218 clocks
-const ENVELOPE_CLOCK_PERIOD: usize = 307218;
+const ENVELOPE_CLOCK_PERIOD: u32 = 307218;
 
 // 20mhz / 5mhz = 4 clocks
-const FREQUENCY_CLOCK_PERIOD: usize = 4;
+const FREQUENCY_CLOCK_PERIOD: u32 = 4;
 
 // 20mhz / 1041.6hz = ~19200 clocks
-const SWEEP_MOD_SMALL_PERIOD: usize = 19200;
+const SWEEP_MOD_SMALL_PERIOD: u32 = 19200;
 
 // 20mhz / 130.2hz = ~153600 clocks
-const SWEEP_MOD_LARGE_PERIOD: usize = 153600;
+const SWEEP_MOD_LARGE_PERIOD: u32 = 153600;
 
 // 20mhz / 500khz = 40 clocks
-const NOISE_CLOCK_PERIOD: usize = 40;
+const NOISE_CLOCK_PERIOD: u32 = 40;
 
-const NUM_WAVE_TABLE_WORDS: usize = 32;
-const NUM_WAVE_TABLES: usize = 5;
-const TOTAL_WAVE_TABLE_SIZE: usize = NUM_WAVE_TABLE_WORDS * NUM_WAVE_TABLES;
+const NUM_WAVE_TABLE_WORDS: u32 = 32;
+const NUM_WAVE_TABLES: u32 = 5;
+const TOTAL_WAVE_TABLE_SIZE: u32 = NUM_WAVE_TABLE_WORDS * NUM_WAVE_TABLES;
 
-const NUM_MOD_TABLE_WORDS: usize = 32;
+const NUM_MOD_TABLE_WORDS: u32 = 32;
 
 #[derive(Default)]
 struct PlayControlReg {
     enable: bool,
     use_duration: bool,
-    duration: usize,
+    duration: u32,
 
-    duration_counter: usize,
+    duration_counter: u32,
 }
 
 impl PlayControlReg {
@@ -68,8 +68,8 @@ impl PlayControlReg {
 
 #[derive(Default)]
 struct VolumeReg {
-    left: usize,
-    right: usize,
+    left: u32,
+    right: u32,
 }
 
 impl VolumeReg {
@@ -81,16 +81,16 @@ impl VolumeReg {
 
 #[derive(Default)]
 struct Envelope {
-    reg_data_reload: usize,
+    reg_data_reload: u32,
     reg_data_direction: bool,
-    reg_data_step_interval: usize,
+    reg_data_step_interval: u32,
 
     reg_control_repeat: bool,
     reg_control_enable: bool,
 
-    level: usize,
+    level: u32,
 
-    envelope_counter: usize,
+    envelope_counter: u32,
 }
 
 impl Envelope {
@@ -107,7 +107,7 @@ impl Envelope {
         self.reg_control_enable = (value & 0x01) != 0;
     }
 
-    fn level(&self) -> usize {
+    fn level(&self) -> u32 {
         self.level
     }
 
@@ -141,15 +141,15 @@ struct StandardVoice {
 
     reg_volume: VolumeReg,
 
-    reg_frequency_low: usize,
-    reg_frequency_high: usize,
+    reg_frequency_low: u32,
+    reg_frequency_high: u32,
 
     envelope: Envelope,
 
-    reg_pcm_wave: usize,
+    reg_pcm_wave: u32,
 
-    frequency_counter: usize,
-    phase: usize,
+    frequency_counter: u32,
+    phase: u32,
 }
 
 impl StandardVoice {
@@ -197,12 +197,12 @@ impl StandardVoice {
         }
     }
 
-    fn output(&self, wave_tables: &[u8]) -> usize {
+    fn output(&self, wave_tables: &[u8]) -> u32 {
         if self.reg_pcm_wave > 4 {
             return 0;
         }
 
-        wave_tables[self.reg_pcm_wave * NUM_WAVE_TABLE_WORDS + self.phase] as _
+        wave_tables[(self.reg_pcm_wave * NUM_WAVE_TABLE_WORDS + self.phase) as usize] as _
     }
 }
 
@@ -226,12 +226,12 @@ struct SweepModVoice {
 
     reg_volume: VolumeReg,
 
-    reg_frequency_low: usize,
-    reg_frequency_high: usize,
-    frequency_low: usize,
-    frequency_high: usize,
-    next_frequency_low: usize,
-    next_frequency_high: usize,
+    reg_frequency_low: u32,
+    reg_frequency_high: u32,
+    frequency_low: u32,
+    frequency_high: u32,
+    next_frequency_low: u32,
+    next_frequency_high: u32,
 
     envelope: Envelope,
 
@@ -240,17 +240,17 @@ struct SweepModVoice {
     reg_function: bool,
 
     reg_sweep_mod_base_interval: bool,
-    reg_sweep_mod_interval: usize,
+    reg_sweep_mod_interval: u32,
     reg_sweep_direction: bool,
-    reg_sweep_shift_amount: usize,
+    reg_sweep_shift_amount: u32,
 
-    reg_pcm_wave: usize,
+    reg_pcm_wave: u32,
 
-    frequency_counter: usize,
-    phase: usize,
+    frequency_counter: u32,
+    phase: u32,
 
-    sweep_mod_counter: usize,
-    mod_phase: usize,
+    sweep_mod_counter: u32,
+    mod_phase: u32,
 }
 
 impl SweepModVoice {
@@ -342,9 +342,9 @@ impl SweepModVoice {
                 true => {
                     // Mod
                     let reg_freq = (self.reg_frequency_high << 8) | self.reg_frequency_low;
-                    freq = reg_freq.wrapping_add(mod_table[self.mod_phase] as _) & 0x07ff;
+                    freq = reg_freq.wrapping_add(mod_table[self.mod_phase as usize] as _) & 0x07ff;
 
-                    const MAX_MOD_PHASE: usize = NUM_MOD_TABLE_WORDS - 1;
+                    const MAX_MOD_PHASE: u32 = NUM_MOD_TABLE_WORDS - 1;
                     self.mod_phase = match (self.reg_mod_repeat, self.mod_phase) {
                         (false, MAX_MOD_PHASE) => MAX_MOD_PHASE,
                         _ => (self.mod_phase + 1) & MAX_MOD_PHASE
@@ -357,12 +357,12 @@ impl SweepModVoice {
         }
     }
 
-    fn output(&self, wave_tables: &[u8]) -> usize {
+    fn output(&self, wave_tables: &[u8]) -> u32 {
         if self.reg_pcm_wave > 4 {
             return 0;
         }
 
-        wave_tables[self.reg_pcm_wave * NUM_WAVE_TABLE_WORDS + self.phase] as _
+        wave_tables[(self.reg_pcm_wave * NUM_WAVE_TABLE_WORDS + self.phase) as usize] as _
     }
 }
 
@@ -386,16 +386,16 @@ struct NoiseVoice {
 
     reg_volume: VolumeReg,
 
-    reg_frequency_low: usize,
-    reg_frequency_high: usize,
+    reg_frequency_low: u32,
+    reg_frequency_high: u32,
 
     envelope: Envelope,
 
-    reg_noise_control: usize,
+    reg_noise_control: u32,
 
-    frequency_counter: usize,
-    shift: usize,
-    output: usize,
+    frequency_counter: u32,
+    shift: u32,
+    output: u32,
 }
 
 impl NoiseVoice {
@@ -462,7 +462,7 @@ impl NoiseVoice {
         }
     }
 
-    fn output(&self) -> usize {
+    fn output(&self) -> u32 {
         self.output
     }
 }
@@ -492,19 +492,19 @@ pub struct Vsu {
     voice5: SweepModVoice,
     voice6: NoiseVoice,
 
-    duration_clock_counter: usize,
-    envelope_clock_counter: usize,
-    frequency_clock_counter: usize,
-    sweep_mod_clock_counter: usize,
-    noise_clock_counter: usize,
-    sample_clock_counter: usize,
+    duration_clock_counter: u32,
+    envelope_clock_counter: u32,
+    frequency_clock_counter: u32,
+    sweep_mod_clock_counter: u32,
+    noise_clock_counter: u32,
+    sample_clock_counter: u32,
 }
 
 impl Vsu {
     pub fn new() -> Vsu {
         Vsu {
-            wave_tables: vec![0; TOTAL_WAVE_TABLE_SIZE].into_boxed_slice(),
-            mod_table: vec![0; NUM_MOD_TABLE_WORDS].into_boxed_slice(),
+            wave_tables: vec![0; TOTAL_WAVE_TABLE_SIZE as usize].into_boxed_slice(),
+            mod_table: vec![0; NUM_MOD_TABLE_WORDS as usize].into_boxed_slice(),
 
             voice1: StandardVoice::default(),
             voice2: StandardVoice::default(),
@@ -627,7 +627,7 @@ impl Vsu {
         self.write_byte(addr, value as _);
     }
 
-    pub fn cycles(&mut self, num_cycles: usize, audio_frame_sink: &mut Sink<AudioFrame>) {
+    pub fn cycles(&mut self, num_cycles: u32, audio_frame_sink: &mut Sink<AudioFrame>) {
         for _ in 0..num_cycles {
             self.duration_clock_counter += 1;
             if self.duration_clock_counter >= DURATION_CLOCK_PERIOD {
@@ -695,7 +695,7 @@ impl Vsu {
         let mut acc_left = 0;
         let mut acc_right = 0;
 
-        fn mix_sample<V: Voice>(acc_left: &mut usize, acc_right: &mut usize, voice: &V, voice_output: usize) {
+        fn mix_sample<V: Voice>(acc_left: &mut u32, acc_right: &mut u32, voice: &V, voice_output: u32) {
             let (left, right) = if voice.reg_play_control().enable {
                 let envelope_level = voice.envelope().level();
 

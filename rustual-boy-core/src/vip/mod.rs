@@ -4,24 +4,24 @@ use sinks::*;
 
 use self::mem_map::*;
 
-const FRAMEBUFFER_RESOLUTION_X: usize = 384;
-const FRAMEBUFFER_RESOLUTION_Y: usize = 256;
+const FRAMEBUFFER_RESOLUTION_X: u32 = 384;
+const FRAMEBUFFER_RESOLUTION_Y: u32 = 256;
 
-pub const DISPLAY_RESOLUTION_X: usize = 384;
-pub const DISPLAY_RESOLUTION_Y: usize = 224;
-pub const DISPLAY_PIXELS: usize = DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y;
+pub const DISPLAY_RESOLUTION_X: u32 = 384;
+pub const DISPLAY_RESOLUTION_Y: u32 = 224;
+pub const DISPLAY_PIXELS: u32 = DISPLAY_RESOLUTION_X * DISPLAY_RESOLUTION_Y;
 
-const DRAWING_BLOCK_HEIGHT: usize = 8;
-const DRAWING_BLOCK_COUNT: usize = DISPLAY_RESOLUTION_Y / DRAWING_BLOCK_HEIGHT;
+const DRAWING_BLOCK_HEIGHT: u32 = 8;
+const DRAWING_BLOCK_COUNT: u32 = DISPLAY_RESOLUTION_Y / DRAWING_BLOCK_HEIGHT;
 
 // 20mhz / (1s / 2.5ms) = 50000 clocks
-const DISPLAY_FRAME_EIGHTH_PERIOD: usize = 50000;
+const DISPLAY_FRAME_EIGHTH_PERIOD: u32 = 50000;
 
-const DRAWING_PERIOD: usize = DISPLAY_FRAME_EIGHTH_PERIOD * 2;
-const DRAWING_BLOCK_PERIOD: usize = DRAWING_PERIOD / DRAWING_BLOCK_COUNT;
+const DRAWING_PERIOD: u32 = DISPLAY_FRAME_EIGHTH_PERIOD * 2;
+const DRAWING_BLOCK_PERIOD: u32 = DRAWING_PERIOD / DRAWING_BLOCK_COUNT;
 
 // 20mhz / (1s / 56us) = 1120 clocks
-const DRAWING_SBOUT_PERIOD: usize = 1120;
+const DRAWING_SBOUT_PERIOD: u32 = 1120;
 
 enum DisplayState {
     Idle,
@@ -82,11 +82,11 @@ pub struct Vip {
     reg_display_control_sync_enable: bool,
 
     reg_drawing_control_drawing_enable: bool,
-    reg_drawing_control_sbcount: usize,
-    reg_drawing_control_sbcmp: usize,
+    reg_drawing_control_sbcount: u32,
+    reg_drawing_control_sbcmp: u32,
     reg_drawing_control_sbout: bool,
 
-    reg_game_frame_control: usize,
+    reg_game_frame_control: u32,
 
     reg_led_brightness_1: u8,
     reg_led_brightness_2: u8,
@@ -108,13 +108,13 @@ pub struct Vip {
 
     reg_clear_color: u8,
 
-    display_frame_eighth_clock_counter: usize,
-    display_frame_eighth_counter: usize,
+    display_frame_eighth_clock_counter: u32,
+    display_frame_eighth_counter: u32,
 
-    drawing_block_counter: usize,
-    drawing_sbout_counter: usize,
+    drawing_block_counter: u32,
+    drawing_sbout_counter: u32,
 
-    game_frame_counter: usize,
+    game_frame_counter: u32,
 
     display_first_framebuffers: bool,
     last_clear_color: u8,
@@ -419,7 +419,7 @@ impl Vip {
             }
             GAME_FRAME_CONTROL_REG => {
                 logln!(Log::Vip, "Game Frame Control written (value: 0x{:04x})", value);
-                self.reg_game_frame_control = (value as usize) + 1;
+                self.reg_game_frame_control = (value as u32) + 1;
             }
             DRAWING_CONTROL_READ_REG => {
                 logln!(Log::Vip, "WARNING: Attempted write halfword to Drawing Control Read Reg (value: 0x{:04x})", value);
@@ -429,7 +429,7 @@ impl Vip {
 
                 let reset = (value & 0x01) != 0;
                 self.reg_drawing_control_drawing_enable = (value & 0x02) != 0;
-                self.reg_drawing_control_sbcmp = ((value as usize) >> 8) & 0x1f;
+                self.reg_drawing_control_sbcmp = ((value as u32) >> 8) & 0x1f;
 
                 if reset {
                     self.drawing_state = DrawingState::Idle;
@@ -491,7 +491,7 @@ impl Vip {
         }
     }
 
-    pub fn cycles(&mut self, cycles: usize, video_frame_sink: &mut Sink<VideoFrame>) -> bool {
+    pub fn cycles(&mut self, cycles: u32, video_frame_sink: &mut Sink<VideoFrame>) -> bool {
         let mut raise_interrupt = false;
 
         for _ in 0..cycles {
@@ -689,12 +689,12 @@ impl Vip {
         let left_framebuffer_offset = if draw_to_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
-        let block_start_y = (self.reg_drawing_control_sbcount as u32) * 8;
-        let block_end_y = block_start_y + (DRAWING_BLOCK_HEIGHT as u32);
+        let block_start_y = self.reg_drawing_control_sbcount * 8;
+        let block_end_y = block_start_y + DRAWING_BLOCK_HEIGHT;
 
         let clear_pixels = (self.last_clear_color << 6) | (self.last_clear_color << 4) | (self.last_clear_color << 2) | self.last_clear_color;
-        for x in 0..FRAMEBUFFER_RESOLUTION_X as u32 {
-            let column_offset = (x * (FRAMEBUFFER_RESOLUTION_Y as u32) + block_start_y) / 4;
+        for x in 0..FRAMEBUFFER_RESOLUTION_X {
+            let column_offset = (x * FRAMEBUFFER_RESOLUTION_Y + block_start_y) / 4;
             self.write_vram_byte(left_framebuffer_offset + column_offset, clear_pixels);
             self.write_vram_byte(left_framebuffer_offset + column_offset + 1, clear_pixels);
             self.write_vram_byte(right_framebuffer_offset + column_offset, clear_pixels);
@@ -722,7 +722,7 @@ impl Vip {
                 let out_of_bounds = (header & 0x0080) != 0;
                 let bg_height = ((header >> 8) & 0x03) as u32;
                 let bg_width = ((header >> 10) & 0x03) as u32;
-                let mode = ((header >> 12) & 0x03) as usize;
+                let mode = ((header >> 12) & 0x03) as u32;
                 let right_on = (header & 0x4000) != 0;
                 let left_on = (header & 0x8000) != 0;
                 /*logln!(Log::Vip, "  base: 0x{:02x}", base);
@@ -876,7 +876,7 @@ impl Vip {
                                                         Eye::Right => value.wrapping_add(parallax as u32),
                                                     }
                                                 };
-                                                if pixel_x >= FRAMEBUFFER_RESOLUTION_X as u32 {
+                                                if pixel_x >= FRAMEBUFFER_RESOLUTION_X {
                                                     continue;
                                                 }
 
@@ -927,7 +927,7 @@ impl Vip {
 
                                 for window_x in 0..width {
                                     let pixel_x = window_x.wrapping_add(parallax_x);
-                                    if pixel_x >= FRAMEBUFFER_RESOLUTION_X as u32 {
+                                    if pixel_x >= FRAMEBUFFER_RESOLUTION_X {
                                         continue;
                                     }
 
@@ -968,7 +968,7 @@ impl Vip {
 
                                 for window_x in 0..width {
                                     let pixel_x = window_x.wrapping_add(parallax_x);
-                                    if pixel_x >= FRAMEBUFFER_RESOLUTION_X as u32 {
+                                    if pixel_x >= FRAMEBUFFER_RESOLUTION_X {
                                         continue;
                                     }
 
@@ -1082,7 +1082,7 @@ impl Vip {
 
         let color = (palette >> (palette_index * 2)) & 0x03;
 
-        let framebuffer_byte_index = (pixel_x * (FRAMEBUFFER_RESOLUTION_Y as u32) + pixel_y) / 4;
+        let framebuffer_byte_index = (pixel_x * FRAMEBUFFER_RESOLUTION_Y + pixel_y) / 4;
         let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
         let framebuffer_byte_mask = 0x03 << framebuffer_byte_shift;
         let mut framebuffer_byte = self.read_vram_byte(framebuffer_offset + framebuffer_byte_index);
@@ -1094,15 +1094,15 @@ impl Vip {
         let left_framebuffer_offset = if self.display_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
-        let mut left_buffer = vec![0; DISPLAY_PIXELS].into_boxed_slice();
-        let mut right_buffer = vec![0; DISPLAY_PIXELS].into_boxed_slice();
+        let mut left_buffer = vec![0; DISPLAY_PIXELS as usize].into_boxed_slice();
+        let mut right_buffer = vec![0; DISPLAY_PIXELS as usize].into_boxed_slice();
         let left_buffer_ptr = left_buffer.as_mut_ptr();
         let right_buffer_ptr = right_buffer.as_mut_ptr();
 
         if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
-            let mut brightness_1 = (self.reg_led_brightness_1 as usize) * 2;
-            let mut brightness_2 = (self.reg_led_brightness_2 as usize) * 2;
-            let mut brightness_3 = ((self.reg_led_brightness_1 as usize) + (self.reg_led_brightness_2 as usize) + (self.reg_led_brightness_3 as usize)) * 2;
+            let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
+            let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
+            let mut brightness_3 = ((self.reg_led_brightness_1 as u32) + (self.reg_led_brightness_2 as u32) + (self.reg_led_brightness_3 as u32)) * 2;
             if brightness_1 > 255 {
                 brightness_1 = 255;
             }
@@ -1114,9 +1114,9 @@ impl Vip {
             }
 
             unsafe {
-                for pixel_x in 0..DISPLAY_RESOLUTION_X as u32 {
-                    for pixel_y in 0..DISPLAY_RESOLUTION_Y as u32 {
-                        let framebuffer_byte_index = (pixel_x * (FRAMEBUFFER_RESOLUTION_Y as u32) + pixel_y) / 4;
+                for pixel_x in 0..DISPLAY_RESOLUTION_X {
+                    for pixel_y in 0..DISPLAY_RESOLUTION_Y {
+                        let framebuffer_byte_index = (pixel_x * FRAMEBUFFER_RESOLUTION_Y + pixel_y) / 4;
                         let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
                         let left_color = (self.read_vram_byte(left_framebuffer_offset + framebuffer_byte_index) >> framebuffer_byte_shift) & 0x03;
                         let right_color = (self.read_vram_byte(right_framebuffer_offset + framebuffer_byte_index) >> framebuffer_byte_shift) & 0x03;
@@ -1132,7 +1132,7 @@ impl Vip {
                             2 => brightness_2,
                             _ => brightness_3
                         } as u8;
-                        let buffer_index = pixel_y * (DISPLAY_RESOLUTION_X as u32) + pixel_x;
+                        let buffer_index = pixel_y * DISPLAY_RESOLUTION_X + pixel_x;
                         *left_buffer_ptr.offset(buffer_index as _) = left_brightness;
                         *right_buffer_ptr.offset(buffer_index as _) = right_brightness;
                     }

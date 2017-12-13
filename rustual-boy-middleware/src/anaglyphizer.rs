@@ -33,7 +33,7 @@ impl<T: Sink<ColorFrame>> Anaglyphizer<T> {
 impl<T: Sink<ColorFrame>> Sink<VideoFrame> for Anaglyphizer<T> {
     fn append(&mut self, frame: VideoFrame) {
         let mut output = Vec::new();
-        output.reserve_exact(DISPLAY_PIXELS);
+        output.reserve_exact(DISPLAY_PIXELS as usize);
         let (ref l_buffer, ref r_buffer) = frame;
 
         unsafe {
@@ -51,7 +51,7 @@ impl<T: Sink<ColorFrame>> Sink<VideoFrame> for Anaglyphizer<T> {
                     *o_ptr.offset(i) = l + r;
                 }
             }
-            output.set_len(DISPLAY_PIXELS);
+            output.set_len(DISPLAY_PIXELS as usize);
         }
         self.inner.append(output.into_boxed_slice());
     }

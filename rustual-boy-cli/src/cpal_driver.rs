@@ -70,7 +70,7 @@ impl SinkRef<[AudioFrame]> for CpalDriverBufferSink {
 
 struct CpalDriverTimeSource {
     ring_buffer: Arc<Mutex<RingBuffer>>,
-    sample_rate: usize,
+    sample_rate: u32,
 }
 
 impl TimeSource for CpalDriverTimeSource {
@@ -90,7 +90,7 @@ impl Executor for CpalDriverExecutor {
 
 pub struct CpalDriver {
     ring_buffer: Arc<Mutex<RingBuffer>>,
-    sample_rate: usize,
+    sample_rate: u32,
 
     _voice: Voice,
     _join_handle: JoinHandle<()>,
@@ -154,7 +154,7 @@ impl CpalDriver {
                 UnknownTypeBuffer::U16(mut buffer) => {
                     for sample in buffer.chunks_mut(format.channels.len()) {
                         for out in sample.iter_mut() {
-                            *out = ((resampler.next(&mut *read_ring_buffer) as isize) + 32768) as u16;
+                            *out = ((resampler.next(&mut *read_ring_buffer) as i32) + 32768) as u16;
                         }
                     }
                 },
@@ -176,7 +176,7 @@ impl CpalDriver {
 
         Ok(CpalDriver {
             ring_buffer: ring_buffer,
-            sample_rate: sample_rate as _,
+            sample_rate: sample_rate,
 
             _voice: voice,
             _join_handle: join_handle,
@@ -198,20 +198,20 @@ impl CpalDriver {
 }
 
 struct LinearResampler {
-    from_sample_rate: usize,
-    to_sample_rate: usize,
+    from_sample_rate: u32,
+    to_sample_rate: u32,
 
     current_from_frame: AudioFrame,
     next_from_frame: AudioFrame,
-    from_fract_pos: usize,
+    from_fract_pos: u32,
 
-    current_frame_channel_offset: usize,
+    current_frame_channel_offset: u32,
 }
 
 impl LinearResampler {
-    fn new(from_sample_rate: usize, to_sample_rate: usize) -> LinearResampler {
+    fn new(from_sample_rate: u32, to_sample_rate: u32) -> LinearResampler {
         let sample_rate_gcd = {
-            fn gcd(a: usize, b: usize) -> usize {
+            fn gcd(a: u32, b: u32) -> u32 {
                 if b == 0 {
                     a
                 } else {
@@ -235,8 +235,8 @@ impl LinearResampler {
     }
 
     fn next(&mut self, input: &mut Iterator<Item = i16>) -> i16 {
-        fn interpolate(a: i16, b: i16, num: usize, denom: usize) -> i16 {
-            (((a as isize) * ((denom - num) as isize) + (b as isize) * (num as isize)) / (denom as isize)) as _
+        fn interpolate(a: i16, b: i16, num: u32, denom: u32) -> i16 {
+            (((a as i32) * ((denom - num) as i32) + (b as i32) * (num as i32)) / (denom as i32)) as _
         }
 
         let ret = match self.current_frame_channel_offset {

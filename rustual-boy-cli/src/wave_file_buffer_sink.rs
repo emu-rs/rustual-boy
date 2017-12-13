@@ -6,16 +6,16 @@ use std::io::{self, Write, Seek, SeekFrom, BufWriter};
 use std::fs::File;
 use std::path::Path;
 
-const NUM_CHANNELS: usize = 2;
-const BITS_PER_SAMPLE: usize = 16;
+const NUM_CHANNELS: u32 = 2;
+const BITS_PER_SAMPLE: u32 = 16;
 
 pub struct WaveFileBufferSink {
     writer: BufWriter<File>,
-    num_frames: usize,
+    num_frames: u32,
 }
 
 impl WaveFileBufferSink {
-    pub fn new<P: AsRef<Path>>(file_name: P, sample_rate: usize) -> io::Result<WaveFileBufferSink> {
+    pub fn new<P: AsRef<Path>>(file_name: P, sample_rate: u32) -> io::Result<WaveFileBufferSink> {
         let file = File::create(file_name)?;
         let writer = BufWriter::new(file);
 
@@ -34,7 +34,7 @@ impl WaveFileBufferSink {
         ret.write_u32(16)?;
         ret.write_u16(1)?; // WAVE_FORMAT_PCM
         ret.write_u16(NUM_CHANNELS as _)?;
-        ret.write_u32(sample_rate as _)?;
+        ret.write_u32(sample_rate)?;
         ret.write_u32((sample_rate * NUM_CHANNELS * BITS_PER_SAMPLE / 8) as _)?;
         ret.write_u16((NUM_CHANNELS * BITS_PER_SAMPLE / 8) as _)?;
         ret.write_u16(BITS_PER_SAMPLE as _)?;
@@ -74,9 +74,9 @@ impl Drop for WaveFileBufferSink {
         let data_chunk_size = self.num_frames * NUM_CHANNELS * BITS_PER_SAMPLE / 8;
 
         let _ = self.writer.seek(SeekFrom::Start(4));
-        let _ = self.write_u32((data_chunk_size + 36) as _); // Data sub-chunk size
+        let _ = self.write_u32(data_chunk_size + 36); // Data sub-chunk size
         let _ = self.writer.seek(SeekFrom::Start(40));
-        let _ = self.write_u32(data_chunk_size as _); // Data size
+        let _ = self.write_u32(data_chunk_size); // Data size
     }
 }
 

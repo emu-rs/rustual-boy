@@ -9,11 +9,11 @@ use std::borrow::Cow;
 pub enum Command {
     ShowCpuCache,
     ShowRegs,
-    Step(usize),
+    Step(u32),
     Continue,
     Goto(u32),
     ShowMem(Option<u32>),
-    Disassemble(usize),
+    Disassemble(u32),
     Label,
     AddLabel(String, u32),
     RemoveLabel(String),
@@ -51,7 +51,7 @@ fn command<I: Stream<Item=char>>(input: I) -> ParseResult<Command, I> {
 
     let step =
         (choice([try(string("step")), try(string("s"))]),
-            optional((spaces(), usize_()).map(|x| x.1)))
+            optional((spaces(), u32_()).map(|x| x.1)))
         .map(|(_, count)| Command::Step(count.unwrap_or(1)))
         .boxed();
 
@@ -73,7 +73,7 @@ fn command<I: Stream<Item=char>>(input: I) -> ParseResult<Command, I> {
 
     let disassemble =
         (choice([try(string("disassemble")), try(string("d"))]),
-            optional((spaces(), usize_()).map(|x| x.1)))
+            optional((spaces(), u32_()).map(|x| x.1)))
         .map(|(_, count)| Command::Disassemble(count.unwrap_or(4)))
         .boxed();
 
@@ -171,9 +171,9 @@ fn command<I: Stream<Item=char>>(input: I) -> ParseResult<Command, I> {
     .parse_stream(input)
 }
 
-fn usize_<'a, I: Stream<Item=char> + 'a>() -> Box<Parser<Input=I, Output=usize> + 'a> {
+fn u32_<'a, I: Stream<Item=char> + 'a>() -> Box<Parser<Input=I, Output=u32> + 'a> {
     many1(digit())
-        .and_then(|s: String| s.parse::<usize>())
+        .and_then(|s: String| s.parse::<u32>())
         .boxed()
 }
 

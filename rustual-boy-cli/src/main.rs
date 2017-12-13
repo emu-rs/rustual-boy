@@ -62,7 +62,7 @@ fn main() {
         }
     };
 
-    let audio_driver = CpalDriver::new(SAMPLE_RATE as _, 100).unwrap();
+    let audio_driver = CpalDriver::new(SAMPLE_RATE, 100).unwrap();
 
     let audio_buffer_sink = audio_driver.sink();
     let time_source = audio_driver.time_source();
