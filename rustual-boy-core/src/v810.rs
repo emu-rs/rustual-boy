@@ -423,19 +423,23 @@ impl V810 {
                 OPCODE_BITS_DIV => format_i!(|reg1, reg2| {
                     let lhs = self.reg_gpr(reg2);
                     let rhs = self.reg_gpr(reg1);
-                    let (res, rem, overflow) = if lhs == 0x80000000 && rhs == 0xffffffff {
-                        (lhs, 0, true)
+                    if rhs == 0 {
+                        next_pc = self.enter_exception(0xff80);
                     } else {
-                        let lhs = lhs as i32;
-                        let rhs = rhs as i32;
-                        let res = (lhs / rhs) as u32;
-                        let rem = (lhs % rhs) as u32;
-                        (res, rem, false)
-                    };
-                    self.set_reg_gpr(30, rem);
-                    self.set_reg_gpr(reg2, res);
-                    self.set_zero_sign_flags(res);
-                    self.psw_overflow = overflow;
+                        let (res, rem, overflow) = if lhs == 0x80000000 && rhs == 0xffffffff {
+                            (lhs, 0, true)
+                        } else {
+                            let lhs = lhs as i32;
+                            let rhs = rhs as i32;
+                            let res = (lhs / rhs) as u32;
+                            let rem = (lhs % rhs) as u32;
+                            (res, rem, false)
+                        };
+                        self.set_reg_gpr(30, rem);
+                        self.set_reg_gpr(reg2, res);
+                        self.set_zero_sign_flags(res);
+                        self.psw_overflow = overflow;
+                    }
                     num_cycles = 38;
                 }),
                 OPCODE_BITS_MUL_U => format_i!(|reg1, reg2| {
@@ -454,12 +458,16 @@ impl V810 {
                 OPCODE_BITS_DIV_U => format_i!(|reg1, reg2| {
                     let lhs = self.reg_gpr(reg2);
                     let rhs = self.reg_gpr(reg1);
-                    let res = lhs / rhs;
-                    let rem = lhs % rhs;
-                    self.set_reg_gpr(30, rem);
-                    self.set_reg_gpr(reg2, res);
-                    self.set_zero_sign_flags(res);
-                    self.psw_overflow = false;
+                    if rhs == 0 {
+                        next_pc = self.enter_exception(0xff80);
+                    } else {
+                        let res = lhs / rhs;
+                        let rem = lhs % rhs;
+                        self.set_reg_gpr(30, rem);
+                        self.set_reg_gpr(reg2, res);
+                        self.set_zero_sign_flags(res);
+                        self.psw_overflow = false;
+                    }
                     num_cycles = 36;
                 }),
                 OPCODE_BITS_OR => format_i!(|reg1, reg2| {
@@ -1000,19 +1008,22 @@ impl V810 {
             return;
         }
 
-        let interrupt_level = ((exception_code as u32) >> 4) & 0x0f;
+        let mut interrupt_level = ((exception_code as u32) >> 4) & 0x0f;
         if interrupt_level < self.psw_interrupt_mask_level {
             return;
         }
 
-        self.enter_exception(exception_code, interrupt_level);
-    }
-
-    fn enter_exception(&mut self, exception_code: u16, mut interrupt_level: u32) {
-        logln!(Log::Cpu, "Entering exception (code: 0x{:04x})", exception_code);
         if interrupt_level < 15 {
             interrupt_level += 1;
         }
+
+        self.reg_pc = self.enter_exception(exception_code);
+
+        self.psw_interrupt_mask_level = interrupt_level;
+    }
+
+    fn enter_exception(&mut self, exception_code: u16) -> u32 {
+        logln!(Log::Cpu, "Entering exception (code: 0x{:04x})", exception_code);
         // TODO: Duplexed exception
         self.reg_eipc = self.reg_pc;
         if self.is_halted {
@@ -1022,8 +1033,7 @@ impl V810 {
         self.reg_eipsw = self.reg_psw();
         self.reg_ecr = exception_code;
         self.psw_exception_pending = true;
-        self.psw_interrupt_mask_level = interrupt_level;
-        self.reg_pc = 0xffff0000 | (exception_code as u32);
+        0xffff0000 | (exception_code as u32)
     }
 
     fn return_from_exception(&mut self) -> u32 {
