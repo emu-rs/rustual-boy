@@ -7,7 +7,7 @@ pub struct CommandLineConfig {
 
 pub fn parse_args() -> CommandLineConfig {
     let app = App::new("Rustual Boy")
-        .version("0.1.0")
+        .version("0.2.0")
         .author(crate_authors!(", "))
         .about("A CLI frontend to the Rustual Boy emulator")
         .arg(Arg::with_name("ROM")

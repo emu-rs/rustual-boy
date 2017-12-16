@@ -1,7 +1,7 @@
 Rustual Boy - A Virtual Boy emulator
 ====================================
 
-This is a very early build, and, as such, does not yet have proper documentation.
+This is a pre-1.0 build, and, as such, does not yet have proper documentation.
 Please visit https://github.com/emu-rs/rustual-boy for more info!
 
 Rustual Boy is primarily distributed under the terms of both the MIT license and
@@ -12,6 +12,6 @@ but it depends on a number of libraries which carry their own copyright notices
 and license terms. These libraries are normally all linked static into the binary
 distributions of Rustual Boy. See LICENSE-THIRD-PARTY for more info.
 
-(C) 2016-2017 Jake "ferris" Taylor and the Rustual Boy contributors
-http://rustualboy.com/
+(C) 2016-2018 Jake "ferris" Taylor and the Rustual Boy contributors
+https://rustualboy.com/
 https://github.com/emu-rs/rustual-boy
