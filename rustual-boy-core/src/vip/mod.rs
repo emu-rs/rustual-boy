@@ -30,6 +30,7 @@ enum DisplayState {
     Finished,
 }
 
+#[derive(Eq, PartialEq)]
 enum DrawingState {
     Idle,
     Drawing,
@@ -40,7 +41,7 @@ enum Eye {
     Right,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Eq, PartialEq)]
 enum WindowMode {
     Normal,
     LineShift,
@@ -48,7 +49,7 @@ enum WindowMode {
     Obj,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum ObjGroup {
     Group0,
     Group1,
@@ -64,49 +65,50 @@ pub struct Vip {
 
     drawing_state: DrawingState,
 
-    reg_interrupt_pending_left_display_finished: bool,
-    reg_interrupt_pending_right_display_finished: bool,
-    reg_interrupt_pending_start_of_game_frame: bool,
-    reg_interrupt_pending_start_of_display_frame: bool,
-    reg_interrupt_pending_sbhit: bool,
-    reg_interrupt_pending_drawing_finished: bool,
+    reg_intpnd_lfbend: bool,
+    reg_intpnd_rfbend: bool,
+    reg_intpnd_gamestart: bool,
+    reg_intpnd_framestart: bool,
+    reg_intpnd_sbhit: bool,
+    reg_intpnd_xpend: bool,
 
-    reg_interrupt_enable_left_display_finished: bool,
-    reg_interrupt_enable_right_display_finished: bool,
-    reg_interrupt_enable_start_of_game_frame: bool,
-    reg_interrupt_enable_start_of_display_frame: bool,
-    reg_interrupt_enable_sbhit: bool,
-    reg_interrupt_enable_drawing_finished: bool,
+    reg_intenb_lfbend: bool,
+    reg_intenb_rfbend: bool,
+    reg_intenb_gamestart: bool,
+    reg_intenb_framestart: bool,
+    reg_intenb_sbhit: bool,
+    reg_intenb_xpend: bool,
 
-    reg_display_control_display_enable: bool,
-    reg_display_control_sync_enable: bool,
+    reg_dpctrl_disp: bool,
+    reg_dpctrl_synce: bool,
 
-    reg_drawing_control_drawing_enable: bool,
-    reg_drawing_control_sbcount: u32,
-    reg_drawing_control_sbcmp: u32,
-    reg_drawing_control_sbout: bool,
+    reg_xpctrl_xpen: bool,
+    reg_xpctrl_sbcount: u32,
+    reg_xpctrl_sbcmp: u32,
+    reg_xpctrl_sbout: bool,
 
-    reg_game_frame_control: u32,
+    reg_frmcyc: u32,
 
-    reg_led_brightness_1: u8,
-    reg_led_brightness_2: u8,
-    reg_led_brightness_3: u8,
+    reg_brta: u8,
+    reg_brtb: u8,
+    reg_brtc: u8,
 
-    reg_obj_group_0_ptr: u16,
-    reg_obj_group_1_ptr: u16,
-    reg_obj_group_2_ptr: u16,
-    reg_obj_group_3_ptr: u16,
+    reg_spt0: u16,
+    reg_spt1: u16,
+    reg_spt2: u16,
+    reg_spt3: u16,
 
-    reg_bg_palette_0: u8,
-    reg_bg_palette_1: u8,
-    reg_bg_palette_2: u8,
-    reg_bg_palette_3: u8,
-    reg_obj_palette_0: u8,
-    reg_obj_palette_1: u8,
-    reg_obj_palette_2: u8,
-    reg_obj_palette_3: u8,
+    reg_gplt0: u8,
+    reg_gplt1: u8,
+    reg_gplt2: u8,
+    reg_gplt3: u8,
 
-    reg_clear_color: u8,
+    reg_jplt0: u8,
+    reg_jplt1: u8,
+    reg_jplt2: u8,
+    reg_jplt3: u8,
+
+    reg_bkcol: u8,
 
     display_frame_eighth_clock_counter: u32,
     display_frame_eighth_counter: u32,
@@ -114,10 +116,10 @@ pub struct Vip {
     drawing_block_counter: u32,
     drawing_sbout_counter: u32,
 
-    game_frame_counter: u32,
+    fclk: u32,
 
     display_first_framebuffers: bool,
-    last_clear_color: u8,
+    last_bkcol: u8,
 }
 
 impl Vip {
@@ -133,49 +135,50 @@ impl Vip {
 
             drawing_state: DrawingState::Idle,
 
-            reg_interrupt_pending_left_display_finished: false,
-            reg_interrupt_pending_right_display_finished: false,
-            reg_interrupt_pending_start_of_game_frame: false,
-            reg_interrupt_pending_start_of_display_frame: false,
-            reg_interrupt_pending_sbhit: false,
-            reg_interrupt_pending_drawing_finished: false,
+            reg_intpnd_lfbend: false,
+            reg_intpnd_rfbend: false,
+            reg_intpnd_gamestart: false,
+            reg_intpnd_framestart: false,
+            reg_intpnd_sbhit: false,
+            reg_intpnd_xpend: false,
 
-            reg_interrupt_enable_left_display_finished: false,
-            reg_interrupt_enable_right_display_finished: false,
-            reg_interrupt_enable_start_of_game_frame: false,
-            reg_interrupt_enable_start_of_display_frame: false,
-            reg_interrupt_enable_sbhit: false,
-            reg_interrupt_enable_drawing_finished: false,
+            reg_intenb_lfbend: false,
+            reg_intenb_rfbend: false,
+            reg_intenb_gamestart: false,
+            reg_intenb_framestart: false,
+            reg_intenb_sbhit: false,
+            reg_intenb_xpend: false,
 
-            reg_display_control_display_enable: false,
-            reg_display_control_sync_enable: false,
+            reg_dpctrl_disp: false,
+            reg_dpctrl_synce: false,
 
-            reg_drawing_control_drawing_enable: false,
-            reg_drawing_control_sbcount: 0,
-            reg_drawing_control_sbcmp: 0,
-            reg_drawing_control_sbout: false,
+            reg_xpctrl_xpen: false,
+            reg_xpctrl_sbcount: 0,
+            reg_xpctrl_sbcmp: 0,
+            reg_xpctrl_sbout: false,
 
-            reg_game_frame_control: 1,
+            reg_frmcyc: 0,
 
-            reg_led_brightness_1: 0,
-            reg_led_brightness_2: 0,
-            reg_led_brightness_3: 0,
+            reg_brta: 0,
+            reg_brtb: 0,
+            reg_brtc: 0,
 
-            reg_obj_group_0_ptr: 0,
-            reg_obj_group_1_ptr: 0,
-            reg_obj_group_2_ptr: 0,
-            reg_obj_group_3_ptr: 0,
+            reg_spt0: 0,
+            reg_spt1: 0,
+            reg_spt2: 0,
+            reg_spt3: 0,
 
-            reg_bg_palette_0: 0,
-            reg_bg_palette_1: 0,
-            reg_bg_palette_2: 0,
-            reg_bg_palette_3: 0,
-            reg_obj_palette_0: 0,
-            reg_obj_palette_1: 0,
-            reg_obj_palette_2: 0,
-            reg_obj_palette_3: 0,
+            reg_gplt0: 0,
+            reg_gplt1: 0,
+            reg_gplt2: 0,
+            reg_gplt3: 0,
 
-            reg_clear_color: 0,
+            reg_jplt0: 0,
+            reg_jplt1: 0,
+            reg_jplt2: 0,
+            reg_jplt3: 0,
+
+            reg_bkcol: 0,
 
             display_frame_eighth_clock_counter: 0,
             display_frame_eighth_counter: 0,
@@ -183,10 +186,10 @@ impl Vip {
             drawing_block_counter: 0,
             drawing_sbout_counter: 0,
 
-            game_frame_counter: 0,
+            fclk: 0,
 
             display_first_framebuffers: false,
-            last_clear_color: 0,
+            last_bkcol: 0,
         }
     }
 
@@ -241,60 +244,60 @@ impl Vip {
         let addr = addr & 0xfffffffe;
         match addr {
             VRAM_START ... VRAM_END => self.read_vram_halfword(addr - VRAM_START),
-            INTERRUPT_PENDING_REG => {
-                //logln!(Log::Vip, "WARNING: Read halfword from Interrupt Pending Reg not fully implemented");
-                (if self.reg_interrupt_pending_left_display_finished { 1 } else { 0 } << 1) |
-                (if self.reg_interrupt_pending_right_display_finished { 1 } else { 0 } << 2) |
-                (if self.reg_interrupt_pending_start_of_game_frame { 1 } else { 0 } << 3) |
-                (if self.reg_interrupt_pending_start_of_display_frame { 1 } else { 0 } << 4) |
-                (if self.reg_interrupt_pending_sbhit { 1 } else { 0 } << 13) |
-                (if self.reg_interrupt_pending_drawing_finished { 1 } else { 0 } << 14)
+            INTPND => {
+                logln!(Log::Vip, "WARNING: Read halfword from INTPND not fully implemented");
+                (if self.reg_intpnd_lfbend { 1 } else { 0 } << 1) |
+                (if self.reg_intpnd_rfbend { 1 } else { 0 } << 2) |
+                (if self.reg_intpnd_gamestart { 1 } else { 0 } << 3) |
+                (if self.reg_intpnd_framestart { 1 } else { 0 } << 4) |
+                (if self.reg_intpnd_sbhit { 1 } else { 0 } << 13) |
+                (if self.reg_intpnd_xpend { 1 } else { 0 } << 14)
             }
-            INTERRUPT_ENABLE_REG => {
-                logln!(Log::Vip, "WARNING: Read halfword from Interrupt Enable Reg not fully implemented");
-                (if self.reg_interrupt_enable_left_display_finished { 1 } else { 0 } << 1) |
-                (if self.reg_interrupt_enable_right_display_finished { 1 } else { 0 } << 2) |
-                (if self.reg_interrupt_enable_start_of_game_frame { 1 } else { 0 } << 3) |
-                (if self.reg_interrupt_enable_start_of_display_frame { 1 } else { 0 } << 4) |
-                (if self.reg_interrupt_enable_sbhit { 1 } else { 0 } << 13) |
-                (if self.reg_interrupt_enable_drawing_finished { 1 } else { 0 } << 14)
+            INTENB => {
+                logln!(Log::Vip, "WARNING: Read halfword from INTEBN not fully implemented");
+                (if self.reg_intenb_lfbend { 1 } else { 0 } << 1) |
+                (if self.reg_intenb_rfbend { 1 } else { 0 } << 2) |
+                (if self.reg_intenb_gamestart { 1 } else { 0 } << 3) |
+                (if self.reg_intenb_framestart { 1 } else { 0 } << 4) |
+                (if self.reg_intenb_sbhit { 1 } else { 0 } << 13) |
+                (if self.reg_intenb_xpend { 1 } else { 0 } << 14)
             }
-            INTERRUPT_CLEAR_REG => {
-                logln!(Log::Vip, "WARNING: Attempted read halfword from Interrupt Clear Reg");
+            INTCLR => {
+                logln!(Log::Vip, "WARNING: Attempted read halfword from INTCLR");
                 0
             }
-            DISPLAY_CONTROL_READ_REG => {
-                let scan_ready = true; // TODO
-                let mem_refresh = true; // TODO
+            DPSTTS => {
+                let scanrdy = true; // TODO
+                let re = true; // TODO
                 let column_table_addr_lock = false; // TODO
 
-                (if self.reg_display_control_display_enable { 1 } else { 0 } << 1) |
+                (if self.reg_dpctrl_disp { 1 } else { 0 } << 1) |
                 (match self.display_state {
                     DisplayState::Idle | DisplayState::Finished => 0b0000,
                     DisplayState::LeftFramebuffer => if self.display_first_framebuffers { 0b0001 } else { 0b0100 },
                     DisplayState::RightFramebuffer => if self.display_first_framebuffers { 0b0010 } else { 0b1000 },
                 } << 2) |
-                (if scan_ready { 1 } else { 0 } << 6) |
+                (if scanrdy { 1 } else { 0 } << 6) |
                 (if self.display_frame_eighth_counter < 4 { 1 } else { 0 } << 7) |
-                (if mem_refresh { 1 } else { 0 } << 8) |
-                (if self.reg_display_control_sync_enable { 1 } else { 0 } << 9) |
+                (if re { 1 } else { 0 } << 8) |
+                (if self.reg_dpctrl_synce { 1 } else { 0 } << 9) |
                 (if column_table_addr_lock { 1 } else { 0 } << 10)
             }
-            DISPLAY_CONTROL_WRITE_REG => {
-                logln!(Log::Vip, "WARNING: Attempted read halfword from Display Control Write Reg");
+            DPCTRL => {
+                logln!(Log::Vip, "WARNING: Attempted read halfword from DPCTRL");
                 0
             }
-            LED_BRIGHTNESS_1_REG => self.reg_led_brightness_1 as _,
-            LED_BRIGHTNESS_2_REG => self.reg_led_brightness_2 as _,
-            LED_BRIGHTNESS_3_REG => self.reg_led_brightness_3 as _,
-            LED_BRIGHTNESS_IDLE_REG => {
-                logln!(Log::Vip, "WARNING: Read halfword from LED Brightness Idle Reg not yet implemented");
+            BRTA => self.reg_brta as _,
+            BRTB => self.reg_brtb as _,
+            BRTC => self.reg_brtc as _,
+            REST => {
+                logln!(Log::Vip, "WARNING: Read halfword from REST not yet implemented");
                 0
             }
-            GAME_FRAME_CONTROL_REG => {
-                (self.reg_game_frame_control - 1) as u16
+            FRMCYC => {
+                self.reg_frmcyc as u16
             }
-            DRAWING_CONTROL_READ_REG => {
+            XPSTTS => {
                 let draw_to_first_framebuffers = !self.display_first_framebuffers;
                 let (drawing_to_frame_buffer_0, drawing_to_frame_buffer_1) = match self.drawing_state {
                     DrawingState::Drawing => {
@@ -308,31 +311,31 @@ impl Vip {
                 };
                 let drawing_exceeds_frame_period = false;
 
-                (if self.reg_drawing_control_drawing_enable { 1 } else { 0 } << 1) |
+                (if self.reg_xpctrl_xpen { 1 } else { 0 } << 1) |
                 (if drawing_to_frame_buffer_0 { 1 } else { 0 } << 2) |
                 (if drawing_to_frame_buffer_1 { 1 } else { 0 } << 3) |
                 (if drawing_exceeds_frame_period { 1 } else { 0 } << 4) |
-                ((self.reg_drawing_control_sbcount as u16) << 8) |
+                ((self.reg_xpctrl_sbcount as u16) << 8) |
                 // TODO: This particular bit seems to strobe much faster than we do here on hw, look more into that
-                (if self.reg_drawing_control_sbout { 1 } else { 0 } << 15)
+                (if self.reg_xpctrl_sbout { 1 } else { 0 } << 15)
             }
-            DRAWING_CONTROL_WRITE_REG => {
-                logln!(Log::Vip, "WARNING: Attempted read halfword from Drawing Control Write Reg");
+            XPCTRL => {
+                logln!(Log::Vip, "WARNING: Attempted read halfword from XPCTRL");
                 0
             }
-            OBJ_GROUP_0_POINTER_REG => self.reg_obj_group_0_ptr,
-            OBJ_GROUP_1_POINTER_REG => self.reg_obj_group_1_ptr,
-            OBJ_GROUP_2_POINTER_REG => self.reg_obj_group_2_ptr,
-            OBJ_GROUP_3_POINTER_REG => self.reg_obj_group_3_ptr,
-            BG_PALETTE_0_REG => self.reg_bg_palette_0 as _,
-            BG_PALETTE_1_REG => self.reg_bg_palette_1 as _,
-            BG_PALETTE_2_REG => self.reg_bg_palette_2 as _,
-            BG_PALETTE_3_REG => self.reg_bg_palette_3 as _,
-            OBJ_PALETTE_0_REG => self.reg_obj_palette_0 as _,
-            OBJ_PALETTE_1_REG => self.reg_obj_palette_1 as _,
-            OBJ_PALETTE_2_REG => self.reg_obj_palette_2 as _,
-            OBJ_PALETTE_3_REG => self.reg_obj_palette_3 as _,
-            CLEAR_COLOR_REG => self.reg_clear_color as _,
+            SPT0 => self.reg_spt0,
+            SPT1 => self.reg_spt1,
+            SPT2 => self.reg_spt2,
+            SPT3 => self.reg_spt3,
+            GPLT0 => self.reg_gplt0 as _,
+            GPLT1 => self.reg_gplt1 as _,
+            GPLT2 => self.reg_gplt2 as _,
+            GPLT3 => self.reg_gplt3 as _,
+            JPLT0 => self.reg_jplt0 as _,
+            JPLT1 => self.reg_jplt1 as _,
+            JPLT2 => self.reg_jplt2 as _,
+            JPLT3 => self.reg_jplt3 as _,
+            BKCOL => self.reg_bkcol as _,
             CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
                 self.read_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START),
             CHR_RAM_PATTERN_TABLE_1_MIRROR_START ... CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
@@ -353,104 +356,108 @@ impl Vip {
         let addr = addr & 0xfffffffe;
         match addr {
             VRAM_START ... VRAM_END => self.write_vram_halfword(addr - VRAM_START, value),
-            INTERRUPT_PENDING_REG => {
+            INTPND => {
                 logln!(Log::Vip, "WARNING: Attempted write halfword to Interrupt Pending Reg");
             }
-            INTERRUPT_ENABLE_REG => {
-                logln!(Log::Vip, "WARNING: Write halfword to Interrupt Enable Reg not fully implemented (value: 0x{:04x})", value);
-                self.reg_interrupt_enable_left_display_finished = (value & 0x0002) != 0;
-                self.reg_interrupt_enable_right_display_finished = (value & 0x0004) != 0;
-                self.reg_interrupt_enable_start_of_game_frame = (value & 0x0008) != 0;
-                self.reg_interrupt_enable_start_of_display_frame = (value & 0x0010) != 0;
-                self.reg_interrupt_enable_sbhit = (value & 0x2000) != 0;
-                self.reg_interrupt_enable_drawing_finished = (value & 0x4000) != 0;
+            INTENB => {
+                logln!(Log::Vip, "WARNING: Write halfword to INTENB not fully implemented (value: 0x{:04x})", value);
+                self.reg_intenb_lfbend = (value & 0x0002) != 0;
+                self.reg_intenb_rfbend = (value & 0x0004) != 0;
+                self.reg_intenb_gamestart = (value & 0x0008) != 0;
+                self.reg_intenb_framestart = (value & 0x0010) != 0;
+                self.reg_intenb_sbhit = (value & 0x2000) != 0;
+                self.reg_intenb_xpend = (value & 0x4000) != 0;
             }
-            INTERRUPT_CLEAR_REG => {
-                logln!(Log::Vip, "WARNING: Write halfword to Interrupt Clear Reg not fully implemented (value: 0x{:04x})", value);
+            INTCLR => {
+                logln!(Log::Vip, "WARNING: Write halfword to INTCLR not fully implemented (value: 0x{:04x})", value);
                 if (value & 0x0002) != 0 {
-                    self.reg_interrupt_pending_left_display_finished = false;
+                    self.reg_intpnd_lfbend = false;
                 }
                 if (value & 0x0004) != 0 {
-                    self.reg_interrupt_pending_right_display_finished = false;
+                    self.reg_intpnd_rfbend = false;
                 }
                 if (value & 0x0008) != 0 {
-                    self.reg_interrupt_pending_start_of_game_frame = false;
+                    self.reg_intpnd_gamestart = false;
                 }
                 if (value & 0x0010) != 0 {
-                    self.reg_interrupt_pending_start_of_display_frame = false;
+                    self.reg_intpnd_framestart = false;
                 }
                 if (value & 0x2000) != 0 {
-                    self.reg_interrupt_pending_sbhit = false;
+                    self.reg_intpnd_sbhit = false;
                 }
                 if (value & 0x4000) != 0 {
-                    self.reg_interrupt_pending_drawing_finished = false;
+                    self.reg_intpnd_xpend = false;
                 }
             }
-            DISPLAY_CONTROL_READ_REG => {
-                logln!(Log::Vip, "WARNING: Attempted write halfword to Display Control Read Reg");
+            DPSTTS => {
+                logln!(Log::Vip, "WARNING: Attempted write halfword to dpstts reg");
             }
-            DISPLAY_CONTROL_WRITE_REG => {
-                logln!(Log::Vip, "WARNING: Write halfword to Display Control Write Reg not fully implemented (value: 0x{:04x})", value);
+            DPCTRL => {
+                logln!(Log::Vip, "WARNING: Write halfword to DPCTRL not fully implemented (value: 0x{:04x})", value);
 
-                let reset = (value & 0x0001) != 0;
-                let enable = (value & 0x0002) != 0;
-                let _mem_refresh = (value & 0x0100) != 0; // TODO
-                self.reg_display_control_sync_enable = (value & 0x0200) != 0;
-                let _column_table_addr_lock = (value & 0x0400) != 0;
+                let dprst = (value & 0x0001) != 0;
+                let disp = (value & 0x0002) != 0;
+                let _re = (value & 0x0100) != 0; // TODO
+                self.reg_dpctrl_synce = (value & 0x0200) != 0;
+                let _lock = (value & 0x0400) != 0;
 
-                if reset {
+                if dprst {
                     self.display_state = DisplayState::Finished;
 
-                    self.reg_interrupt_pending_start_of_game_frame = false;
-                    self.reg_interrupt_pending_start_of_display_frame = false;
-                    self.reg_interrupt_pending_left_display_finished = false;
-                    self.reg_interrupt_pending_right_display_finished = false;
-                } else if enable && !self.reg_display_control_display_enable {
+                    self.reg_intpnd_gamestart = false;
+                    self.reg_intpnd_framestart = false;
+                    self.reg_intpnd_lfbend = false;
+                    self.reg_intpnd_rfbend = false;
+                    self.reg_intenb_gamestart = false;
+                    self.reg_intenb_framestart = false;
+                    self.reg_intenb_lfbend = false;
+                    self.reg_intenb_rfbend = false;
+                } else if disp && !self.reg_dpctrl_disp {
                     self.display_state = DisplayState::Finished;
                 }
 
-                self.reg_display_control_display_enable = enable;
+                self.reg_dpctrl_disp = disp;
             }
-            LED_BRIGHTNESS_1_REG => self.reg_led_brightness_1 = value as _,
-            LED_BRIGHTNESS_2_REG => self.reg_led_brightness_2 = value as _,
-            LED_BRIGHTNESS_3_REG => self.reg_led_brightness_3 = value as _,
-            LED_BRIGHTNESS_IDLE_REG => {
-                logln!(Log::Vip, "WARNING: Write halfword to LED Brightness Idle Reg not yet implemented (value: 0x{:04x})", value);
+            BRTA => self.reg_brta = value as _,
+            BRTB => self.reg_brtb = value as _,
+            BRTC => self.reg_brtc = value as _,
+            REST => {
+                logln!(Log::Vip, "WARNING: Write halfword to REST not yet implemented (value: 0x{:04x})", value);
             }
-            GAME_FRAME_CONTROL_REG => {
-                logln!(Log::Vip, "Game Frame Control written (value: 0x{:04x})", value);
-                self.reg_game_frame_control = (value as u32) + 1;
+            FRMCYC => {
+                logln!(Log::Vip, "FRMCYC written (value: 0x{:04x})", value);
+                self.reg_frmcyc = value as u32;
             }
-            DRAWING_CONTROL_READ_REG => {
-                logln!(Log::Vip, "WARNING: Attempted write halfword to Drawing Control Read Reg (value: 0x{:04x})", value);
+            XPSTTS => {
+                logln!(Log::Vip, "WARNING: Attempted write halfword to XPSTTS (value: 0x{:04x})", value);
             }
-            DRAWING_CONTROL_WRITE_REG => {
-                logln!(Log::Vip, "WARNING: Write halfword to Drawing Control Write Reg not fully implemented (value: 0x{:04x})", value);
+            XPCTRL => {
+                logln!(Log::Vip, "WARNING: Write halfword to XPCTRL not fully implemented (value: 0x{:04x})", value);
 
-                let reset = (value & 0x01) != 0;
-                self.reg_drawing_control_drawing_enable = (value & 0x02) != 0;
-                self.reg_drawing_control_sbcmp = ((value as u32) >> 8) & 0x1f;
+                let xprst = (value & 0x01) != 0;
+                self.reg_xpctrl_xpen = (value & 0x02) != 0;
+                self.reg_xpctrl_sbcmp = ((value as u32) >> 8) & 0x1f;
 
-                if reset {
+                if xprst {
                     self.drawing_state = DrawingState::Idle;
 
-                    self.reg_interrupt_pending_sbhit = false;
-                    self.reg_interrupt_pending_drawing_finished = false;
+                    self.reg_intpnd_xpend = false;
+                    self.reg_intenb_xpend = false;
                 }
             }
-            OBJ_GROUP_0_POINTER_REG => self.reg_obj_group_0_ptr = value & 0x03ff,
-            OBJ_GROUP_1_POINTER_REG => self.reg_obj_group_1_ptr = value & 0x03ff,
-            OBJ_GROUP_2_POINTER_REG => self.reg_obj_group_2_ptr = value & 0x03ff,
-            OBJ_GROUP_3_POINTER_REG => self.reg_obj_group_3_ptr = value & 0x03ff,
-            BG_PALETTE_0_REG => self.reg_bg_palette_0 = value as _,
-            BG_PALETTE_1_REG => self.reg_bg_palette_1 = value as _,
-            BG_PALETTE_2_REG => self.reg_bg_palette_2 = value as _,
-            BG_PALETTE_3_REG => self.reg_bg_palette_3 = value as _,
-            OBJ_PALETTE_0_REG => self.reg_obj_palette_0 = value as _,
-            OBJ_PALETTE_1_REG => self.reg_obj_palette_1 = value as _,
-            OBJ_PALETTE_2_REG => self.reg_obj_palette_2 = value as _,
-            OBJ_PALETTE_3_REG => self.reg_obj_palette_3 = value as _,
-            CLEAR_COLOR_REG => self.reg_clear_color = (value & 0x03) as _,
+            SPT0 => self.reg_spt0 = value & 0x03ff,
+            SPT1 => self.reg_spt1 = value & 0x03ff,
+            SPT2 => self.reg_spt2 = value & 0x03ff,
+            SPT3 => self.reg_spt3 = value & 0x03ff,
+            GPLT0 => self.reg_gplt0 = value as _,
+            GPLT1 => self.reg_gplt1 = value as _,
+            GPLT2 => self.reg_gplt2 = value as _,
+            GPLT3 => self.reg_gplt3 = value as _,
+            JPLT0 => self.reg_jplt0 = value as _,
+            JPLT1 => self.reg_jplt1 = value as _,
+            JPLT2 => self.reg_jplt2 = value as _,
+            JPLT3 => self.reg_jplt3 = value as _,
+            BKCOL => self.reg_bkcol = (value & 0x03) as _,
             CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
                 self.write_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START, value),
             CHR_RAM_PATTERN_TABLE_1_MIRROR_START ... CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
@@ -511,27 +518,27 @@ impl Vip {
                     1 => {
                         self.display(video_frame_sink);
 
-                        if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
+                        if self.reg_dpctrl_disp && self.reg_dpctrl_synce {
                             self.begin_left_framebuffer_display_process();
                         }
                     }
                     3 => {
-                        if self.reg_display_control_display_enable {
+                        if self.reg_dpctrl_disp {
                             if let DisplayState::LeftFramebuffer = self.display_state {
                                 self.end_left_framebuffer_display_process(&mut raise_interrupt);
                             }
                         }
                     }
                     5 => {
-                        if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
+                        if self.reg_dpctrl_disp && self.reg_dpctrl_synce {
                             self.begin_right_framebuffer_display_process();
                         }
                     }
                     7 => {
-                        if self.reg_display_control_display_enable {
+                        if self.reg_dpctrl_disp {
                             if let DisplayState::RightFramebuffer = self.display_state {
-                                self.reg_interrupt_pending_right_display_finished = true;
-                                if self.reg_interrupt_enable_right_display_finished {
+                                self.reg_intpnd_rfbend = true;
+                                if self.reg_intenb_rfbend {
                                     raise_interrupt = true;
                                 }
                             }
@@ -548,28 +555,28 @@ impl Vip {
                 if self.drawing_block_counter >= DRAWING_BLOCK_PERIOD {
                     self.drawing_block_counter = 0;
 
-                    if self.reg_drawing_control_sbcount < DRAWING_BLOCK_COUNT {
+                    if self.reg_xpctrl_sbcount < DRAWING_BLOCK_COUNT {
                         self.end_drawing_block(&mut raise_interrupt);
 
-                        if self.reg_drawing_control_sbcount < DRAWING_BLOCK_COUNT - 1 {
-                            self.reg_drawing_control_sbcount += 1;
-                            if self.reg_drawing_control_drawing_enable {
+                        if self.reg_xpctrl_sbcount < DRAWING_BLOCK_COUNT - 1 {
+                            self.reg_xpctrl_sbcount += 1;
+                            if self.reg_xpctrl_xpen {
                                 self.begin_drawing_block();
                             }
                         } else {
                             self.end_drawing_process();
-                            self.reg_interrupt_pending_drawing_finished = true;
-                            if self.reg_interrupt_enable_drawing_finished {
+                            self.reg_intpnd_xpend = true;
+                            if self.reg_intenb_xpend {
                                 raise_interrupt = true;
                             }
                         }
                     }
                 }
 
-                if self.reg_drawing_control_sbout {
+                if self.reg_xpctrl_sbout {
                     self.drawing_sbout_counter += 1;
                     if self.drawing_sbout_counter >= DRAWING_SBOUT_PERIOD {
-                        self.reg_drawing_control_sbout = false;
+                        self.reg_xpctrl_sbout = false;
                     }
                 }
             }
@@ -581,18 +588,18 @@ impl Vip {
     fn frame_clock(&mut self, raise_interrupt: &mut bool) {
         logln!(Log::Vip, "Frame clock rising edge");
 
-        self.reg_interrupt_pending_start_of_display_frame = true;
-        if self.reg_interrupt_enable_start_of_display_frame {
+        self.reg_intpnd_framestart = true;
+        if self.reg_intenb_framestart {
             *raise_interrupt = true;
         }
 
-        if self.reg_display_control_display_enable {
+        if self.reg_dpctrl_disp {
             self.begin_display_process();
         }
 
-        self.game_frame_counter += 1;
-        if self.game_frame_counter >= self.reg_game_frame_control {
-            self.game_frame_counter = 0;
+        self.fclk += 1;
+        if self.fclk > self.reg_frmcyc {
+            self.fclk = 0;
             self.game_clock(raise_interrupt);
         }
     }
@@ -600,18 +607,18 @@ impl Vip {
     fn game_clock(&mut self, raise_interrupt: &mut bool) {
         logln!(Log::Vip, "Game clock rising edge");
 
-        self.reg_interrupt_pending_start_of_game_frame = true;
-        if self.reg_interrupt_enable_start_of_game_frame {
+        self.reg_intpnd_gamestart = true;
+        if self.reg_intenb_gamestart {
             *raise_interrupt = true;
         }
 
-        if self.reg_drawing_control_drawing_enable {
+        if self.reg_xpctrl_xpen {
             self.display_first_framebuffers = !self.display_first_framebuffers;
 
             self.begin_drawing_process();
         } else {
-            self.reg_interrupt_pending_drawing_finished = true;
-            if self.reg_interrupt_enable_drawing_finished {
+            self.reg_intpnd_xpend = true;
+            if self.reg_intenb_xpend {
                 *raise_interrupt = true;
             }
         }
@@ -621,7 +628,7 @@ impl Vip {
         logln!(Log::Vip, "Begin drawing process");
         self.drawing_state = DrawingState::Drawing;
 
-        self.reg_drawing_control_sbcount = 0;
+        self.reg_xpctrl_sbcount = 0;
 
         self.drawing_block_counter = 0;
 
@@ -629,20 +636,20 @@ impl Vip {
     }
 
     fn begin_drawing_block(&mut self) {
-        logln!(Log::Vip, "Begin drawing block {}", self.reg_drawing_control_sbcount);
+        logln!(Log::Vip, "Begin drawing block {}", self.reg_xpctrl_sbcount);
     }
 
     fn end_drawing_block(&mut self, raise_interrupt: &mut bool) {
-        logln!(Log::Vip, "End drawing block {}", self.reg_drawing_control_sbcount);
+        logln!(Log::Vip, "End drawing block {}", self.reg_xpctrl_sbcount);
 
         self.draw_current_block();
 
-        if self.reg_drawing_control_sbcount == self.reg_drawing_control_sbcmp {
-            self.reg_drawing_control_sbout = true;
+        if self.reg_xpctrl_sbcount == self.reg_xpctrl_sbcmp {
+            self.reg_xpctrl_sbout = true;
             self.drawing_sbout_counter = 0;
 
-            self.reg_interrupt_pending_sbhit = true;
-            if self.reg_interrupt_enable_sbhit {
+            self.reg_intpnd_sbhit = true;
+            if self.reg_intenb_sbhit {
                 *raise_interrupt = true;
             }
         }
@@ -668,8 +675,8 @@ impl Vip {
 
         self.display_state = DisplayState::Idle;
 
-        self.reg_interrupt_pending_left_display_finished = true;
-        if self.reg_interrupt_enable_left_display_finished {
+        self.reg_intpnd_lfbend = true;
+        if self.reg_intenb_lfbend {
             *raise_interrupt = true;
         }
     }
@@ -689,10 +696,10 @@ impl Vip {
         let left_framebuffer_offset = if draw_to_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 
-        let block_start_y = self.reg_drawing_control_sbcount * 8;
+        let block_start_y = self.reg_xpctrl_sbcount * 8;
         let block_end_y = block_start_y + DRAWING_BLOCK_HEIGHT;
 
-        let clear_pixels = (self.last_clear_color << 6) | (self.last_clear_color << 4) | (self.last_clear_color << 2) | self.last_clear_color;
+        let clear_pixels = (self.last_bkcol << 6) | (self.last_bkcol << 4) | (self.last_bkcol << 2) | self.last_bkcol;
         for x in 0..FRAMEBUFFER_RESOLUTION_X {
             let column_offset = (x * FRAMEBUFFER_RESOLUTION_Y + block_start_y) / 4;
             self.write_vram_byte(left_framebuffer_offset + column_offset, clear_pixels);
@@ -701,7 +708,7 @@ impl Vip {
             self.write_vram_byte(right_framebuffer_offset + column_offset + 1, clear_pixels);
         }
         // Latch clear color reg _after_ each block. This is a known (and documented) hardware bug.
-        self.last_clear_color = self.reg_clear_color;
+        self.last_bkcol = self.reg_bkcol;
 
         let mut current_obj_group = Some(ObjGroup::Group3);
 
@@ -719,7 +726,7 @@ impl Vip {
             } else {
                 let base = (header & 0x000f) as u32;
                 let stop = (header & 0x0040) != 0;
-                let out_of_bounds = (header & 0x0080) != 0;
+                let overplane = (header & 0x0080) != 0;
                 let bg_height = ((header >> 8) & 0x03) as u32;
                 let bg_width = ((header >> 10) & 0x03) as u32;
                 let mode = ((header >> 12) & 0x03) as u32;
@@ -727,7 +734,7 @@ impl Vip {
                 let left_on = (header & 0x8000) != 0;
                 /*logln!(Log::Vip, "  base: 0x{:02x}", base);
                 logln!(Log::Vip, "  stop: {}", stop);
-                logln!(Log::Vip, "  out of bounds: {}", out_of_bounds);
+                logln!(Log::Vip, "  overplane: {}", overplane);
                 logln!(Log::Vip, "  w, h: {}, {}", bg_width, bg_height);
                 logln!(Log::Vip, "  mode: {}", mode);
                 logln!(Log::Vip, "  l, r: {}, {}", left_on, right_on);*/
@@ -741,7 +748,7 @@ impl Vip {
                 let width = self.read_vram_halfword(window_offset + 14);
                 let height = self.read_vram_halfword(window_offset + 16);
                 let param_base = self.read_vram_halfword(window_offset + 18) as u32;
-                let out_of_bounds_char = self.read_vram_halfword(window_offset + 20);
+                let overplane_char = self.read_vram_halfword(window_offset + 20);
                 /*logln!(Log::Vip, " X: {}", x);
                 logln!(Log::Vip, " Parallax: {}", parallax);
                 logln!(Log::Vip, " Y: {}", y);
@@ -751,7 +758,7 @@ impl Vip {
                 logln!(Log::Vip, " Width: {}", width);
                 logln!(Log::Vip, " Height: {}", height);
                 logln!(Log::Vip, " Param base: 0x{:04x}", param_base);
-                logln!(Log::Vip, " Out of bounds char: 0x{:04x}", out_of_bounds_char);*/
+                logln!(Log::Vip, " Overplane char: 0x{:04x}", overplane_char);*/
 
                 if stop {
                     break;
@@ -763,7 +770,7 @@ impl Vip {
                 let segments_x = 1 << bg_width;
                 let segments_y = 1 << bg_height;
                 let param_offset = 0x00020000 + param_base * 2;
-                let out_of_bounds_char_entry = self.read_vram_halfword(0x00020000 + (out_of_bounds_char as u32) * 2);
+                let overplane_char_entry = self.read_vram_halfword(0x00020000 + (overplane_char as u32) * 2);
 
                 let mode = match mode {
                     0 => WindowMode::Normal,
@@ -803,16 +810,16 @@ impl Vip {
                             match current_obj_group {
                                 Some(obj_group) => {
                                     let starting_obj_index = match obj_group {
-                                        ObjGroup::Group0 => self.reg_obj_group_0_ptr,
-                                        ObjGroup::Group1 => self.reg_obj_group_1_ptr,
-                                        ObjGroup::Group2 => self.reg_obj_group_2_ptr,
-                                        ObjGroup::Group3 => self.reg_obj_group_3_ptr,
+                                        ObjGroup::Group0 => self.reg_spt0,
+                                        ObjGroup::Group1 => self.reg_spt1,
+                                        ObjGroup::Group2 => self.reg_spt2,
+                                        ObjGroup::Group3 => self.reg_spt3,
                                     };
                                     let mut ending_obj_index = match obj_group {
                                         ObjGroup::Group0 => 0,
-                                        ObjGroup::Group1 => self.reg_obj_group_0_ptr + 1,
-                                        ObjGroup::Group2 => self.reg_obj_group_1_ptr + 1,
-                                        ObjGroup::Group3 => self.reg_obj_group_2_ptr + 1,
+                                        ObjGroup::Group1 => self.reg_spt0 + 1,
+                                        ObjGroup::Group2 => self.reg_spt1 + 1,
+                                        ObjGroup::Group3 => self.reg_spt2 + 1,
                                     };
                                     if ending_obj_index >= starting_obj_index {
                                         ending_obj_index = 0;
@@ -857,10 +864,10 @@ impl Vip {
                                         }
 
                                         let palette = match pal {
-                                            0 => self.reg_obj_palette_0,
-                                            1 => self.reg_obj_palette_1,
-                                            2 => self.reg_obj_palette_2,
-                                            _ => self.reg_obj_palette_3
+                                            0 => self.reg_jplt0,
+                                            1 => self.reg_jplt1,
+                                            2 => self.reg_jplt2,
+                                            _ => self.reg_jplt3,
                                         };
 
                                         for offset_y in 0..8 {
@@ -936,7 +943,7 @@ impl Vip {
                                     let background_x = (((affine_bg_x as i32) << 6) + ((affine_bg_x_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
                                     let background_y = (((affine_bg_y as i32) << 6) + ((affine_bg_y_inc as i32) * (parallaxed_window_x as i32)) >> 9) as u32;
 
-                                    self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_base, segments_x, segments_y, background_x, background_y, out_of_bounds, out_of_bounds_char_entry);
+                                    self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_base, segments_x, segments_y, background_x, background_y, overplane, overplane_char_entry);
                                 }
                             }
                         }
@@ -981,7 +988,7 @@ impl Vip {
                                     };
                                     let background_y = window_y.wrapping_add(bg_y as u32);
 
-                                    self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_base, segments_x, segments_y, background_x, background_y, out_of_bounds, out_of_bounds_char_entry);
+                                    self.draw_background_pixel(framebuffer_offset, pixel_x, pixel_y, segment_base, segments_x, segments_y, background_x, background_y, overplane, overplane_char_entry);
                                 }
                             }
                         }
@@ -1004,15 +1011,15 @@ impl Vip {
     }
 
     #[inline(always)]
-    fn draw_background_pixel(&mut self, framebuffer_offset: u32, pixel_x: u32, pixel_y: u32, segment_base: u32, segments_x: u32, segments_y: u32, background_x: u32, background_y: u32, out_of_bounds: bool, out_of_bounds_char_entry: u16) {
+    fn draw_background_pixel(&mut self, framebuffer_offset: u32, pixel_x: u32, pixel_y: u32, segment_base: u32, segments_x: u32, segments_y: u32, background_x: u32, background_y: u32, overplane: bool, overplane_char_entry: u16) {
         let background_width = segments_x * 512;
         let background_height = segments_y * 512;
 
-        if out_of_bounds && (background_x >= background_width || background_y >= background_height) {
+        if overplane && (background_x >= background_width || background_y >= background_height) {
             let offset_x = background_x & 0x07;
             let offset_y = background_y & 0x07;
 
-            self.draw_char_entry_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, out_of_bounds_char_entry);
+            self.draw_char_entry_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, overplane_char_entry);
         } else {
             let x_segment = (background_x / 512) & (segments_x - 1);
             let y_segment = (background_y / 512) & (segments_y - 1);
@@ -1048,10 +1055,10 @@ impl Vip {
         let char_index = (char_entry & 0x07ff) as u32;
 
         let palette = match pal {
-            0 => self.reg_bg_palette_0,
-            1 => self.reg_bg_palette_1,
-            2 => self.reg_bg_palette_2,
-            _ => self.reg_bg_palette_3
+            0 => self.reg_gplt0,
+            1 => self.reg_gplt1,
+            2 => self.reg_gplt2,
+            _ => self.reg_gplt3,
         };
 
         self.draw_char_pixel(framebuffer_offset, pixel_x, pixel_y, offset_x, offset_y, char_index, horizontal_flip, vertical_flip, palette);
@@ -1099,10 +1106,10 @@ impl Vip {
         let left_buffer_ptr = left_buffer.as_mut_ptr();
         let right_buffer_ptr = right_buffer.as_mut_ptr();
 
-        if self.reg_display_control_display_enable && self.reg_display_control_sync_enable {
-            let mut brightness_1 = (self.reg_led_brightness_1 as u32) * 2;
-            let mut brightness_2 = (self.reg_led_brightness_2 as u32) * 2;
-            let mut brightness_3 = ((self.reg_led_brightness_1 as u32) + (self.reg_led_brightness_2 as u32) + (self.reg_led_brightness_3 as u32)) * 2;
+        if self.reg_dpctrl_disp && self.reg_dpctrl_synce {
+            let mut brightness_1 = (self.reg_brta as u32) * 2;
+            let mut brightness_2 = (self.reg_brtb as u32) * 2;
+            let mut brightness_3 = ((self.reg_brta as u32) + (self.reg_brtb as u32) + (self.reg_brtc as u32)) * 2;
             if brightness_1 > 255 {
                 brightness_1 = 255;
             }

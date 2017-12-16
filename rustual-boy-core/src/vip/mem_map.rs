@@ -18,39 +18,39 @@ pub const WINDOW_ATTRIBS_START: u32 = 0x0003d800;
 pub const WINDOW_ATTRIBS_LENGTH: u32 = 0x00000400;
 pub const WINDOW_ATTRIBS_END: u32 = WINDOW_ATTRIBS_START + WINDOW_ATTRIBS_LENGTH - 1;
 
-pub const INTERRUPT_PENDING_REG: u32 = 0x0005f800;
-pub const INTERRUPT_ENABLE_REG: u32 = 0x0005f802;
-pub const INTERRUPT_CLEAR_REG: u32 = 0x0005f804;
+pub const INTPND: u32 = 0x0005f800;
+pub const INTENB: u32 = 0x0005f802;
+pub const INTCLR: u32 = 0x0005f804;
 
-pub const DISPLAY_CONTROL_READ_REG: u32 = 0x0005f820;
-pub const DISPLAY_CONTROL_WRITE_REG: u32 = 0x0005f822;
+pub const DPSTTS: u32 = 0x0005f820;
+pub const DPCTRL: u32 = 0x0005f822;
 
-pub const LED_BRIGHTNESS_1_REG: u32 = 0x0005f824;
-pub const LED_BRIGHTNESS_2_REG: u32 = 0x0005f826;
-pub const LED_BRIGHTNESS_3_REG: u32 = 0x0005f828;
-pub const LED_BRIGHTNESS_IDLE_REG: u32 = 0x0005f82a;
+pub const BRTA: u32 = 0x0005f824;
+pub const BRTB: u32 = 0x0005f826;
+pub const BRTC: u32 = 0x0005f828;
+pub const REST: u32 = 0x0005f82a;
 
-pub const GAME_FRAME_CONTROL_REG: u32 = 0x0005f82e;
+pub const FRMCYC: u32 = 0x0005f82e;
 
-pub const DRAWING_CONTROL_READ_REG: u32 = 0x0005f840;
-pub const DRAWING_CONTROL_WRITE_REG: u32 = 0x0005f842;
+pub const XPSTTS: u32 = 0x0005f840;
+pub const XPCTRL: u32 = 0x0005f842;
 
-pub const OBJ_GROUP_0_POINTER_REG: u32 = 0x0005f848;
-pub const OBJ_GROUP_1_POINTER_REG: u32 = 0x0005f84a;
-pub const OBJ_GROUP_2_POINTER_REG: u32 = 0x0005f84c;
-pub const OBJ_GROUP_3_POINTER_REG: u32 = 0x0005f84e;
+pub const SPT0: u32 = 0x0005f848;
+pub const SPT1: u32 = 0x0005f84a;
+pub const SPT2: u32 = 0x0005f84c;
+pub const SPT3: u32 = 0x0005f84e;
 
-pub const BG_PALETTE_0_REG: u32 = 0x0005f860;
-pub const BG_PALETTE_1_REG: u32 = 0x0005f862;
-pub const BG_PALETTE_2_REG: u32 = 0x0005f864;
-pub const BG_PALETTE_3_REG: u32 = 0x0005f866;
+pub const GPLT0: u32 = 0x0005f860;
+pub const GPLT1: u32 = 0x0005f862;
+pub const GPLT2: u32 = 0x0005f864;
+pub const GPLT3: u32 = 0x0005f866;
 
-pub const OBJ_PALETTE_0_REG: u32 = 0x0005f868;
-pub const OBJ_PALETTE_1_REG: u32 = 0x0005f86a;
-pub const OBJ_PALETTE_2_REG: u32 = 0x0005f86c;
-pub const OBJ_PALETTE_3_REG: u32 = 0x0005f86e;
+pub const JPLT0: u32 = 0x0005f868;
+pub const JPLT1: u32 = 0x0005f86a;
+pub const JPLT2: u32 = 0x0005f86c;
+pub const JPLT3: u32 = 0x0005f86e;
 
-pub const CLEAR_COLOR_REG: u32 = 0x0005f870;
+pub const BKCOL: u32 = 0x0005f870;
 
 pub const CHR_RAM_PATTERN_TABLE_0_MIRROR_START: u32 = 0x00078000;
 pub const CHR_RAM_PATTERN_TABLE_0_MIRROR_LENGTH: u32 = CHR_RAM_PATTERN_TABLE_0_LENGTH;
