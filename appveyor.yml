@@ -76,8 +76,8 @@ deploy:
   provider: GitHub
 
 cache:
-  #- C:\Users\appveyor\.cargo\registry
-  #- rustual-boy-cli/target
+  - C:\Users\appveyor\.cargo\registry
+  - rustual-boy-cli/target
 
 branches:
   only:
