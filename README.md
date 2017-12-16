@@ -55,7 +55,7 @@ Games marked 💖 and 💔 are all included in the compatibility metric.
 | V-Tetris | N/A | 💖 | |
 | Vertical Force | 💖 | 💖 | |
 | Virtual Bowling | N/A | 💔 | Samples play at the wrong rate |
-| Virtual Boy Wario Land | 💖 | 💖 | |
+| Virtual Boy Wario Land | 💔 | 💔 | Game is fully playable, but some parts of the intro cutscene are too dark, due to inaccurate emulation of the physical LED periods used in the display |
 | Virtual Fishing | N/A | 💖 | |
 | Virtual Lab | N/A | 💖 | |
 | Virtual League Baseball | 💖 | 💖 | |
