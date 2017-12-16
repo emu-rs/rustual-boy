@@ -70,7 +70,7 @@ Currently, the only dependency for building is Rust itself, which can be downloa
 Rustual Boy has a very simple CLI interface:
 
 ```
-$ rustual-boy --help
+$ rustual-boy-cli --help
 Rustual Boy 0.2.0
 ferris <yupferris@gmail.com>, The Rustual Boy contributors
 A CLI frontend to the Rustual Boy emulator
@@ -91,7 +91,7 @@ ARGS:
 The easiest way to run a game is to supply a single file argument:
 
 ```
-rustual-boy bound-high.vb
+rustual-boy-cli bound-high.vb
 ```
 
 ## Input keymap
