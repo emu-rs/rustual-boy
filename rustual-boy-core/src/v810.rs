@@ -1033,6 +1033,8 @@ impl V810 {
         self.reg_eipsw = self.reg_psw();
         self.reg_ecr = exception_code;
         self.psw_exception_pending = true;
+        self.psw_interrupt_disable = true;
+        self.psw_address_trap_enable = false;
         0xffff0000 | (exception_code as u32)
     }
 
