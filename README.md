@@ -12,9 +12,9 @@ The name "Rustual Boy" is a [portmanteau](https://en.wikipedia.org/wiki/Portmant
 
 ## Status
 
-Rustual Boy is currently able to emulate [the majority of commercial Virtual Boy titles](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility), as well as many homebrew ones as well. It supports basic video/audio output and keyboard input, as well as a simple CLI debugger. It runs on Windows, MacOS, Linux, and likely other platforms Rust supports as well.
+Rustual Boy is currently able to emulate [the majority of commercial Virtual Boy titles](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility), as well as many homebrew ones. It supports basic video/audio output and keyboard input, and also a simple CLI debugger. It runs on Windows, MacOS, Linux, and likely some other platforms Rust supports.
 
-While Rustual Boy's core emulation is nearly complete [compatibility-wise](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility), the project is still quite young, and needs some time to mature. Particularly, its user interface is lacking (read: virtually non-existent), and there are some known (and probably unknown) stability/compatibility issues. Also, performance isn't fantastic yet, but the emulator should be playable at least.
+While Rustual Boy's core emulation is nearly complete [compatibility-wise](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility), and in some respects is already one of the more accurate VB emulators available, the project is still young, and needs some time to mature. Particularly, its user interface is lacking (read: virtually non-existent), and there are some known (and probably unknown) stability/compatibility issues. Also, performance isn't fantastic yet, but the emulator should be playable at least.
 
 That said, these things are bound to improve with time, and everyone is encouraged to [grab a build](https://github.com/emu-rs/rustual-boy/releases) or [build the emulator](https://github.com/emu-rs/rustual-boy/blob/master/README.md#building-and-running), give it a shot, and [report any bugs/feature requests](CONTRIBUTING.md)!
 
@@ -65,13 +65,34 @@ Games marked 💖 and 💔 are all included in the compatibility metric.
 
 Currently, the only dependency for building is Rust itself, which can be downloaded [here](https://www.rust-lang.org/downloads.html). Once that's installed, you can clone the repo, and simply `cargo build`/`cargo run` your way to victory! It's recommended to use the `--release` flag as well, as emulation can require a lot of CPU power, so we'll want all the compiler help we can get.
 
-Rustual Boy currently takes a single argument, which is the ROM image:
+> Note: If you're new to using Cargo (Rust's build system), it's recommended to give the [Cargo Guide](http://doc.crates.io/guide.html) a quick skim.
+
+Rustual Boy has a very simple CLI interface:
+
+```
+$ rustual-boy --help
+Rustual Boy 0.2.0
+ferris <yupferris@gmail.com>, The Rustual Boy contributors
+A CLI frontend to the Rustual Boy emulator
+
+USAGE:
+    rustual-boy-cli.exe [FLAGS] <ROM>
+
+FLAGS:
+    -s, --sram       Path to an SRAM
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+ARGS:
+    <ROM>    The name of the ROM to load
+
+```
+
+The easiest way to run a game is to supply a single file argument:
 
 ```
 rustual-boy bound-high.vb
 ```
-
-If you're new to using Cargo (Rust's build system), it's recommended to give the [Cargo Guide](http://doc.crates.io/guide.html) a quick skim.
 
 ## Input keymap
 
