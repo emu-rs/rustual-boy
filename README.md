@@ -85,7 +85,6 @@ FLAGS:
 
 ARGS:
     <ROM>    The name of the ROM to load
-
 ```
 
 The easiest way to run a game is to supply a single file argument:
