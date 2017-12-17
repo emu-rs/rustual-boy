@@ -28,9 +28,9 @@ That said, these things are bound to improve with time, and everyone is encourag
 ## Known game compatibility
 
 Key:
- - 🚫: Incompatible. The reason is described in the notes field.
  - 💖: Fully compatible. The game is fully playable with no known bugs (to our knowledge).
  - 💔: Playable. The game can be played, but has some minor known glitches (described in the notes field).
+ - 🚫: Incompatible. The reason is described in the notes field.
  - `N/A`: Game does not exist for this region.
 
 Games marked 💖 and 💔 are all included in the compatibility metric.
