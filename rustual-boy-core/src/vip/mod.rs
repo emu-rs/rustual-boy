@@ -193,6 +193,24 @@ impl Vip {
         }
     }
 
+    fn reg_intpnd(&self) -> u16 {
+        (if self.reg_intpnd_lfbend { 1 } else { 0 } << 1) |
+        (if self.reg_intpnd_rfbend { 1 } else { 0 } << 2) |
+        (if self.reg_intpnd_gamestart { 1 } else { 0 } << 3) |
+        (if self.reg_intpnd_framestart { 1 } else { 0 } << 4) |
+        (if self.reg_intpnd_sbhit { 1 } else { 0 } << 13) |
+        (if self.reg_intpnd_xpend { 1 } else { 0 } << 14)
+    }
+
+    fn reg_intenb(&self) -> u16 {
+        (if self.reg_intenb_lfbend { 1 } else { 0 } << 1) |
+        (if self.reg_intenb_rfbend { 1 } else { 0 } << 2) |
+        (if self.reg_intenb_gamestart { 1 } else { 0 } << 3) |
+        (if self.reg_intenb_framestart { 1 } else { 0 } << 4) |
+        (if self.reg_intenb_sbhit { 1 } else { 0 } << 13) |
+        (if self.reg_intenb_xpend { 1 } else { 0 } << 14)
+    }
+
     pub fn read_byte(&self, addr: u32) -> u8 {
         let addr = addr & 0x0007ffff;
         match addr {
@@ -246,21 +264,11 @@ impl Vip {
             VRAM_START ... VRAM_END => self.read_vram_halfword(addr - VRAM_START),
             INTPND => {
                 logln!(Log::Vip, "WARNING: Read halfword from INTPND not fully implemented");
-                (if self.reg_intpnd_lfbend { 1 } else { 0 } << 1) |
-                (if self.reg_intpnd_rfbend { 1 } else { 0 } << 2) |
-                (if self.reg_intpnd_gamestart { 1 } else { 0 } << 3) |
-                (if self.reg_intpnd_framestart { 1 } else { 0 } << 4) |
-                (if self.reg_intpnd_sbhit { 1 } else { 0 } << 13) |
-                (if self.reg_intpnd_xpend { 1 } else { 0 } << 14)
+                self.reg_intpnd()
             }
             INTENB => {
-                logln!(Log::Vip, "WARNING: Read halfword from INTEBN not fully implemented");
-                (if self.reg_intenb_lfbend { 1 } else { 0 } << 1) |
-                (if self.reg_intenb_rfbend { 1 } else { 0 } << 2) |
-                (if self.reg_intenb_gamestart { 1 } else { 0 } << 3) |
-                (if self.reg_intenb_framestart { 1 } else { 0 } << 4) |
-                (if self.reg_intenb_sbhit { 1 } else { 0 } << 13) |
-                (if self.reg_intenb_xpend { 1 } else { 0 } << 14)
+                logln!(Log::Vip, "WARNING: Read halfword from INTENB not fully implemented");
+                self.reg_intenb()
             }
             INTCLR => {
                 logln!(Log::Vip, "WARNING: Attempted read halfword from INTCLR");
@@ -499,8 +507,6 @@ impl Vip {
     }
 
     pub fn cycles(&mut self, cycles: u32, video_frame_sink: &mut Sink<VideoFrame>) -> bool {
-        let mut raise_interrupt = false;
-
         for _ in 0..cycles {
             self.display_frame_eighth_clock_counter += 1;
             if self.display_frame_eighth_clock_counter >= DISPLAY_FRAME_EIGHTH_PERIOD {
@@ -513,7 +519,7 @@ impl Vip {
 
                 match self.display_frame_eighth_counter {
                     0 => {
-                        self.frame_clock(&mut raise_interrupt);
+                        self.frame_clock();
                     }
                     1 => {
                         self.display(video_frame_sink);
@@ -525,7 +531,7 @@ impl Vip {
                     3 => {
                         if self.reg_dpctrl_disp {
                             if let DisplayState::LeftFramebuffer = self.display_state {
-                                self.end_left_framebuffer_display_process(&mut raise_interrupt);
+                                self.end_left_framebuffer_display_process();
                             }
                         }
                     }
@@ -538,9 +544,6 @@ impl Vip {
                         if self.reg_dpctrl_disp {
                             if let DisplayState::RightFramebuffer = self.display_state {
                                 self.reg_intpnd_rfbend = true;
-                                if self.reg_intenb_rfbend {
-                                    raise_interrupt = true;
-                                }
                             }
 
                             self.end_display_process();
@@ -556,7 +559,7 @@ impl Vip {
                     self.drawing_block_counter = 0;
 
                     if self.reg_xpctrl_sbcount < DRAWING_BLOCK_COUNT {
-                        self.end_drawing_block(&mut raise_interrupt);
+                        self.end_drawing_block();
 
                         if self.reg_xpctrl_sbcount < DRAWING_BLOCK_COUNT - 1 {
                             self.reg_xpctrl_sbcount += 1;
@@ -566,9 +569,6 @@ impl Vip {
                         } else {
                             self.end_drawing_process();
                             self.reg_intpnd_xpend = true;
-                            if self.reg_intenb_xpend {
-                                raise_interrupt = true;
-                            }
                         }
                     }
                 }
@@ -582,16 +582,14 @@ impl Vip {
             }
         }
 
-        raise_interrupt
+        // Always raise any pending interrupts if the corresponding interrupts are enabled
+        (self.reg_intpnd() & self.reg_intenb()) != 0
     }
 
-    fn frame_clock(&mut self, raise_interrupt: &mut bool) {
+    fn frame_clock(&mut self) {
         logln!(Log::Vip, "Frame clock rising edge");
 
         self.reg_intpnd_framestart = true;
-        if self.reg_intenb_framestart {
-            *raise_interrupt = true;
-        }
 
         if self.reg_dpctrl_disp {
             self.begin_display_process();
@@ -600,17 +598,14 @@ impl Vip {
         self.fclk += 1;
         if self.fclk > self.reg_frmcyc {
             self.fclk = 0;
-            self.game_clock(raise_interrupt);
+            self.game_clock();
         }
     }
 
-    fn game_clock(&mut self, raise_interrupt: &mut bool) {
+    fn game_clock(&mut self) {
         logln!(Log::Vip, "Game clock rising edge");
 
         self.reg_intpnd_gamestart = true;
-        if self.reg_intenb_gamestart {
-            *raise_interrupt = true;
-        }
 
         if self.reg_xpctrl_xpen {
             self.display_first_framebuffers = !self.display_first_framebuffers;
@@ -618,9 +613,6 @@ impl Vip {
             self.begin_drawing_process();
         } else {
             self.reg_intpnd_xpend = true;
-            if self.reg_intenb_xpend {
-                *raise_interrupt = true;
-            }
         }
     }
 
@@ -639,7 +631,7 @@ impl Vip {
         logln!(Log::Vip, "Begin drawing block {}", self.reg_xpctrl_sbcount);
     }
 
-    fn end_drawing_block(&mut self, raise_interrupt: &mut bool) {
+    fn end_drawing_block(&mut self) {
         logln!(Log::Vip, "End drawing block {}", self.reg_xpctrl_sbcount);
 
         self.draw_current_block();
@@ -649,9 +641,6 @@ impl Vip {
             self.drawing_sbout_counter = 0;
 
             self.reg_intpnd_sbhit = true;
-            if self.reg_intenb_sbhit {
-                *raise_interrupt = true;
-            }
         }
     }
 
@@ -670,15 +659,12 @@ impl Vip {
         self.display_state = DisplayState::LeftFramebuffer;
     }
 
-    fn end_left_framebuffer_display_process(&mut self, raise_interrupt: &mut bool) {
+    fn end_left_framebuffer_display_process(&mut self) {
         logln!(Log::Vip, "End left framebuffer display process");
 
         self.display_state = DisplayState::Idle;
 
         self.reg_intpnd_lfbend = true;
-        if self.reg_intenb_lfbend {
-            *raise_interrupt = true;
-        }
     }
 
     fn begin_right_framebuffer_display_process(&mut self) {
