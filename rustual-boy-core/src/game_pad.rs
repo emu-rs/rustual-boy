@@ -52,16 +52,16 @@ impl GamePad {
         }
     }
 
-    pub fn read_input_control_reg(&self) -> u8 {
-        logln!(Log::GamePad, "WARNING: Read Game Pad Input Control Register not yet implemented");
+    pub fn read_scr(&self) -> u8 {
+        logln!(Log::GamePad, "WARNING: Read SCR not yet implemented");
         0
     }
 
-    pub fn write_input_control_reg(&mut self, value: u8) {
-        logln!(Log::GamePad, "WARNING: Write Game Pad Input Control Register not yet implemented (value: 0x{:02x})", value);
+    pub fn write_scr(&mut self, value: u8) {
+        logln!(Log::GamePad, "WARNING: Write SCR not yet implemented (value: 0x{:02x})", value);
     }
 
-    pub fn read_input_low_reg(&self) -> u8 {
+    pub fn read_sdlr(&self) -> u8 {
         let version = 1;
         // TODO: Would be cool to be able to toggle this at startup/runtime :)
         let low_battery = false;
@@ -75,7 +75,7 @@ impl GamePad {
         if low_battery { 1 } else { 0 }
     }
 
-    pub fn read_input_high_reg(&self) -> u8 {
+    pub fn read_sdhr(&self) -> u8 {
         (if self.right_d_pad_down_pressed { 1 } else { 0 } << 7) |
         (if self.right_d_pad_left_pressed { 1 } else { 0 } << 6) |
         (if self.select_pressed { 1 } else { 0 } << 5) |

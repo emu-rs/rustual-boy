@@ -10,10 +10,10 @@ enum Interval {
 }
 
 pub struct Timer {
-    interval: Interval,
-    zero_interrupt_enable: bool,
-    zero_status: bool,
-    enable: bool,
+    t_clk_sel: Interval,
+    tim_z_int: bool,
+    z_stat: bool,
+    t_enb: bool,
     reload: u16,
     counter: u16,
 
@@ -24,66 +24,67 @@ pub struct Timer {
 impl Timer {
     pub fn new() -> Timer {
         Timer {
-            interval: Interval::Large,
-            zero_interrupt_enable: false,
-            zero_status: false,
-            enable: false,
+            t_clk_sel: Interval::Large,
+            tim_z_int: false,
+            z_stat: false,
+            t_enb: false,
             reload: 0,
-            counter: 0,
+            counter: 0xffff,
 
             tick_counter: 0,
             zero_interrupt: false,
         }
     }
 
-    pub fn read_control_reg(&self) -> u8 {
-        (match self.interval {
+    pub fn read_tcr(&self) -> u8 {
+        0b11100100 |
+        (match self.t_clk_sel {
             Interval::Large => 0,
             Interval::Small => 1,
         } << 4) |
-        (if self.zero_interrupt_enable { 1 } else { 0 } << 3) |
-        (if self.zero_status { 1 } else { 0 } << 1) |
-        if self.enable { 1 } else { 0 }
+        (if self.tim_z_int { 1 } else { 0 } << 3) |
+        (if self.z_stat { 1 } else { 0 } << 1) |
+        if self.t_enb { 1 } else { 0 }
     }
 
-    pub fn write_control_reg(&mut self, value: u8) {
-        self.interval = if ((value >> 4) & 0x01) == 0 {
+    pub fn write_tcr(&mut self, value: u8) {
+        self.t_clk_sel = if ((value >> 4) & 0x01) == 0 {
             Interval::Large
         } else {
             Interval::Small
         };
-        self.zero_interrupt_enable = ((value >> 3) & 0x01) != 0;
+        self.tim_z_int = ((value >> 3) & 0x01) != 0;
         if ((value >> 2) & 0x01) != 0 {
-            self.zero_status = false;
+            self.z_stat = false;
         }
-        if !self.zero_interrupt_enable || !self.zero_status {
+        if !self.tim_z_int || !self.z_stat {
             self.zero_interrupt = false;
         }
-        self.enable = (value & 0x01) != 0;
+        self.t_enb = (value & 0x01) != 0;
     }
 
-    pub fn read_counter_reload_low_reg(&self) -> u8 {
+    pub fn read_tlr(&self) -> u8 {
         self.counter as _
     }
 
-    pub fn write_counter_reload_low_reg(&mut self, value: u8) {
+    pub fn write_tlr(&mut self, value: u8) {
         self.reload = (self.reload & 0xff00) | (value as u16);
         self.counter = self.reload;
     }
 
-    pub fn read_counter_reload_high_reg(&self) -> u8 {
+    pub fn read_thr(&self) -> u8 {
         (self.counter >> 8) as _
     }
 
-    pub fn write_counter_reload_high_reg(&mut self, value: u8) {
+    pub fn write_thr(&mut self, value: u8) {
         self.reload = ((value as u16) << 8) | (self.reload & 0xff);
         self.counter = self.reload;
     }
 
     pub fn cycles(&mut self, cycles: u32) -> bool {
-        if self.enable {
+        if self.t_enb {
             for _ in 0..cycles {
-                let tick_period = match self.interval {
+                let tick_period = match self.t_clk_sel {
                     Interval::Large => LARGE_INTERVAL_PERIOD,
                     Interval::Small => SMALL_INTERVAL_PERIOD,
                 };
@@ -93,8 +94,8 @@ impl Timer {
 
                     self.counter = match self.counter {
                         0 => {
-                            self.zero_status = true;
-                            if self.zero_interrupt_enable {
+                            self.z_stat = true;
+                            if self.tim_z_int {
                                 self.zero_interrupt = true;
                             }
                             self.reload

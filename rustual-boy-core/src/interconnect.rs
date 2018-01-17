@@ -1,13 +1,13 @@
-use sinks::*;
+use com_port::*;
+use game_pad::*;
+use mem_map::*;
 use rom::*;
-use wram::*;
+use sinks::*;
 use sram::*;
+use timer::*;
 use vip::*;
 use vsu::*;
-use timer::*;
-use game_pad::*;
-use link_port::*;
-use mem_map::*;
+use wram::*;
 
 pub struct Interconnect {
     rom: Rom,
@@ -17,7 +17,7 @@ pub struct Interconnect {
     vsu: Vsu,
     timer: Timer,
     pub game_pad: GamePad,
-    pub link_port: LinkPort,
+    pub com_port: ComPort,
 }
 
 impl Interconnect {
@@ -30,7 +30,7 @@ impl Interconnect {
             vsu: Vsu::new(),
             timer: Timer::new(),
             game_pad: GamePad::new(),
-            link_port: LinkPort::new(),
+            com_port: ComPort::new(),
         }
     }
 
@@ -39,27 +39,27 @@ impl Interconnect {
         match addr {
             VIP_START ... VIP_END => self.vip.read_byte(addr - VIP_START),
             VSU_START ... VSU_END => self.vsu.read_byte(addr - VSU_START),
-            LINK_CONTROL_REG => self.link_port.read_control_reg(),
-            AUX_LINK_REG => self.link_port.read_aux_reg(),
-            LINK_TRANSMIT_DATA_REG => self.link_port.read_transmit_data_reg(),
-            LINK_RECEIVE_DATA_REG => self.link_port.read_receive_data_reg(),
-            GAME_PAD_INPUT_LOW_REG => self.game_pad.read_input_low_reg(),
-            GAME_PAD_INPUT_HIGH_REG => self.game_pad.read_input_high_reg(),
-            TIMER_COUNTER_RELOAD_LOW_REG => self.timer.read_counter_reload_low_reg(),
-            TIMER_COUNTER_RELOAD_HIGH_REG => self.timer.read_counter_reload_high_reg(),
-            TIMER_CONTROL_REG => self.timer.read_control_reg(),
-            WAIT_CONTROL_REG => {
-                logln!(Log::Ic, "WARNING: Read byte from Wait Control Register not yet implemented");
+            CCR => self.com_port.read_ccr(),
+            CCSR => self.com_port.read_ccsr(),
+            CDTR => self.com_port.read_cdtr(),
+            CDRR => self.com_port.read_cdrr(),
+            SDLR => self.game_pad.read_sdlr(),
+            SDHR => self.game_pad.read_sdhr(),
+            TLR => self.timer.read_tlr(),
+            THR => self.timer.read_thr(),
+            TCR => self.timer.read_tcr(),
+            WCR => {
+                logln!(Log::Ic, "WARNING: Read byte from WCR not yet implemented");
                 0
             }
-            GAME_PAD_INPUT_CONTROL_REG => self.game_pad.read_input_control_reg(),
-            CARTRIDGE_EXPANSION_START ... CARTRIDGE_EXPANSION_END => {
-                logln!(Log::Ic, "WARNING: Read byte from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr - CARTRIDGE_EXPANSION_START);
+            SCR => self.game_pad.read_scr(),
+            GAME_PAK_EXPANSION_START ... GAME_PAK_EXPANSION_END => {
+                logln!(Log::Ic, "WARNING: Read byte from Game Pak Expansion not yet implemented (addr: 0x{:08x})", addr - GAME_PAK_EXPANSION_START);
                 0
             }
             WRAM_START ... WRAM_END => self.wram.read_byte(addr - WRAM_START),
-            CARTRIDGE_RAM_START ... CARTRIDGE_RAM_END => self.sram.read_byte(addr - CARTRIDGE_RAM_START),
-            CARTRIDGE_ROM_START ... CARTRIDGE_ROM_END => self.rom.read_byte(addr - CARTRIDGE_ROM_START),
+            GAME_PAK_RAM_START ... GAME_PAK_RAM_END => self.sram.read_byte(addr - GAME_PAK_RAM_START),
+            GAME_PAK_ROM_START ... GAME_PAK_ROM_END => self.rom.read_byte(addr - GAME_PAK_ROM_START),
             _ => panic!("Unrecognized addr: 0x{:08x}", addr)
         }
     }
@@ -70,27 +70,27 @@ impl Interconnect {
         match addr {
             VIP_START ... VIP_END => self.vip.read_halfword(addr - VIP_START),
             VSU_START ... VSU_END => self.vsu.read_halfword(addr - VSU_START),
-            LINK_CONTROL_REG => self.link_port.read_control_reg() as _,
-            AUX_LINK_REG => self.link_port.read_aux_reg() as _,
-            LINK_TRANSMIT_DATA_REG => self.link_port.read_transmit_data_reg() as _,
-            LINK_RECEIVE_DATA_REG => self.link_port.read_receive_data_reg() as _,
-            GAME_PAD_INPUT_LOW_REG => self.game_pad.read_input_low_reg() as _,
-            GAME_PAD_INPUT_HIGH_REG => self.game_pad.read_input_high_reg() as _,
-            TIMER_COUNTER_RELOAD_LOW_REG => self.timer.read_counter_reload_low_reg() as _,
-            TIMER_COUNTER_RELOAD_HIGH_REG => self.timer.read_counter_reload_high_reg() as _,
-            TIMER_CONTROL_REG => self.timer.read_control_reg() as _,
-            WAIT_CONTROL_REG => {
-                logln!(Log::Ic, "Read halfword from Wait Control Register not yet implemented");
+            CCR => self.com_port.read_ccr() as _,
+            CCSR => self.com_port.read_ccsr() as _,
+            CDTR => self.com_port.read_cdtr() as _,
+            CDRR => self.com_port.read_cdrr() as _,
+            SDLR => self.game_pad.read_sdlr() as _,
+            SDHR => self.game_pad.read_sdhr() as _,
+            TLR => self.timer.read_tlr() as _,
+            THR => self.timer.read_thr() as _,
+            TCR => self.timer.read_tcr() as _,
+            WCR => {
+                logln!(Log::Ic, "Read halfword from WCR not yet implemented");
                 0
             }
-            GAME_PAD_INPUT_CONTROL_REG => self.game_pad.read_input_control_reg() as _,
-            CARTRIDGE_EXPANSION_START ... CARTRIDGE_EXPANSION_END => {
-                logln!(Log::Ic, "WARNING: Read halfword from Cartridge Expansion not yet implemented (addr: 0x{:08x})", addr - CARTRIDGE_EXPANSION_START);
+            SCR => self.game_pad.read_scr() as _,
+            GAME_PAK_EXPANSION_START ... GAME_PAK_EXPANSION_END => {
+                logln!(Log::Ic, "WARNING: Read halfword from Game Pak Expansion not yet implemented (addr: 0x{:08x})", addr - GAME_PAK_EXPANSION_START);
                 0
             }
             WRAM_START ... WRAM_END => self.wram.read_halfword(addr - WRAM_START),
-            CARTRIDGE_RAM_START ... CARTRIDGE_RAM_END => self.sram.read_halfword(addr - CARTRIDGE_RAM_START),
-            CARTRIDGE_ROM_START ... CARTRIDGE_ROM_END => self.rom.read_halfword(addr - CARTRIDGE_ROM_START),
+            GAME_PAK_RAM_START ... GAME_PAK_RAM_END => self.sram.read_halfword(addr - GAME_PAK_RAM_START),
+            GAME_PAK_ROM_START ... GAME_PAK_ROM_END => self.rom.read_halfword(addr - GAME_PAK_ROM_START),
             _ => panic!("Unrecognized addr: 0x{:08x}", addr)
         }
     }
@@ -100,34 +100,34 @@ impl Interconnect {
         match addr {
             VIP_START ... VIP_END => self.vip.write_byte(addr - VIP_START, value),
             VSU_START ... VSU_END => self.vsu.write_byte(addr - VSU_START, value),
-            LINK_CONTROL_REG => self.link_port.write_control_reg(value),
-            AUX_LINK_REG => self.link_port.write_aux_reg(value),
-            LINK_TRANSMIT_DATA_REG => self.link_port.write_transmit_data_reg(value),
-            LINK_RECEIVE_DATA_REG => {
-                logln!(Log::Ic, "WARNING: Attempted write byte to Link Receive Data Register (value: 0x{:02x})", value);
+            CCR => self.com_port.write_ccr(value),
+            CCSR => self.com_port.write_ccsr(value),
+            CDTR => self.com_port.write_cdtr(value),
+            CDRR => {
+                logln!(Log::Ic, "WARNING: Attempted write byte to CDRR (value: 0x{:02x})", value);
             }
-            GAME_PAD_INPUT_LOW_REG => {
-                logln!(Log::Ic, "WARNING: Attempted write byte to Game Pad Input Low Register (value: 0x{:02x})", value);
+            SDLR => {
+                logln!(Log::Ic, "WARNING: Attempted write byte to SDLR (value: 0x{:02x})", value);
             }
-            GAME_PAD_INPUT_HIGH_REG => {
-                logln!(Log::Ic, "WARNING: Attempted write byte to Game Pad Input High Register (value: 0x{:02x})", value);
+            SDHR => {
+                logln!(Log::Ic, "WARNING: Attempted write byte to SDHR (value: 0x{:02x})", value);
             }
-            TIMER_COUNTER_RELOAD_LOW_REG => self.timer.write_counter_reload_low_reg(value),
-            TIMER_COUNTER_RELOAD_HIGH_REG => self.timer.write_counter_reload_high_reg(value),
-            TIMER_CONTROL_REG => self.timer.write_control_reg(value),
-            WAIT_CONTROL_REG => {
-                logln!(Log::Ic, "Wait Control Register (0x{:08x}) written: 0x{:02x}", addr, value);
-                logln!(Log::Ic, " Cartridge ROM Waits: {}", if value & 0x01 == 0 { 2 } else { 1 });
-                logln!(Log::Ic, " Cartridge Expansion Waits: {}", if value & 0x02 == 0 { 2 } else { 1 });
+            TLR => self.timer.write_tlr(value),
+            THR => self.timer.write_thr(value),
+            TCR => self.timer.write_tcr(value),
+            WCR => {
+                logln!(Log::Ic, "WCR (0x{:08x}) written: 0x{:02x}", addr, value);
+                logln!(Log::Ic, " Game Pak ROM Waits: {}", if value & 0x01 == 0 { 2 } else { 1 });
+                logln!(Log::Ic, " Game Pak Expansion Waits: {}", if value & 0x02 == 0 { 2 } else { 1 });
             }
-            GAME_PAD_INPUT_CONTROL_REG => self.game_pad.write_input_control_reg(value),
-            CARTRIDGE_EXPANSION_START ... CARTRIDGE_EXPANSION_END => {
-                logln!(Log::Ic, "WARNING: Write byte to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:02x})", addr - CARTRIDGE_EXPANSION_START, value);
+            SCR => self.game_pad.write_scr(value),
+            GAME_PAK_EXPANSION_START ... GAME_PAK_EXPANSION_END => {
+                logln!(Log::Ic, "WARNING: Write byte to Game Pak Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:02x})", addr - GAME_PAK_EXPANSION_START, value);
             }
             WRAM_START ... WRAM_END => self.wram.write_byte(addr - WRAM_START, value),
-            CARTRIDGE_RAM_START ... CARTRIDGE_RAM_END => self.sram.write_byte(addr - CARTRIDGE_RAM_START, value),
-            CARTRIDGE_ROM_START ... CARTRIDGE_ROM_END => {
-                logln!(Log::Ic, "WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr - CARTRIDGE_ROM_START);
+            GAME_PAK_RAM_START ... GAME_PAK_RAM_END => self.sram.write_byte(addr - GAME_PAK_RAM_START, value),
+            GAME_PAK_ROM_START ... GAME_PAK_ROM_END => {
+                logln!(Log::Ic, "WARNING: Attempted write to Game Pak ROM at 0x{:08x}", addr - GAME_PAK_ROM_START);
             }
             _ => panic!("Unrecognized addr: 0x{:08x}", addr)
         }
@@ -139,32 +139,32 @@ impl Interconnect {
         match addr {
             VIP_START ... VIP_END => self.vip.write_halfword(addr - VIP_START, value),
             VSU_START ... VSU_END => self.vsu.write_halfword(addr - VSU_START, value),
-            LINK_CONTROL_REG => self.link_port.write_control_reg(value as _),
-            AUX_LINK_REG => self.link_port.write_aux_reg(value as _),
-            LINK_TRANSMIT_DATA_REG => self.link_port.write_transmit_data_reg(value as _),
-            LINK_RECEIVE_DATA_REG => {
-                logln!(Log::Ic, "WARNING: Attempted write halfword to Link Receive Data Register (value: 0x{:04x})", value);
+            CCR => self.com_port.write_ccr(value as _),
+            CCSR => self.com_port.write_ccsr(value as _),
+            CDTR => self.com_port.write_cdtr(value as _),
+            CDRR => {
+                logln!(Log::Ic, "WARNING: Attempted write halfword to CDRR (value: 0x{:04x})", value);
             }
-            GAME_PAD_INPUT_LOW_REG => {
-                logln!(Log::Ic, "WARNING: Attempted write halfword byte to Game Pad Input Low Register (value: 0x{:04x})", value);
+            SDLR => {
+                logln!(Log::Ic, "WARNING: Attempted write halfword byte to SDLR (value: 0x{:04x})", value);
             }
-            GAME_PAD_INPUT_HIGH_REG => {
-                logln!(Log::Ic, "WARNING: Attempted write halfword byte to Game Pad Input High Register (value: 0x{:04x})", value);
+            SDHR => {
+                logln!(Log::Ic, "WARNING: Attempted write halfword byte to SDHR (value: 0x{:04x})", value);
             }
-            TIMER_COUNTER_RELOAD_LOW_REG => self.timer.write_counter_reload_low_reg(value as _),
-            TIMER_COUNTER_RELOAD_HIGH_REG => self.timer.write_counter_reload_high_reg(value as _),
-            TIMER_CONTROL_REG => self.timer.write_control_reg(value as _),
-            WAIT_CONTROL_REG => {
-                logln!(Log::Ic, "WARNING: Write halfword to Wait Control Register not yet implemented (value: 0x{:04x})", value);
+            TLR => self.timer.write_tlr(value as _),
+            THR => self.timer.write_thr(value as _),
+            TCR => self.timer.write_tcr(value as _),
+            WCR => {
+                logln!(Log::Ic, "WARNING: Write halfword to WCR not yet implemented (value: 0x{:04x})", value);
             }
-            GAME_PAD_INPUT_CONTROL_REG => self.game_pad.write_input_control_reg(value as _),
-            CARTRIDGE_EXPANSION_START ... CARTRIDGE_EXPANSION_END => {
-                logln!(Log::Ic, "WARNING: Write halfword to Cartridge Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr - CARTRIDGE_EXPANSION_START, value);
+            SCR => self.game_pad.write_scr(value as _),
+            GAME_PAK_EXPANSION_START ... GAME_PAK_EXPANSION_END => {
+                logln!(Log::Ic, "WARNING: Write halfword to Game Pak Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr - GAME_PAK_EXPANSION_START, value);
             }
             WRAM_START ... WRAM_END => self.wram.write_halfword(addr - WRAM_START, value),
-            CARTRIDGE_RAM_START ... CARTRIDGE_RAM_END => self.sram.write_halfword(addr - CARTRIDGE_RAM_START, value),
-            CARTRIDGE_ROM_START ... CARTRIDGE_ROM_END => {
-                logln!(Log::Ic, "WARNING: Attempted write to Cartridge ROM at 0x{:08x}", addr - CARTRIDGE_ROM_START);
+            GAME_PAK_RAM_START ... GAME_PAK_RAM_END => self.sram.write_halfword(addr - GAME_PAK_RAM_START, value),
+            GAME_PAK_ROM_START ... GAME_PAK_ROM_END => {
+                logln!(Log::Ic, "WARNING: Attempted write to Game Pak ROM at 0x{:08x}", addr - GAME_PAK_ROM_START);
             }
             _ => panic!("Unrecognized addr: 0x{:08x}", addr)
         }
