@@ -1,3 +1,4 @@
 target/
 rustual-boy-core/Cargo.lock
+rustual-boy-libretro/Cargo.lock
 rustual-boy-middleware/Cargo.lock
