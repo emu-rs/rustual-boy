@@ -109,3 +109,15 @@ impl Rom {
         self.size() - 544
     }
 }
+
+impl Clone for Rom {
+    fn clone(&self) -> Rom {
+        let mut bytes_box = self.bytes.clone();
+        let bytes_ptr = bytes_box.as_mut_ptr();
+
+        Rom {
+            bytes: bytes_box,
+            bytes_ptr: bytes_ptr,
+        }
+    }
+}

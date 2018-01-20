@@ -1,6 +1,3 @@
-extern crate rustual_boy_core;
-use rustual_boy_core::game_pad::{GamePad, Button};
-
 use callbacks::Callbacks;
 
 pub enum JoypadButton {
@@ -34,8 +31,6 @@ pub enum AnalogStick {
     Right = 1,
 }
 
-
-#[allow(dead_code)]
 pub enum RetroDeviceType {
     None = 0,
     Joypad = 1,
@@ -46,20 +41,15 @@ pub enum RetroDeviceType {
     Pointer = 6,
 }
 
+// TODO: I don't like Callbacks impl being split up like this
 impl Callbacks {
     pub fn joypad_button(&self, button: JoypadButton) -> bool {
         0 != self.input_state(0, RetroDeviceType::Joypad as u32, 0, button as u32)
     }
 
     pub fn analog_xy(&self, stick: AnalogStick) -> (i16, i16) {
-        let x = self.input_state(0,
-                                 RetroDeviceType::Analog as u32,
-                                 stick.clone() as u32,
-                                 AnalogAxis::X as u32);
-        let y = self.input_state(0,
-                                 RetroDeviceType::Analog as u32,
-                                 stick as u32,
-                                 AnalogAxis::Y as u32);
+        let x = self.input_state(0, RetroDeviceType::Analog as u32, stick.clone() as u32, AnalogAxis::X as u32);
+        let y = self.input_state(0, RetroDeviceType::Analog as u32, stick as u32, AnalogAxis::Y as u32);
 
         (x, y)
     }

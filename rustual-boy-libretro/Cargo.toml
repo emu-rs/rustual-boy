@@ -9,7 +9,5 @@ crate-type = ["dylib"]
 
 [dependencies]
 libc = "0.2.*"
-log = "0.3.*"
-bitflags = "0.7.*"
 rustual-boy-core = { path="../rustual-boy-core" }
 rustual-boy-middleware = { path="../rustual-boy-middleware"}

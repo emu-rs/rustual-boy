@@ -99,3 +99,17 @@ impl Sram {
         addr
     }
 }
+
+impl Clone for Sram {
+    fn clone(&self) -> Sram {
+        let mut bytes_box = self.bytes.clone();
+        let bytes_ptr = bytes_box.as_mut_ptr();
+
+        Sram {
+            bytes: bytes_box,
+            bytes_ptr: bytes_ptr,
+
+            size: self.size,
+        }
+    }
+}

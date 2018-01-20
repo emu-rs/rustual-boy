@@ -10,7 +10,7 @@ use vsu::*;
 use wram::*;
 
 pub struct Interconnect {
-    rom: Rom,
+    pub rom: Rom,
     wram: Wram,
     pub sram: Sram,
     vip: Vip,

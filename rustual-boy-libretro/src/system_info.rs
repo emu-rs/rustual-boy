@@ -1,4 +1,3 @@
-extern crate libc;
 use libc::c_char;
 
 macro_rules! cstring {

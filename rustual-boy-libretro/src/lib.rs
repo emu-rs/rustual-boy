@@ -1,225 +1,335 @@
-#[macro_use]
-extern crate bitflags;
-#[macro_use]
-extern crate log;
-
-use std::ptr;
-
 extern crate libc;
-use libc::{c_void, c_char, size_t};
 
 extern crate rustual_boy_core;
-use rustual_boy_core::rom::Rom;
-use rustual_boy_core::sram::Sram;
-
 extern crate rustual_boy_middleware;
 
-mod input;
-
-mod input_mapping;
-
-mod system_info;
-use system_info::SystemInfo;
-
-mod system_av_info;
-use system_av_info::SystemAvInfo;
-
 mod callbacks;
-use callbacks::*;
-
-mod context;
-use context::Context;
-
 mod game_info;
-use game_info::GameInfo;
+mod input;
+mod retro;
+mod system_av_info;
+mod system_info;
 
-mod callback_sink;
+use libc::*;
 
-mod retro_time_source;
+use rustual_boy_core::game_pad::*;
+use rustual_boy_core::rom::*;
+use rustual_boy_core::sinks::*;
+use rustual_boy_core::sram::*;
+use rustual_boy_core::vip::*;
+use rustual_boy_core::virtual_boy::*;
+use rustual_boy_core::vsu::*;
 
-mod environment;
-use environment::{FrameTimeCallback, PixelFormat};
+use rustual_boy_middleware::*;
 
-mod logger;
+use callbacks::*;
+use game_info::*;
+use input::*;
+use retro::*;
+use system_av_info::*;
+use system_info::*;
 
-static mut GLOBAL_CALLBACKS: Callbacks = Callbacks {
-    environment_fn: None,
-    video_refresh_fn: None,
-    audio_sample_fn: None,
-    audio_sample_batch_fn: None,
-    input_poll_fn: None,
-    input_state_fn: None,
+use std::{mem, ptr};
+
+struct VideoCallbackSink {
+    callback: VideoRefreshCallback,
+}
+
+impl Sink<ColorFrame> for VideoCallbackSink {
+    fn append(&mut self, frame: ColorFrame) {
+        let output_bytes_per_pixel = mem::size_of::<u32>();
+        let output_size_bytes = (DISPLAY_PIXELS as usize) * output_bytes_per_pixel;
+
+        let mut output: Vec<u32> = Vec::new();
+        output.reserve_exact(output_size_bytes);
+
+        unsafe {
+            let input_ptr = frame.as_ptr();
+            {
+                let output_ptr = output.as_mut_ptr();
+                for i in 0..(DISPLAY_PIXELS as isize) {
+                    let ref input_color = *(input_ptr.offset(i));
+
+                    *output_ptr.offset(i) = input_color.into();
+                }
+            }
+            output.set_len(output_size_bytes);
+        }
+
+        let output_ptr = Box::into_raw(output.into_boxed_slice());
+
+        (self.callback)(output_ptr as *mut c_void, DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y, (DISPLAY_RESOLUTION_X as usize) * output_bytes_per_pixel);
+
+        unsafe {
+            Box::from_raw(output_ptr);
+        }
+    }
+}
+
+struct AudioCallbackSink {
+    callback: AudioSampleCallback,
+}
+
+impl Sink<AudioFrame> for AudioCallbackSink {
+    fn append(&mut self, frame: AudioFrame) {
+        let (left, right) = frame;
+        (self.callback)(left, right);
+    }
+}
+
+struct System {
+    virtual_boy: VirtualBoy,
+    emulated_cycles: u64,
+    target_emulated_cycles: u64,
+}
+
+impl System {
+    fn new(rom: Rom, sram: Sram) -> System {
+        System {
+            virtual_boy: VirtualBoy::new(rom, sram),
+            emulated_cycles: 0,
+            target_emulated_cycles: 0,
+        }
+    }
+}
+
+pub struct Context {
+    system: Option<System>,
+}
+
+impl Context {
+    fn new() -> Context {
+        Context {
+            system: None,
+        }
+    }
+
+    fn load_game(&mut self, game_info: &GameInfo) -> bool {
+        unsafe {
+            // TODO: libretro.h claims this should be called in load_game or system_av_info, but retroarch
+            //  seems to be pretty schizophrenic about whether or not it respects either of these!
+            CALLBACKS.set_pixel_format(PixelFormat::Xrgb8888);
+
+            match Rom::from_bytes(game_info.data_ref()) {
+                Ok(rom) => {
+                    self.system = Some(System::new(rom, Sram::new()));
+
+                    true
+                }
+                Err(_) => false,
+            }
+        }
+    }
+
+    fn unload_game(&mut self) {
+        self.system = None;
+    }
+
+    fn system_av_info(&self) -> SystemAvInfo {
+        unsafe {
+            CALLBACKS.set_pixel_format(PixelFormat::Xrgb8888);
+        }
+
+        SystemAvInfo {
+            geometry: SystemGameGeometry {
+                base_width: DISPLAY_RESOLUTION_X,
+                base_height: DISPLAY_RESOLUTION_Y,
+                max_width: DISPLAY_RESOLUTION_X,
+                max_height: DISPLAY_RESOLUTION_Y,
+
+                // Optional
+                aspect_ratio: 0.0,
+            },
+            timing: SystemTiming {
+                fps: 50.0,
+                sample_rate: SAMPLE_RATE as f64,
+            },
+        }
+    }
+
+    fn reset(&mut self) {
+        // Pull out rom/sram from existing system, and build new system around them
+        let (rom, sram) = self.system.as_ref().map(|system| (system.virtual_boy.interconnect.rom.clone(), system.virtual_boy.interconnect.sram.clone())).unwrap();
+        self.system = Some(System::new(rom, sram));
+    }
+
+    fn run_frame(&mut self) {
+        unsafe {
+            CALLBACKS.input_poll();
+
+            if let Some(ref mut system) = self.system {
+                {
+                    let game_pad = &mut system.virtual_boy.interconnect.game_pad;
+
+                    game_pad.set_button_pressed(Button::A, CALLBACKS.joypad_button(JoypadButton::A));
+                    game_pad.set_button_pressed(Button::B, CALLBACKS.joypad_button(JoypadButton::B));
+                    game_pad.set_button_pressed(Button::L, CALLBACKS.joypad_button(JoypadButton::L));
+                    game_pad.set_button_pressed(Button::R, CALLBACKS.joypad_button(JoypadButton::R));
+                    game_pad.set_button_pressed(Button::Start, CALLBACKS.joypad_button(JoypadButton::Start));
+                    game_pad.set_button_pressed(Button::Select, CALLBACKS.joypad_button(JoypadButton::Select));
+
+                    let joypad_left_pressed = CALLBACKS.joypad_button(JoypadButton::Left);
+                    let joypad_right_pressed = CALLBACKS.joypad_button(JoypadButton::Right);
+                    let joypad_up_pressed = CALLBACKS.joypad_button(JoypadButton::Up);
+                    let joypad_down_pressed = CALLBACKS.joypad_button(JoypadButton::Down);
+
+                    const ANALOG_THRESHOLD: i16 = 0x7fff / 2;
+
+                    let (left_x, left_y) = CALLBACKS.analog_xy(AnalogStick::Left);
+                    game_pad.set_button_pressed(Button::LeftDPadLeft, left_x < -ANALOG_THRESHOLD || joypad_left_pressed);
+                    game_pad.set_button_pressed(Button::LeftDPadRight, left_x > ANALOG_THRESHOLD || joypad_right_pressed);
+                    game_pad.set_button_pressed(Button::LeftDPadUp, left_y < -ANALOG_THRESHOLD || joypad_up_pressed);
+                    game_pad.set_button_pressed(Button::LeftDPadDown, left_y > ANALOG_THRESHOLD || joypad_down_pressed);
+
+                    let (right_x, right_y) = CALLBACKS.analog_xy(AnalogStick::Right);
+                    game_pad.set_button_pressed(Button::RightDPadLeft, right_x < -ANALOG_THRESHOLD);
+                    game_pad.set_button_pressed(Button::RightDPadRight, right_x > ANALOG_THRESHOLD);
+                    game_pad.set_button_pressed(Button::RightDPadUp, right_y < -ANALOG_THRESHOLD);
+                    game_pad.set_button_pressed(Button::RightDPadDown, right_y > ANALOG_THRESHOLD);
+                }
+
+                let mut most_recent_sink: MostRecentSink<VideoFrame> = MostRecentSink::new();
+                let mut audio_output_sink = AudioCallbackSink {
+                    callback: CALLBACKS.audio_sample.unwrap(),
+                };
+
+                system.target_emulated_cycles += 1_000_000_000 / 50 / 50; // 1s period in ns, 50 frames per second, 50ns per cycle
+
+                while system.emulated_cycles < system.target_emulated_cycles {
+                    let (num_cycles, _) = system.virtual_boy.step(&mut most_recent_sink, &mut audio_output_sink);
+                    system.emulated_cycles += num_cycles as _;
+                }
+
+                if most_recent_sink.has_frame() {
+                    let video_output_sink = VideoCallbackSink {
+                        callback: CALLBACKS.video_refresh.unwrap(),
+                    };
+                    let gamma_adjust = GammaAdjustSink::new(video_output_sink, 2.2);
+
+                    let mut anaglyphizer = Anaglyphizer::new(gamma_adjust, Color::from((255, 0, 0)), Color::from((0, 255, 255)));
+
+                    let frame = most_recent_sink.into_inner().unwrap();
+                    anaglyphizer.append(frame);
+                }
+            }
+        }
+    }
+}
+
+static mut CALLBACKS: Callbacks = Callbacks {
+    video_refresh: None,
+    audio_sample: None,
+    audio_sample_batch: None,
+    input_poll: None,
+    input_state: None,
+    environment: None,
 };
 
-static mut GLOBAL_CONTEXT: *mut Context = 0 as *mut _;
+static mut CONTEXT: *mut Context = 0 as *mut _;
 
-unsafe fn get_callbacks() -> &'static Callbacks {
-    &GLOBAL_CALLBACKS
-}
-
-unsafe fn has_context() -> bool {
-    !GLOBAL_CONTEXT.is_null()
-}
-
-unsafe fn get_context() -> &'static mut Context {
-    if !has_context() {
-        panic!("Attempted to access nonexistent global context");
-    }
-
-    &mut *GLOBAL_CONTEXT
-}
-
-unsafe fn set_context(context: Box<Context>) {
-    if has_context() {
-        panic!("Attempted to set global context when one already exists");
-    }
-
-    GLOBAL_CONTEXT = Box::into_raw(context);
-}
-
-unsafe fn delete_context() {
-    if !has_context() {
-        return;
-    }
-
-    // This frees GLOBAL_CONTEXT, since the newly created Box goes out of scope immediately
-    Box::from_raw(GLOBAL_CONTEXT);
-    GLOBAL_CONTEXT = 0 as *mut _;
-}
-
-extern "C" fn retro_frame_time_callback(time_usec: i64) {
-    unsafe {
-        get_context().time_source_mut().append(time_usec as u64);
-    }
-}
-
-// libretro API
-// ------------
-
-macro_rules! not_implemented {
-    ( $fname:expr ) => {
-    	panic!(concat!($fname, "(): not yet implemented"));
-    }
+#[no_mangle]
+pub extern "C" fn retro_api_version() -> u32 {
+    API_VERSION
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn retro_set_environment(callback: EnvironmentCallback) {
-    GLOBAL_CALLBACKS.environment_fn = Some(callback);
+pub unsafe extern "C" fn retro_init() {
+    CONTEXT = Box::into_raw(Box::new(Context::new()));
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn retro_deinit() {
+    Box::from_raw(CONTEXT); // Take ownership of CONTEXT and drop it
+    CONTEXT = ptr::null_mut();
+}
+
+// These `retro_set` fn's can be called _before_ retro_init, so they can't touch any context state
 
 #[no_mangle]
 pub unsafe extern "C" fn retro_set_video_refresh(callback: VideoRefreshCallback) {
-    GLOBAL_CALLBACKS.video_refresh_fn = Some(callback);
+    CALLBACKS.video_refresh = Some(callback);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn retro_set_audio_sample(callback: AudioSampleCallback) {
-    GLOBAL_CALLBACKS.audio_sample_fn = Some(callback);
+    CALLBACKS.audio_sample = Some(callback);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn retro_set_audio_sample_batch(callback: AudioSampleBatchCallback) {
-    GLOBAL_CALLBACKS.audio_sample_batch_fn = Some(callback);
+    CALLBACKS.audio_sample_batch = Some(callback);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn retro_set_input_poll(callback: InputPollCallback) {
-    GLOBAL_CALLBACKS.input_poll_fn = Some(callback);
+    CALLBACKS.input_poll = Some(callback);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn retro_set_input_state(callback: InputStateCallback) {
-    GLOBAL_CALLBACKS.input_state_fn = Some(callback);
+    CALLBACKS.input_state = Some(callback);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn retro_set_environment(callback: EnvironmentCallback) {
+    CALLBACKS.environment = Some(callback);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn retro_set_controller_port_device(_port: u32, _device: u32) {
+    // TODO
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn retro_get_system_info(info: *mut SystemInfo) {
+    // This can be called _before_ retro_init, so this can't be part of the context
     *info = SystemInfo::new();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn retro_get_system_av_info(av_info: *mut SystemAvInfo) {
-    *av_info = get_context().system_av_info();
-
-    get_callbacks().set_pixel_format(PixelFormat::Xrgb8888);
-}
-
-#[no_mangle]
-#[allow(unused_variables)]
-pub unsafe extern "C" fn retro_set_controller_port_device(port: u32, device: u32) {}
-
-#[no_mangle]
-pub unsafe extern "C" fn retro_init() {
-    logger::init();
-
-    get_callbacks().set_frame_time_callback(FrameTimeCallback {
-        callback: retro_frame_time_callback,
-        reference: 50,
-    });
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn retro_deinit() {}
-
-#[no_mangle]
 pub unsafe extern "C" fn retro_load_game(game_info: *const GameInfo) -> bool {
-    info!("Loading game...");
-
-    get_callbacks().set_pixel_format(PixelFormat::Xrgb8888);
-
-    let game_info = &*game_info;
-
-    match Rom::from_bytes(game_info.data_ref()) {
-        Ok(rom) => {
-            let context = Context::new(rom, Sram::new());
-            set_context(Box::new(context));
-
-            true
-        }
-        Err(_) => false,
-    }
+    (*CONTEXT).load_game(&*game_info)
 }
 
 #[no_mangle]
-#[allow(unused_variables)]
-pub unsafe extern "C" fn retro_load_game_special(game_type: u32,
-                                                 game_infos: *const GameInfo,
-                                                 num_game_infos: size_t)
-                                                 -> bool {
+pub unsafe extern "C" fn retro_load_game_special(_game_type: u32, _game_infos: *const GameInfo, _num_game_infos: size_t) -> bool {
     // Neither required nor recommended
     false
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn retro_get_system_av_info(av_info: *mut SystemAvInfo) {
+    *av_info = (*CONTEXT).system_av_info();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn retro_unload_game() {
-    delete_context();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn retro_get_region() -> u32 {
-    0
-}
-
-#[no_mangle]
-#[allow(unused_variables)]
-pub unsafe extern "C" fn retro_get_memory_data(id: u32) -> *mut c_void {
-    ptr::null_mut()
-}
-
-#[no_mangle]
-#[allow(unused_variables)]
-pub unsafe extern "C" fn retro_get_memory_size(id: u32) -> size_t {
-    0
+    (*CONTEXT).unload_game();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn retro_reset() {
-    not_implemented!("retro_reset");
+    (*CONTEXT).reset();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn retro_run() {
-    get_context().run_frame(get_callbacks());
+    (*CONTEXT).run_frame();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn retro_get_region() -> u32 {
+    0 // TODO
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn retro_get_memory_data(_id: u32) -> *mut c_void {
+    ptr::null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn retro_get_memory_size(_id: u32) -> size_t {
+    0
 }
 
 #[no_mangle]
@@ -228,29 +338,21 @@ pub unsafe extern "C" fn retro_serialize_size() -> size_t {
 }
 
 #[no_mangle]
-#[allow(unused_variables)]
-pub unsafe extern "C" fn retro_serialize(data: *mut c_void, size: size_t) -> bool {
-    not_implemented!("retro_serialize");
+pub unsafe extern "C" fn retro_serialize(_data: *mut c_void, _size: size_t) -> bool {
+    unimplemented!("retro_serialize");
 }
 
 #[no_mangle]
-#[allow(unused_variables)]
-pub unsafe extern "C" fn retro_unserialize(data: *const c_void, size: size_t) -> bool {
-    not_implemented!("retro_unserialize");
+pub unsafe extern "C" fn retro_unserialize(_data: *const c_void, _size: size_t) -> bool {
+    unimplemented!("retro_unserialize");
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn retro_cheat_reset() {
-    not_implemented!("retro_cheat_reset");
+    unimplemented!("retro_cheat_reset");
 }
 
 #[no_mangle]
-#[allow(unused_variables)]
-pub unsafe extern "C" fn retro_cheat_set(index: u32, enabled: bool, code: *const c_char) {
-    not_implemented!("retro_cheat_set");
-}
-
-#[no_mangle]
-pub extern "C" fn retro_api_version() -> u32 {
-    1
+pub unsafe extern "C" fn retro_cheat_set(_index: u32, _enabled: bool, _code: *const c_char) {
+    unimplemented!("retro_cheat_set");
 }
