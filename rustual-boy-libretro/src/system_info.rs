@@ -18,7 +18,7 @@ pub struct SystemInfo {
 impl SystemInfo {
     pub fn new() -> SystemInfo {
         SystemInfo {
-            library_name: cstring!("Rustual Boy"),
+            library_name: cstring!("Rustual Boy libretro"),
             library_version: cstring!(env!("CARGO_PKG_VERSION")),
             valid_extensions: cstring!("vb"),
             need_fullpath: false,

@@ -31,38 +31,36 @@ use system_info::*;
 
 use std::{mem, ptr};
 
-struct VideoCallbackSink {
+struct VideoCallbackSink<'a> {
     callback: VideoRefreshCallback,
+    video_output_frame_buffer: &'a mut Vec<u32>,
 }
 
-impl Sink<ColorFrame> for VideoCallbackSink {
+impl<'a> Sink<ColorFrame> for VideoCallbackSink<'a> {
     fn append(&mut self, frame: ColorFrame) {
         let output_bytes_per_pixel = mem::size_of::<u32>();
         let output_size_bytes = (DISPLAY_PIXELS as usize) * output_bytes_per_pixel;
 
-        let mut output: Vec<u32> = Vec::new();
-        output.reserve_exact(output_size_bytes);
+        if self.video_output_frame_buffer.len() != DISPLAY_PIXELS as usize {
+            *self.video_output_frame_buffer = Vec::new();
+            self.video_output_frame_buffer.reserve_exact(output_size_bytes);
+        }
+
+        let output_ptr = self.video_output_frame_buffer.as_mut_ptr();
 
         unsafe {
             let input_ptr = frame.as_ptr();
             {
-                let output_ptr = output.as_mut_ptr();
                 for i in 0..(DISPLAY_PIXELS as isize) {
                     let ref input_color = *(input_ptr.offset(i));
 
                     *output_ptr.offset(i) = input_color.into();
                 }
             }
-            output.set_len(output_size_bytes);
+            self.video_output_frame_buffer.set_len(output_size_bytes);
         }
-
-        let output_ptr = Box::into_raw(output.into_boxed_slice());
 
         (self.callback)(output_ptr as *mut c_void, DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y, (DISPLAY_RESOLUTION_X as usize) * output_bytes_per_pixel);
-
-        unsafe {
-            Box::from_raw(output_ptr);
-        }
     }
 }
 
@@ -95,12 +93,14 @@ impl System {
 
 pub struct Context {
     system: Option<System>,
+    video_output_frame_buffer: Vec<u32>,
 }
 
 impl Context {
     fn new() -> Context {
         Context {
             system: None,
+            video_output_frame_buffer: Vec::new(),
         }
     }
 
@@ -203,6 +203,7 @@ impl Context {
                 if most_recent_sink.has_frame() {
                     let video_output_sink = VideoCallbackSink {
                         callback: CALLBACKS.video_refresh.unwrap(),
+                        video_output_frame_buffer: &mut self.video_output_frame_buffer,
                     };
                     let gamma_adjust = GammaAdjustSink::new(video_output_sink, 2.2);
 
@@ -319,7 +320,7 @@ pub unsafe extern "C" fn retro_run() {
 
 #[no_mangle]
 pub unsafe extern "C" fn retro_get_region() -> u32 {
-    0 // TODO
+    1 // TODO
 }
 
 #[no_mangle]
