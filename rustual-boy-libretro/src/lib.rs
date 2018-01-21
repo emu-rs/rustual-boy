@@ -107,7 +107,8 @@ impl Context {
     fn load_game(&mut self, game_info: &GameInfo) -> bool {
         unsafe {
             // TODO: libretro.h claims this should be called in load_game or system_av_info, but retroarch
-            //  seems to be pretty schizophrenic about whether or not it respects either of these!
+            //  seems to be pretty schizophrenic about whether or not it respects this call in either place.
+            //  Samples seem to have it here though, so let's do that.
             CALLBACKS.set_pixel_format(PixelFormat::Xrgb8888);
 
             match Rom::from_bytes(game_info.data_ref()) {
@@ -126,10 +127,6 @@ impl Context {
     }
 
     fn system_av_info(&self) -> SystemAvInfo {
-        unsafe {
-            CALLBACKS.set_pixel_format(PixelFormat::Xrgb8888);
-        }
-
         SystemAvInfo {
             geometry: SystemGameGeometry {
                 base_width: DISPLAY_RESOLUTION_X,
