@@ -12,19 +12,19 @@ pub const SAMPLE_RATE: u32 = 41667;
 // 20mhz / 41.7khz = ~480 clocks
 const SAMPLE_CLOCK_PERIOD: u32 = 480;
 
-// 20mhz / 260.4hz = ~76805 clocks
-const DURATION_CLOCK_PERIOD: u32 = 76805;
+// 20mhz / 260.4hz = ~76805 clocks; rounds to 76800 = 160 * SAMPLE_CLOCK_PERIOD
+const DURATION_CLOCK_PERIOD: u32 = 76800;
 
-// 20mhz / 65.1hz = ~307218 clocks
-const ENVELOPE_CLOCK_PERIOD: u32 = 307218;
+// 20mhz / 65.1hz = ~307218 clocks; rounds to 307200 = 640 * SAMPLE_CLOCK_PERIOD
+const ENVELOPE_CLOCK_PERIOD: u32 = 307200;
 
 // 20mhz / 5mhz = 4 clocks
 const FREQUENCY_CLOCK_PERIOD: u32 = 4;
 
-// 20mhz / 1041.6hz = ~19200 clocks
+// 20mhz / 1041.6hz = ~19200 clocks = 40 * SAMPLE_CLOCK_PERIOD
 const SWEEP_MOD_SMALL_PERIOD: u32 = 19200;
 
-// 20mhz / 130.2hz = ~153600 clocks
+// 20mhz / 130.2hz = ~153600 clocks = 320 * SAMPLE_CLOCK_PERIOD
 const SWEEP_MOD_LARGE_PERIOD: u32 = 153600;
 
 // 20mhz / 500khz = 40 clocks
