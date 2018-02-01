@@ -1,7 +1,6 @@
 extern crate libc;
 
 extern crate rustual_boy_core;
-extern crate rustual_boy_middleware;
 
 mod callbacks;
 mod game_info;
@@ -20,8 +19,6 @@ use rustual_boy_core::vip::*;
 use rustual_boy_core::virtual_boy::*;
 use rustual_boy_core::vsu::*;
 
-use rustual_boy_middleware::*;
-
 use callbacks::*;
 use game_info::*;
 use input::*;
@@ -30,39 +27,6 @@ use system_av_info::*;
 use system_info::*;
 
 use std::{mem, ptr};
-
-struct VideoCallbackSink<'a> {
-    callback: VideoRefreshCallback,
-    video_output_frame_buffer: &'a mut Vec<u16>,
-}
-
-impl<'a> Sink<ColorFrame> for VideoCallbackSink<'a> {
-    fn append(&mut self, frame: ColorFrame) {
-        let output_bytes_per_pixel = mem::size_of::<u16>();
-        let output_size_bytes = (DISPLAY_PIXELS as usize) * output_bytes_per_pixel;
-
-        if self.video_output_frame_buffer.len() != DISPLAY_PIXELS as usize {
-            *self.video_output_frame_buffer = Vec::new();
-            self.video_output_frame_buffer.reserve_exact(output_size_bytes);
-        }
-
-        let output_ptr = self.video_output_frame_buffer.as_mut_ptr();
-
-        unsafe {
-            let input_ptr = frame.as_ptr();
-            {
-                for i in 0..(DISPLAY_PIXELS as isize) {
-                    let ref input_color = *(input_ptr.offset(i));
-
-                    *output_ptr.offset(i) = input_color.into();
-                }
-            }
-            self.video_output_frame_buffer.set_len(output_size_bytes);
-        }
-
-        (self.callback)(output_ptr as *mut c_void, DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y, (DISPLAY_RESOLUTION_X as usize) * output_bytes_per_pixel);
-    }
-}
 
 struct AudioCallbackSink {
     callback: AudioSampleCallback,
@@ -185,30 +149,33 @@ impl Context {
                     game_pad.set_button_pressed(Button::RightDPadDown, right_y > ANALOG_THRESHOLD);
                 }
 
-                let mut most_recent_sink: MostRecentSink<VideoFrame> = MostRecentSink::new();
-                let mut audio_output_sink = AudioCallbackSink {
-                    callback: CALLBACKS.audio_sample.unwrap(),
-                };
+                let output_bytes_per_pixel = mem::size_of::<u16>();
 
-                system.target_emulated_cycles += 1_000_000_000 / 50 / 50; // 1s period in ns, 50 frames per second, 50ns per cycle
-
-                while system.emulated_cycles < system.target_emulated_cycles {
-                    let (num_cycles, _) = system.virtual_boy.step(&mut most_recent_sink, &mut audio_output_sink);
-                    system.emulated_cycles += num_cycles as _;
+                if self.video_output_frame_buffer.len() != DISPLAY_PIXELS as usize {
+                    self.video_output_frame_buffer = vec![0; DISPLAY_PIXELS as usize];
                 }
 
-                if most_recent_sink.has_frame() {
-                    let video_output_sink = VideoCallbackSink {
-                        callback: CALLBACKS.video_refresh.unwrap(),
-                        video_output_frame_buffer: &mut self.video_output_frame_buffer,
+                // TODO: Don't need this scope when NLL is stable
+                {
+                    let mut video_output_sink = VideoSink {
+                        buffer: PixelBuffer::Xrgb1555(&mut self.video_output_frame_buffer),
+                        format: StereoVideoFormat::AnaglyphRedElectricCyan,
+                        gamma_correction: GammaCorrection::TwoPointTwo,
                     };
-                    let gamma_adjust = GammaAdjustSink::new(video_output_sink, 2.2);
 
-                    let mut anaglyphizer = Anaglyphizer::new(gamma_adjust, Color::from((255, 0, 0)), Color::from((0, 255, 255)));
+                    let mut audio_output_sink = AudioCallbackSink {
+                        callback: CALLBACKS.audio_sample.unwrap(),
+                    };
 
-                    let frame = most_recent_sink.into_inner().unwrap();
-                    anaglyphizer.append(frame);
+                    system.target_emulated_cycles += 1_000_000_000 / 50 / 50; // 1s period in ns, 50 frames per second, 50ns per cycle
+
+                    while system.emulated_cycles < system.target_emulated_cycles {
+                        let (num_cycles, _) = system.virtual_boy.step(&mut video_output_sink, &mut audio_output_sink);
+                        system.emulated_cycles += num_cycles as _;
+                    }
                 }
+
+                (CALLBACKS.video_refresh.unwrap())(self.video_output_frame_buffer.as_mut_ptr() as *mut c_void, DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y, (DISPLAY_RESOLUTION_X as usize) * output_bytes_per_pixel);
             }
         }
     }

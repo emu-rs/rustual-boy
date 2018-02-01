@@ -120,12 +120,28 @@ pub struct Vip {
 
     display_first_framebuffers: bool,
     last_bkcol: u8,
+
+    gamma_table: Box<[u8; 256]>,
 }
 
 impl Vip {
     pub fn new() -> Vip {
         let mut vram = vec![0; VRAM_LENGTH as usize].into_boxed_slice();
         let vram_ptr = vram.as_mut_ptr();
+
+        let gamma = 2.2;
+        let mut gamma_table = Box::new([0; 256]);
+        for (i, entry) in gamma_table.iter_mut().enumerate() {
+            let mut value = (((i as f64) / 255.0).powf(1.0 / gamma) * 255.0) as isize;
+            if value < 0 {
+                value = 0;
+            }
+            if value > 255 {
+                value = 255;
+            }
+
+            *entry = value as u8;
+        }
 
         Vip {
             _vram: vram,
@@ -190,6 +206,8 @@ impl Vip {
 
             display_first_framebuffers: false,
             last_bkcol: 0,
+
+            gamma_table: gamma_table,
         }
     }
 
@@ -506,7 +524,7 @@ impl Vip {
         }
     }
 
-    pub fn cycles(&mut self, cycles: u32, video_frame_sink: &mut Sink<VideoFrame>) -> bool {
+    pub fn cycles(&mut self, cycles: u32, video_frame_sink: &mut VideoSink) -> bool {
         for _ in 0..cycles {
             self.display_frame_eighth_clock_counter += 1;
             if self.display_frame_eighth_clock_counter >= DISPLAY_FRAME_EIGHTH_PERIOD {
@@ -1083,14 +1101,9 @@ impl Vip {
         self.write_vram_byte(framebuffer_offset + framebuffer_byte_index, framebuffer_byte);
     }
 
-    fn display(&mut self, video_frame_sink: &mut Sink<VideoFrame>) {
+    fn display(&mut self, video_frame_sink: &mut VideoSink) {
         let left_framebuffer_offset = if self.display_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
-
-        let mut left_buffer = vec![0; DISPLAY_PIXELS as usize].into_boxed_slice();
-        let mut right_buffer = vec![0; DISPLAY_PIXELS as usize].into_boxed_slice();
-        let left_buffer_ptr = left_buffer.as_mut_ptr();
-        let right_buffer_ptr = right_buffer.as_mut_ptr();
 
         if self.reg_dpctrl_disp && self.reg_dpctrl_synce {
             let mut brightness_1 = (self.reg_brta as u32) * 2;
@@ -1106,33 +1119,55 @@ impl Vip {
                 brightness_3 = 255;
             }
 
-            unsafe {
-                for pixel_x in 0..DISPLAY_RESOLUTION_X {
-                    for pixel_y in 0..DISPLAY_RESOLUTION_Y {
-                        let framebuffer_byte_index = (pixel_x * FRAMEBUFFER_RESOLUTION_Y + pixel_y) / 4;
-                        let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
-                        let left_color = (self.read_vram_byte(left_framebuffer_offset + framebuffer_byte_index) >> framebuffer_byte_shift) & 0x03;
-                        let right_color = (self.read_vram_byte(right_framebuffer_offset + framebuffer_byte_index) >> framebuffer_byte_shift) & 0x03;
-                        let left_brightness = match left_color {
-                            0 => 0,
-                            1 => brightness_1,
-                            2 => brightness_2,
-                            _ => brightness_3
-                        } as u8;
-                        let right_brightness = match right_color {
-                            0 => 0,
-                            1 => brightness_1,
-                            2 => brightness_2,
-                            _ => brightness_3
-                        } as u8;
-                        let buffer_index = pixel_y * DISPLAY_RESOLUTION_X + pixel_x;
-                        *left_buffer_ptr.offset(buffer_index as _) = left_brightness;
-                        *right_buffer_ptr.offset(buffer_index as _) = right_brightness;
+            for pixel_x in 0..DISPLAY_RESOLUTION_X {
+                for pixel_y in 0..DISPLAY_RESOLUTION_Y {
+                    let framebuffer_byte_index = (pixel_x * FRAMEBUFFER_RESOLUTION_Y + pixel_y) / 4;
+                    let framebuffer_byte_shift = (pixel_y & 0x03) * 2;
+                    let left_color = (self.read_vram_byte(left_framebuffer_offset + framebuffer_byte_index) >> framebuffer_byte_shift) & 0x03;
+                    let right_color = (self.read_vram_byte(right_framebuffer_offset + framebuffer_byte_index) >> framebuffer_byte_shift) & 0x03;
+                    let mut left_brightness = match left_color {
+                        0 => 0,
+                        1 => brightness_1,
+                        2 => brightness_2,
+                        _ => brightness_3
+                    } as u8;
+                    let mut right_brightness = match right_color {
+                        0 => 0,
+                        1 => brightness_1,
+                        2 => brightness_2,
+                        _ => brightness_3
+                    } as u8;
+
+                    let buffer_index = pixel_y * DISPLAY_RESOLUTION_X + pixel_x;
+
+                    match video_frame_sink.gamma_correction {
+                        GammaCorrection::None => (), // Do nothing
+                        GammaCorrection::TwoPointTwo => {
+                            left_brightness = self.gamma_table[left_brightness as usize];
+                            right_brightness = self.gamma_table[right_brightness as usize];
+                        }
+                    }
+
+                    match video_frame_sink.buffer {
+                        PixelBuffer::Xrgb1555(ref mut buffer) => {
+                            match video_frame_sink.format {
+                                StereoVideoFormat::AnaglyphRedElectricCyan => {
+                                    let red = (left_brightness >> 3) as u16;
+                                    let cyan = (right_brightness >> 3) as u16;
+
+                                    buffer[buffer_index as usize] = (red << 10) | (cyan << 5) | cyan;
+                                }
+                            }
+                        }
+                        PixelBuffer::Rgb565(ref mut _buffer) => {
+                            unimplemented!();
+                        }
+                        PixelBuffer::Xrgb8888(ref mut _buffer) => {
+                            unimplemented!();
+                        }
                     }
                 }
             }
         }
-
-        video_frame_sink.append((left_buffer, right_buffer));
     }
 }

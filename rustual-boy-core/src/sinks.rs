@@ -9,11 +9,26 @@ pub trait SinkRef<T: ?Sized> {
     fn append(&mut self, value: &T);
 }
 
-/// A frame of video. The `Box`es contain the left/right monochrome
-/// [DISPLAY_RESOLUTION_X](../vip/constant.DISPLAY_RESOLUTION_X.html) by
-/// [DISPLAY_RESOLUTION_Y](../vip/constant.DISPLAY_RESOLUTION_Y.html)
-/// pixels in linear brightness.
-pub type VideoFrame = (Box<[u8]>, Box<[u8]>);
-
 /// A frame of audio (left, right).
 pub type AudioFrame = (i16, i16);
+
+pub enum StereoVideoFormat {
+    AnaglyphRedElectricCyan,
+}
+
+pub enum PixelBuffer<'a> {
+    Xrgb1555(&'a mut [u16]),
+    Rgb565(&'a mut [u16]),
+    Xrgb8888(&'a mut [u32]),
+}
+
+pub enum GammaCorrection {
+    None,
+    TwoPointTwo,
+}
+
+pub struct VideoSink<'a> {
+    pub buffer: PixelBuffer<'a>,
+    pub format: StereoVideoFormat,
+    pub gamma_correction: GammaCorrection,
+}
