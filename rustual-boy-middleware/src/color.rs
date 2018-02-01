@@ -55,6 +55,29 @@ impl<'a> Into<u32> for &'a Color {
     }
 }
 
+impl Into<u16> for Color {
+    /// Convert a color into RGB packed format (0rgb1555), where the compnents are RGB
+    /// from most significant to least significant byte
+    fn into(self) -> u16 {
+        let r = (self.r as u16) >> 3;
+        let g = (self.g as u16) >> 3;
+        let b = (self.b as u16) >> 3;
+
+        (r << 10) | (g << 5) | b
+    }
+}
+
+impl<'a> Into<u16> for &'a Color {
+    /// Convert a color reference into RGB packed format (0rgb1555)
+    fn into(self) -> u16 {
+        let r = (self.r as u16) >> 3;
+        let g = (self.g as u16) >> 3;
+        let b = (self.b as u16) >> 3;
+
+        (r << 10) | (g << 5) | b
+    }
+}
+
 impl From<(u8, u8, u8)> for Color {
     /// Convert a tuple of u8's (R, G, B) into a color
     fn from((r, g, b): (u8, u8, u8)) -> Color {

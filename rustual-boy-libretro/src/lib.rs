@@ -33,12 +33,12 @@ use std::{mem, ptr};
 
 struct VideoCallbackSink<'a> {
     callback: VideoRefreshCallback,
-    video_output_frame_buffer: &'a mut Vec<u32>,
+    video_output_frame_buffer: &'a mut Vec<u16>,
 }
 
 impl<'a> Sink<ColorFrame> for VideoCallbackSink<'a> {
     fn append(&mut self, frame: ColorFrame) {
-        let output_bytes_per_pixel = mem::size_of::<u32>();
+        let output_bytes_per_pixel = mem::size_of::<u16>();
         let output_size_bytes = (DISPLAY_PIXELS as usize) * output_bytes_per_pixel;
 
         if self.video_output_frame_buffer.len() != DISPLAY_PIXELS as usize {
@@ -93,7 +93,7 @@ impl System {
 
 pub struct Context {
     system: Option<System>,
-    video_output_frame_buffer: Vec<u32>,
+    video_output_frame_buffer: Vec<u16>,
 }
 
 impl Context {
@@ -109,7 +109,7 @@ impl Context {
             // TODO: libretro.h claims this should be called in load_game or system_av_info, but retroarch
             //  seems to be pretty schizophrenic about whether or not it respects this call in either place.
             //  Samples seem to have it here though, so let's do that.
-            CALLBACKS.set_pixel_format(PixelFormat::Xrgb8888);
+            //CALLBACKS.set_pixel_format(PixelFormat::Xrgb8888);
 
             match Rom::from_bytes(game_info.data_ref()) {
                 Ok(rom) => {
