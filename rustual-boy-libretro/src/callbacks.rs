@@ -52,6 +52,7 @@ pub struct FrameTimeCallback {
     pub reference: i64,
 }
 
+#[derive(Clone, Copy)]
 pub enum PixelFormat {
     Xrgb1555 = 0,
     Xrgb8888 = 1,
@@ -99,12 +100,7 @@ impl Callbacks {
         (self.environment.unwrap())(cmd, data)
     }
 
-    pub fn set_pixel_format(&self, format: PixelFormat) {
-        let format_ptr = Box::into_raw(Box::new(format));
-        self.environment(EnvironmentCommand::SetPixelFormat as u32, format_ptr as *mut _);
-
-        unsafe {
-            Box::from_raw(format_ptr);
-        }
+    pub fn set_pixel_format(&self, mut format: PixelFormat) -> bool {
+        self.environment(EnvironmentCommand::SetPixelFormat as u32, &mut format as *mut _ as *mut _)
     }
 }

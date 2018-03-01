@@ -28,6 +28,12 @@ use system_info::*;
 
 use std::{mem, ptr};
 
+pub enum OutputBuffer {
+    Xrgb1555(Vec<u16>),
+    Rgb565(Vec<u16>),
+    Xrgb8888(Vec<u32>),
+}
+
 struct AudioCallbackSink {
     callback: AudioSampleCallback,
 }
@@ -57,23 +63,37 @@ impl System {
 
 pub struct Context {
     system: Option<System>,
-    video_output_frame_buffer: Vec<u16>,
+    video_output_frame_buffer: OutputBuffer,
 }
 
 impl Context {
     fn new() -> Context {
         Context {
             system: None,
-            video_output_frame_buffer: Vec::new(),
+            video_output_frame_buffer: OutputBuffer::Xrgb1555(vec![0; DISPLAY_PIXELS as usize]),
         }
     }
 
     fn load_game(&mut self, game_info: &GameInfo) -> bool {
         unsafe {
-            // TODO: libretro.h claims this should be called in load_game or system_av_info, but retroarch
-            //  seems to be pretty schizophrenic about whether or not it respects this call in either place.
-            //  Samples seem to have it here though, so let's do that.
-            CALLBACKS.set_pixel_format(PixelFormat::Rgb565);
+            // It seems retroarch (and possibly other frontends) is a bit finicky with accepting the set pixel format
+            //  callback, so we should call it a few times before giving up. We don't want to loop forever here though,
+            //  as it's possible that a given frontend just doesn't support changing the pixel format. In that case, we
+            //  will want to fall back to using the default pixel format.
+            let desired_pixel_format = PixelFormat::Rgb565; // Recommended libretro pixel format
+            let mut actual_pixel_format = PixelFormat::Xrgb1555; // Default frontend pixel format
+            for _ in 0..10 {
+                if CALLBACKS.set_pixel_format(desired_pixel_format) {
+                    actual_pixel_format = desired_pixel_format;
+                    break;
+                }
+            }
+
+            self.video_output_frame_buffer = match actual_pixel_format {
+                PixelFormat::Xrgb1555 => OutputBuffer::Xrgb1555(vec![0; DISPLAY_PIXELS as usize]),
+                PixelFormat::Rgb565 => OutputBuffer::Rgb565(vec![0; DISPLAY_PIXELS as usize]),
+                PixelFormat::Xrgb8888 => OutputBuffer::Xrgb8888(vec![0; DISPLAY_PIXELS as usize]),
+            };
 
             match Rom::from_bytes(game_info.data_ref()) {
                 Ok(rom) => {
@@ -149,34 +169,31 @@ impl Context {
                     game_pad.set_button_pressed(Button::RightDPadDown, right_y > ANALOG_THRESHOLD);
                 }
 
-                let output_bytes_per_pixel = mem::size_of::<u16>();
+                let (pixel_buffer_ptr, pixel_buffer, output_bytes_per_pixel) = match self.video_output_frame_buffer {
+                    OutputBuffer::Xrgb1555(ref mut buffer) => (buffer.as_mut_ptr() as *mut c_void, PixelBuffer::Xrgb1555(buffer), mem::size_of::<u16>()),
+                    OutputBuffer::Xrgb8888(ref mut buffer) => (buffer.as_mut_ptr() as *mut c_void, PixelBuffer::Xrgb8888(buffer), mem::size_of::<u32>()),
+                    OutputBuffer::Rgb565(ref mut buffer) => (buffer.as_mut_ptr() as *mut c_void, PixelBuffer::Rgb565(buffer), mem::size_of::<u16>()),
+                };
 
-                if self.video_output_frame_buffer.len() != DISPLAY_PIXELS as usize {
-                    self.video_output_frame_buffer = vec![0; DISPLAY_PIXELS as usize];
+                let mut video_output_sink = VideoSink {
+                    buffer: pixel_buffer,
+                    format: StereoVideoFormat::AnaglyphRedElectricCyan,
+                    gamma_correction: GammaCorrection::TwoPointTwo,
+                    is_populated: false,
+                };
+
+                let mut audio_output_sink = AudioCallbackSink {
+                    callback: CALLBACKS.audio_sample.unwrap(),
+                };
+
+                system.target_emulated_cycles += 1_000_000_000 / 50 / 50; // 1s period in ns, 50 frames per second, 50ns per cycle
+
+                while system.emulated_cycles < system.target_emulated_cycles {
+                    let (num_cycles, _) = system.virtual_boy.step(&mut video_output_sink, &mut audio_output_sink);
+                    system.emulated_cycles += num_cycles as _;
                 }
 
-                // TODO: Don't need this scope when NLL is stable
-                {
-                    let mut video_output_sink = VideoSink {
-                        buffer: PixelBuffer::Rgb565(&mut self.video_output_frame_buffer),
-                        format: StereoVideoFormat::AnaglyphRedElectricCyan,
-                        gamma_correction: GammaCorrection::TwoPointTwo,
-                        is_populated: false,
-                    };
-
-                    let mut audio_output_sink = AudioCallbackSink {
-                        callback: CALLBACKS.audio_sample.unwrap(),
-                    };
-
-                    system.target_emulated_cycles += 1_000_000_000 / 50 / 50; // 1s period in ns, 50 frames per second, 50ns per cycle
-
-                    while system.emulated_cycles < system.target_emulated_cycles {
-                        let (num_cycles, _) = system.virtual_boy.step(&mut video_output_sink, &mut audio_output_sink);
-                        system.emulated_cycles += num_cycles as _;
-                    }
-                }
-
-                (CALLBACKS.video_refresh.unwrap())(self.video_output_frame_buffer.as_mut_ptr() as *mut c_void, DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y, (DISPLAY_RESOLUTION_X as usize) * output_bytes_per_pixel);
+                (CALLBACKS.video_refresh.unwrap())(pixel_buffer_ptr, DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y, (DISPLAY_RESOLUTION_X as usize) * output_bytes_per_pixel);
             }
         }
     }
