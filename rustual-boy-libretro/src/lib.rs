@@ -73,7 +73,7 @@ impl Context {
             // TODO: libretro.h claims this should be called in load_game or system_av_info, but retroarch
             //  seems to be pretty schizophrenic about whether or not it respects this call in either place.
             //  Samples seem to have it here though, so let's do that.
-            //CALLBACKS.set_pixel_format(PixelFormat::Xrgb8888);
+            CALLBACKS.set_pixel_format(PixelFormat::Rgb565);
 
             match Rom::from_bytes(game_info.data_ref()) {
                 Ok(rom) => {
@@ -158,9 +158,10 @@ impl Context {
                 // TODO: Don't need this scope when NLL is stable
                 {
                     let mut video_output_sink = VideoSink {
-                        buffer: PixelBuffer::Xrgb1555(&mut self.video_output_frame_buffer),
+                        buffer: PixelBuffer::Rgb565(&mut self.video_output_frame_buffer),
                         format: StereoVideoFormat::AnaglyphRedElectricCyan,
                         gamma_correction: GammaCorrection::TwoPointTwo,
+                        is_populated: false,
                     };
 
                     let mut audio_output_sink = AudioCallbackSink {

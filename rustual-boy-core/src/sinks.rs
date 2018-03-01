@@ -31,4 +31,5 @@ pub struct VideoSink<'a> {
     pub buffer: PixelBuffer<'a>,
     pub format: StereoVideoFormat,
     pub gamma_correction: GammaCorrection,
+    pub is_populated: bool,
 }

@@ -4,6 +4,8 @@ use sinks::*;
 
 use self::mem_map::*;
 
+use std::cmp::*;
+
 const FRAMEBUFFER_RESOLUTION_X: u32 = 384;
 const FRAMEBUFFER_RESOLUTION_Y: u32 = 256;
 
@@ -129,18 +131,10 @@ impl Vip {
         let mut vram = vec![0; VRAM_LENGTH as usize].into_boxed_slice();
         let vram_ptr = vram.as_mut_ptr();
 
-        let gamma = 2.2;
+        let gamma = 1.0 / 2.2;
         let mut gamma_table = Box::new([0; 256]);
         for (i, entry) in gamma_table.iter_mut().enumerate() {
-            let mut value = (((i as f64) / 255.0).powf(1.0 / gamma) * 255.0) as isize;
-            if value < 0 {
-                value = 0;
-            }
-            if value > 255 {
-                value = 255;
-            }
-
-            *entry = value as u8;
+            *entry = min(max((((i as f64) / 255.0).powf(gamma) * 255.0) as i32, 0), 255) as u8;
         }
 
         Vip {
@@ -1138,8 +1132,6 @@ impl Vip {
                         _ => brightness_3
                     } as u8;
 
-                    let buffer_index = pixel_y * DISPLAY_RESOLUTION_X + pixel_x;
-
                     match video_frame_sink.gamma_correction {
                         GammaCorrection::None => (), // Do nothing
                         GammaCorrection::TwoPointTwo => {
@@ -1148,26 +1140,63 @@ impl Vip {
                         }
                     }
 
+                    let buffer_index = pixel_y * DISPLAY_RESOLUTION_X + pixel_x;
+
                     match video_frame_sink.buffer {
                         PixelBuffer::Xrgb1555(ref mut buffer) => {
                             match video_frame_sink.format {
                                 StereoVideoFormat::AnaglyphRedElectricCyan => {
-                                    let red = (left_brightness >> 3) as u16;
-                                    let cyan = (right_brightness >> 3) as u16;
+                                    let red = (left_brightness as u16) >> 3;
+                                    let cyan = (right_brightness as u16) >> 3;
 
                                     buffer[buffer_index as usize] = (red << 10) | (cyan << 5) | cyan;
                                 }
                             }
                         }
-                        PixelBuffer::Rgb565(ref mut _buffer) => {
-                            unimplemented!();
+                        PixelBuffer::Rgb565(ref mut buffer) => {
+                            match video_frame_sink.format {
+                                StereoVideoFormat::AnaglyphRedElectricCyan => {
+                                    let red = (left_brightness as u16) >> 3;
+                                    let green = (right_brightness as u16) >> 2;
+                                    let blue = (right_brightness as u16) >> 3;
+
+                                    buffer[buffer_index as usize] = (red << 11) | (green << 5) | blue;
+                                }
+                            }
                         }
-                        PixelBuffer::Xrgb8888(ref mut _buffer) => {
-                            unimplemented!();
+                        PixelBuffer::Xrgb8888(ref mut buffer) => {
+                            match video_frame_sink.format {
+                                StereoVideoFormat::AnaglyphRedElectricCyan => {
+                                    let red = left_brightness as u32;
+                                    let cyan = right_brightness as u32;
+
+                                    buffer[buffer_index as usize] = (red << 16) | (cyan << 8) | cyan;
+                                }
+                            }
                         }
                     }
                 }
             }
+        } else {
+            match video_frame_sink.buffer {
+                PixelBuffer::Xrgb1555(ref mut buffer) => {
+                    for pixel in buffer.iter_mut() {
+                        *pixel = 0;
+                    }
+                }
+                PixelBuffer::Rgb565(ref mut buffer) => {
+                    for pixel in buffer.iter_mut() {
+                        *pixel = 0;
+                    }
+                }
+                PixelBuffer::Xrgb8888(ref mut buffer) => {
+                    for pixel in buffer.iter_mut() {
+                        *pixel = 0;
+                    }
+                }
+            }
         }
+
+        video_frame_sink.is_populated = true;
     }
 }

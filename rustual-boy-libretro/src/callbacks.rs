@@ -53,8 +53,9 @@ pub struct FrameTimeCallback {
 }
 
 pub enum PixelFormat {
-    // Only supported pixel format for now
+    Xrgb1555 = 0,
     Xrgb8888 = 1,
+    Rgb565 = 2,
 }
 
 pub type VideoRefreshCallback = extern "C" fn(*const c_void, u32, u32, size_t);
