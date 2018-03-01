@@ -17,9 +17,19 @@ pub enum StereoVideoFormat {
 }
 
 pub enum PixelBuffer<'a> {
-    Xrgb1555(&'a mut [u16]),
-    Rgb565(&'a mut [u16]),
-    Xrgb8888(&'a mut [u32]),
+    Xrgb1555(&'a mut [u16], usize),
+    Rgb565(&'a mut [u16], usize),
+    Xrgb8888(&'a mut [u32], usize),
+}
+
+impl<'a> PixelBuffer<'a> {
+    pub fn pitch(&self) -> usize {
+        match self {
+            &PixelBuffer::Xrgb1555(_, pitch) => pitch,
+            &PixelBuffer::Rgb565(_, pitch) => pitch,
+            &PixelBuffer::Xrgb8888(_, pitch) => pitch,
+        }
+    }
 }
 
 pub enum GammaCorrection {

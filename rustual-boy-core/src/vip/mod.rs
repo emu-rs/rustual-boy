@@ -5,6 +5,7 @@ use sinks::*;
 use self::mem_map::*;
 
 use std::cmp::*;
+use std::mem;
 
 const FRAMEBUFFER_RESOLUTION_X: u32 = 384;
 const FRAMEBUFFER_RESOLUTION_Y: u32 = 256;
@@ -1140,37 +1141,35 @@ impl Vip {
                         }
                     }
 
-                    let buffer_index = pixel_y * DISPLAY_RESOLUTION_X + pixel_x;
-
                     match video_frame_sink.buffer {
-                        PixelBuffer::Xrgb1555(ref mut buffer) => {
+                        PixelBuffer::Xrgb1555(ref mut buffer, pitch) => {
                             match video_frame_sink.format {
                                 StereoVideoFormat::AnaglyphRedElectricCyan => {
                                     let red = (left_brightness as u16) >> 3;
                                     let cyan = (right_brightness as u16) >> 3;
 
-                                    buffer[buffer_index as usize] = (red << 10) | (cyan << 5) | cyan;
+                                    buffer[(pixel_y as usize) * pitch / mem::size_of::<u16>() + (pixel_x as usize)] = (red << 10) | (cyan << 5) | cyan;
                                 }
                             }
                         }
-                        PixelBuffer::Rgb565(ref mut buffer) => {
+                        PixelBuffer::Rgb565(ref mut buffer, pitch) => {
                             match video_frame_sink.format {
                                 StereoVideoFormat::AnaglyphRedElectricCyan => {
                                     let red = (left_brightness as u16) >> 3;
                                     let green = (right_brightness as u16) >> 2;
                                     let blue = (right_brightness as u16) >> 3;
 
-                                    buffer[buffer_index as usize] = (red << 11) | (green << 5) | blue;
+                                    buffer[(pixel_y as usize) * pitch / mem::size_of::<u16>() + (pixel_x as usize)] = (red << 11) | (green << 5) | blue;
                                 }
                             }
                         }
-                        PixelBuffer::Xrgb8888(ref mut buffer) => {
+                        PixelBuffer::Xrgb8888(ref mut buffer, pitch) => {
                             match video_frame_sink.format {
                                 StereoVideoFormat::AnaglyphRedElectricCyan => {
                                     let red = left_brightness as u32;
                                     let cyan = right_brightness as u32;
 
-                                    buffer[buffer_index as usize] = (red << 16) | (cyan << 8) | cyan;
+                                    buffer[(pixel_y as usize) * pitch / mem::size_of::<u32>() + (pixel_x as usize)] = (red << 16) | (cyan << 8) | cyan;
                                 }
                             }
                         }
@@ -1179,17 +1178,17 @@ impl Vip {
             }
         } else {
             match video_frame_sink.buffer {
-                PixelBuffer::Xrgb1555(ref mut buffer) => {
+                PixelBuffer::Xrgb1555(ref mut buffer, _) => {
                     for pixel in buffer.iter_mut() {
                         *pixel = 0;
                     }
                 }
-                PixelBuffer::Rgb565(ref mut buffer) => {
+                PixelBuffer::Rgb565(ref mut buffer, _) => {
                     for pixel in buffer.iter_mut() {
                         *pixel = 0;
                     }
                 }
-                PixelBuffer::Xrgb8888(ref mut buffer) => {
+                PixelBuffer::Xrgb8888(ref mut buffer, _) => {
                     for pixel in buffer.iter_mut() {
                         *pixel = 0;
                     }

@@ -27,6 +27,7 @@ use system_av_info::*;
 use system_info::*;
 
 use std::{mem, ptr};
+use std::slice;
 
 pub enum OutputBuffer {
     Xrgb1555(Vec<u16>),
@@ -169,10 +170,21 @@ impl Context {
                     game_pad.set_button_pressed(Button::RightDPadDown, right_y > ANALOG_THRESHOLD);
                 }
 
-                let (pixel_buffer_ptr, pixel_buffer, output_bytes_per_pixel) = match self.video_output_frame_buffer {
-                    OutputBuffer::Xrgb1555(ref mut buffer) => (buffer.as_mut_ptr() as *mut c_void, PixelBuffer::Xrgb1555(buffer), mem::size_of::<u16>()),
-                    OutputBuffer::Xrgb8888(ref mut buffer) => (buffer.as_mut_ptr() as *mut c_void, PixelBuffer::Xrgb8888(buffer), mem::size_of::<u32>()),
-                    OutputBuffer::Rgb565(ref mut buffer) => (buffer.as_mut_ptr() as *mut c_void, PixelBuffer::Rgb565(buffer), mem::size_of::<u16>()),
+                let (pixel_buffer_ptr, pixel_buffer) = match CALLBACKS.get_current_software_framebuffer(DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y) {
+                    Some(fb) => match fb.format {
+                        0 => (fb.data, PixelBuffer::Xrgb1555(slice::from_raw_parts_mut(fb.data as *mut _, (fb.height as usize) * (fb.pitch as usize) / mem::size_of::<u16>()), fb.pitch)),
+                        1 => (fb.data, PixelBuffer::Xrgb8888(slice::from_raw_parts_mut(fb.data as *mut _, (fb.height as usize) * (fb.pitch as usize) / mem::size_of::<u32>()), fb.pitch)),
+                        2 => (fb.data, PixelBuffer::Rgb565(slice::from_raw_parts_mut(fb.data as *mut _, (fb.height as usize) * (fb.pitch as usize) / mem::size_of::<u16>()), fb.pitch)),
+                        _ => panic!("Host returned framebuffer with unrecognized pixel format format")
+                    }
+                    _ => match self.video_output_frame_buffer {
+                        OutputBuffer::Xrgb1555(ref mut buffer) =>
+                            (buffer.as_mut_ptr() as *mut c_void, PixelBuffer::Xrgb1555(buffer, (DISPLAY_RESOLUTION_X as usize) * mem::size_of::<u16>())),
+                        OutputBuffer::Xrgb8888(ref mut buffer) =>
+                            (buffer.as_mut_ptr() as *mut c_void, PixelBuffer::Xrgb8888(buffer, (DISPLAY_RESOLUTION_X as usize) * mem::size_of::<u32>())),
+                        OutputBuffer::Rgb565(ref mut buffer) =>
+                            (buffer.as_mut_ptr() as *mut c_void, PixelBuffer::Rgb565(buffer, (DISPLAY_RESOLUTION_X as usize) * mem::size_of::<u16>())),
+                    }
                 };
 
                 let mut video_output_sink = VideoSink {
@@ -193,7 +205,7 @@ impl Context {
                     system.emulated_cycles += num_cycles as _;
                 }
 
-                (CALLBACKS.video_refresh.unwrap())(pixel_buffer_ptr, DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y, (DISPLAY_RESOLUTION_X as usize) * output_bytes_per_pixel);
+                (CALLBACKS.video_refresh.unwrap())(pixel_buffer_ptr, DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y, video_output_sink.buffer.pitch());
             }
         }
     }

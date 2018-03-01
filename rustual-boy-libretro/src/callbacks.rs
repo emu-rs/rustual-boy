@@ -1,5 +1,7 @@
 use libc::*;
 
+use std::ptr;
+
 const EXPERIMENTAL: isize = 0x10000;
 
 pub enum EnvironmentCommand {
@@ -59,6 +61,22 @@ pub enum PixelFormat {
     Rgb565 = 2,
 }
 
+pub const MEMORY_ACCESS_WRITE: c_uint = 1 << 0;
+pub const MEMORY_ACCESS_READ: c_uint = 1 << 1;
+
+pub const MEMORY_TYPE_CACHED: c_uint = 1 << 0;
+
+#[repr(C)]
+pub struct Framebuffer {
+    pub data: *mut c_void,
+    pub width: c_uint,
+    pub height: c_uint,
+    pub pitch: size_t,
+    pub format: c_int,
+    pub access_flags: c_uint,
+    pub memory_flags: c_uint,
+}
+
 pub type VideoRefreshCallback = extern "C" fn(*const c_void, u32, u32, size_t);
 pub type AudioSampleCallback = extern "C" fn(i16, i16);
 pub type AudioSampleBatchCallback = extern "C" fn(*const i16, size_t);
@@ -102,5 +120,22 @@ impl Callbacks {
 
     pub fn set_pixel_format(&self, mut format: PixelFormat) -> bool {
         self.environment(EnvironmentCommand::SetPixelFormat as u32, &mut format as *mut _ as *mut _)
+    }
+
+    pub fn get_current_software_framebuffer(&self, width: u32, height: u32) -> Option<Framebuffer> {
+        let mut fb = Framebuffer {
+            data: ptr::null_mut(),
+            width: width as _,
+            height: height as _,
+            pitch: 0,
+            format: 0,
+            access_flags: MEMORY_ACCESS_WRITE,
+            memory_flags: 0,
+        };
+        if self.environment(EnvironmentCommand::GetCurrentSoftwareFramebuffer as _, &mut fb as *mut _ as *mut _) {
+            Some(fb)
+        } else {
+            None
+        }
     }
 }
