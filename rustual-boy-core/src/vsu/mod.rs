@@ -627,7 +627,7 @@ impl Vsu {
         self.write_byte(addr, value as _);
     }
 
-    pub fn cycles(&mut self, num_cycles: u32, audio_frame_sink: &mut Sink<AudioFrame>) {
+    pub fn cycles(&mut self, num_cycles: u32, audio_frame_sink: &mut AudioSink) {
         for _ in 0..num_cycles {
             self.duration_clock_counter += 1;
             if self.duration_clock_counter >= DURATION_CLOCK_PERIOD {
@@ -691,7 +691,7 @@ impl Vsu {
         }
     }
 
-    fn sample_clock(&mut self, audio_frame_sink: &mut Sink<AudioFrame>) {
+    fn sample_clock(&mut self, audio_frame_sink: &mut AudioSink) {
         let mut acc_left = 0;
         let mut acc_right = 0;
 
@@ -731,8 +731,10 @@ impl Vsu {
 
         let output_left = ((acc_left & 0xfff8) << 2) as i16;
         let output_right = ((acc_right & 0xfff8) << 2) as i16;
+        let output_frame = (output_left, output_right);
 
-        audio_frame_sink.append((output_left, output_right));
+        audio_frame_sink.buffer[audio_frame_sink.buffer_pos] = output_frame;
+        audio_frame_sink.buffer_pos += 1;
     }
 
     fn are_channels_active(&self) -> bool {

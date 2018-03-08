@@ -35,17 +35,6 @@ pub enum OutputBuffer {
     Xrgb8888(Vec<u32>),
 }
 
-struct AudioCallbackSink {
-    callback: AudioSampleCallback,
-}
-
-impl Sink<AudioFrame> for AudioCallbackSink {
-    fn append(&mut self, frame: AudioFrame) {
-        let (left, right) = frame;
-        (self.callback)(left, right);
-    }
-}
-
 struct System {
     virtual_boy: VirtualBoy,
     emulated_cycles: u64,
@@ -65,6 +54,7 @@ impl System {
 pub struct Context {
     system: Option<System>,
     video_output_frame_buffer: OutputBuffer,
+    audio_frame_buffer: Vec<AudioFrame>,
 }
 
 impl Context {
@@ -72,6 +62,7 @@ impl Context {
         Context {
             system: None,
             video_output_frame_buffer: OutputBuffer::Xrgb1555(vec![0; DISPLAY_PIXELS as usize]),
+            audio_frame_buffer: vec![(0, 0); (SAMPLE_RATE as usize) / 50 * 2], // double space needed for 1 frame for lots of skid room
         }
     }
 
@@ -194,18 +185,25 @@ impl Context {
                     is_populated: false,
                 };
 
-                let mut audio_output_sink = AudioCallbackSink {
-                    callback: CALLBACKS.audio_sample.unwrap(),
+                // TODO: Remove scope when NLL is stable
+                let rendered_audio_frames = {
+                    let mut audio_output_sink = AudioSink {
+                        buffer: &mut self.audio_frame_buffer,
+                        buffer_pos: 0,
+                    };
+
+                    system.target_emulated_cycles += 1_000_000_000 / 50 / 50; // 1s period in ns, 50 frames per second, 50ns per cycle
+
+                    while system.emulated_cycles < system.target_emulated_cycles {
+                        let (num_cycles, _) = system.virtual_boy.step(&mut video_output_sink, &mut audio_output_sink);
+                        system.emulated_cycles += num_cycles as _;
+                    }
+
+                    audio_output_sink.buffer_pos
                 };
 
-                system.target_emulated_cycles += 1_000_000_000 / 50 / 50; // 1s period in ns, 50 frames per second, 50ns per cycle
-
-                while system.emulated_cycles < system.target_emulated_cycles {
-                    let (num_cycles, _) = system.virtual_boy.step(&mut video_output_sink, &mut audio_output_sink);
-                    system.emulated_cycles += num_cycles as _;
-                }
-
                 (CALLBACKS.video_refresh.unwrap())(pixel_buffer_ptr, DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y, video_output_sink.buffer.pitch());
+                (CALLBACKS.audio_sample_batch.unwrap())(self.audio_frame_buffer.as_mut_ptr() as *mut _, rendered_audio_frames as _);
             }
         }
     }

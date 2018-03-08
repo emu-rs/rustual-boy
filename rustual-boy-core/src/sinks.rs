@@ -1,16 +1,9 @@
-/// Represents a sink
-pub trait Sink<T> {
-    /// Push a value out the sink
-    fn append(&mut self, value: T);
-}
-
-/// Represents a sink of value references.
-pub trait SinkRef<T: ?Sized> {
-    fn append(&mut self, value: &T);
-}
-
-/// A frame of audio (left, right).
 pub type AudioFrame = (i16, i16);
+
+pub struct AudioSink<'a> {
+    pub buffer: &'a mut [AudioFrame],
+    pub buffer_pos: usize,
+}
 
 pub enum StereoVideoFormat {
     AnaglyphRedElectricCyan,
