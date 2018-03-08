@@ -16,8 +16,10 @@ use rustual_boy_core::rom::*;
 use rustual_boy_core::sinks::*;
 use rustual_boy_core::sram::*;
 use rustual_boy_core::vip::*;
+use rustual_boy_core::vip::mem_map::*;
 use rustual_boy_core::virtual_boy::*;
 use rustual_boy_core::vsu::*;
+use rustual_boy_core::wram::*;
 
 use callbacks::*;
 use game_info::*;
@@ -316,13 +318,23 @@ pub unsafe extern "C" fn retro_get_region() -> u32 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn retro_get_memory_data(_id: u32) -> *mut c_void {
-    ptr::null_mut()
+pub unsafe extern "C" fn retro_get_memory_data(id: u32) -> *mut c_void {
+    match id & MEMORY_MASK {
+        MEMORY_SAVE_RAM => (*CONTEXT).system.as_mut().unwrap().virtual_boy.interconnect.sram.bytes_ptr() as *mut _,
+        MEMORY_SYSTEM_RAM => (*CONTEXT).system.as_mut().unwrap().virtual_boy.interconnect.wram.bytes_ptr() as *mut _,
+        MEMORY_VIDEO_RAM => (*CONTEXT).system.as_mut().unwrap().virtual_boy.interconnect.vip.vram_ptr() as *mut _,
+        _ => ptr::null_mut(),
+    }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn retro_get_memory_size(_id: u32) -> size_t {
-    0
+pub unsafe extern "C" fn retro_get_memory_size(id: u32) -> size_t {
+    match id & MEMORY_MASK {
+        MEMORY_SAVE_RAM => MAX_SRAM_SIZE as _,
+        MEMORY_SYSTEM_RAM => WRAM_SIZE as _,
+        MEMORY_VIDEO_RAM => VRAM_LENGTH as _,
+        _ => 0,
+    }
 }
 
 #[no_mangle]

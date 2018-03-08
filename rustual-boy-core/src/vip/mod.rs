@@ -1,4 +1,4 @@
-mod mem_map;
+pub mod mem_map;
 
 use sinks::*;
 
@@ -204,6 +204,10 @@ impl Vip {
 
             gamma_table: gamma_table,
         }
+    }
+
+    pub fn vram_ptr(&mut self) -> *mut u8 {
+        self.vram_ptr
     }
 
     fn reg_intpnd(&self) -> u16 {

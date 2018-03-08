@@ -16,6 +16,10 @@ impl Wram {
         }
     }
 
+    pub fn bytes_ptr(&mut self) -> *mut u8 {
+        self.bytes_ptr
+    }
+
     pub fn read_byte(&self, addr: u32) -> u8 {
         let addr = self.mask_addr(addr);
         unsafe {
