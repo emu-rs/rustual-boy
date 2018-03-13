@@ -198,7 +198,7 @@ impl Context {
 
                     while system.emulated_cycles < system.target_emulated_cycles {
                         let (num_cycles, _) = system.virtual_boy.step(&mut video_output_sink, &mut audio_output_sink);
-                        system.emulated_cycles += num_cycles as _;
+                        system.emulated_cycles += num_cycles as u64;
                     }
 
                     audio_output_sink.buffer_pos
