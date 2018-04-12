@@ -1,7 +1,7 @@
 pub const WRAM_SIZE: usize = 65536;
 
 pub struct Wram {
-    _bytes: Box<[u8]>,
+    bytes: Box<[u8]>,
     bytes_ptr: *mut u8,
 }
 
@@ -11,13 +11,17 @@ impl Wram {
         let bytes_ptr = bytes.as_mut_ptr();
 
         Wram {
-            _bytes: bytes,
+            bytes: bytes,
             bytes_ptr: bytes_ptr,
         }
     }
 
     pub fn bytes_ptr(&mut self) -> *mut u8 {
         self.bytes_ptr
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        &self.bytes
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {

@@ -26,7 +26,7 @@ const DRAWING_BLOCK_PERIOD: u32 = DRAWING_PERIOD / DRAWING_BLOCK_COUNT;
 // 20mhz / (1s / 56us) = 1120 clocks
 const DRAWING_SBOUT_PERIOD: u32 = 1120;
 
-enum DisplayState {
+pub enum DisplayState {
     Idle,
     LeftFramebuffer,
     RightFramebuffer,
@@ -34,7 +34,7 @@ enum DisplayState {
 }
 
 #[derive(Eq, PartialEq)]
-enum DrawingState {
+pub enum DrawingState {
     Idle,
     Drawing,
 }
@@ -61,68 +61,68 @@ enum ObjGroup {
 }
 
 pub struct Vip {
-    _vram: Box<[u8]>,
+    vram: Box<[u8]>,
     vram_ptr: *mut u8,
 
-    display_state: DisplayState,
+    pub display_state: DisplayState,
 
-    drawing_state: DrawingState,
+    pub drawing_state: DrawingState,
 
-    reg_intpnd_lfbend: bool,
-    reg_intpnd_rfbend: bool,
-    reg_intpnd_gamestart: bool,
-    reg_intpnd_framestart: bool,
-    reg_intpnd_sbhit: bool,
-    reg_intpnd_xpend: bool,
+    pub reg_intpnd_lfbend: bool,
+    pub reg_intpnd_rfbend: bool,
+    pub reg_intpnd_gamestart: bool,
+    pub reg_intpnd_framestart: bool,
+    pub reg_intpnd_sbhit: bool,
+    pub reg_intpnd_xpend: bool,
 
-    reg_intenb_lfbend: bool,
-    reg_intenb_rfbend: bool,
-    reg_intenb_gamestart: bool,
-    reg_intenb_framestart: bool,
-    reg_intenb_sbhit: bool,
-    reg_intenb_xpend: bool,
+    pub reg_intenb_lfbend: bool,
+    pub reg_intenb_rfbend: bool,
+    pub reg_intenb_gamestart: bool,
+    pub reg_intenb_framestart: bool,
+    pub reg_intenb_sbhit: bool,
+    pub reg_intenb_xpend: bool,
 
-    reg_dpctrl_disp: bool,
-    reg_dpctrl_synce: bool,
+    pub reg_dpctrl_disp: bool,
+    pub reg_dpctrl_synce: bool,
 
-    reg_xpctrl_xpen: bool,
-    reg_xpctrl_sbcount: u32,
-    reg_xpctrl_sbcmp: u32,
-    reg_xpctrl_sbout: bool,
+    pub reg_xpctrl_xpen: bool,
+    pub reg_xpctrl_sbcount: u32,
+    pub reg_xpctrl_sbcmp: u32,
+    pub reg_xpctrl_sbout: bool,
 
-    reg_frmcyc: u32,
+    pub reg_frmcyc: u32,
 
-    reg_brta: u8,
-    reg_brtb: u8,
-    reg_brtc: u8,
+    pub reg_brta: u8,
+    pub reg_brtb: u8,
+    pub reg_brtc: u8,
 
-    reg_spt0: u16,
-    reg_spt1: u16,
-    reg_spt2: u16,
-    reg_spt3: u16,
+    pub reg_spt0: u16,
+    pub reg_spt1: u16,
+    pub reg_spt2: u16,
+    pub reg_spt3: u16,
 
-    reg_gplt0: u8,
-    reg_gplt1: u8,
-    reg_gplt2: u8,
-    reg_gplt3: u8,
+    pub reg_gplt0: u8,
+    pub reg_gplt1: u8,
+    pub reg_gplt2: u8,
+    pub reg_gplt3: u8,
 
-    reg_jplt0: u8,
-    reg_jplt1: u8,
-    reg_jplt2: u8,
-    reg_jplt3: u8,
+    pub reg_jplt0: u8,
+    pub reg_jplt1: u8,
+    pub reg_jplt2: u8,
+    pub reg_jplt3: u8,
 
-    reg_bkcol: u8,
+    pub reg_bkcol: u8,
 
-    display_frame_eighth_clock_counter: u32,
-    display_frame_eighth_counter: u32,
+    pub display_frame_eighth_clock_counter: u32,
+    pub display_frame_eighth_counter: u32,
 
-    drawing_block_counter: u32,
-    drawing_sbout_counter: u32,
+    pub drawing_block_counter: u32,
+    pub drawing_sbout_counter: u32,
 
-    fclk: u32,
+    pub fclk: u32,
 
-    display_first_framebuffers: bool,
-    last_bkcol: u8,
+    pub display_first_framebuffers: bool,
+    pub last_bkcol: u8,
 
     gamma_table: Box<[u8; 256]>,
 }
@@ -139,7 +139,7 @@ impl Vip {
         }
 
         Vip {
-            _vram: vram,
+            vram: vram,
             vram_ptr: vram_ptr,
 
             display_state: DisplayState::Idle,
@@ -208,6 +208,10 @@ impl Vip {
 
     pub fn vram_ptr(&mut self) -> *mut u8 {
         self.vram_ptr
+    }
+
+    pub fn vram_slice(&self) -> &[u8] {
+        &self.vram
     }
 
     fn reg_intpnd(&self) -> u16 {

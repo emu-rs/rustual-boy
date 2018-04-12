@@ -24,10 +24,10 @@ pub enum CacheResult {
 }
 
 pub struct Cache {
-    hits: u64,
-    misses: u64,
-    is_enabled: bool,
-    entries: Box<[CacheEntry; 128]>,
+    pub hits: u64,
+    pub misses: u64,
+    pub is_enabled: bool,
+    pub entries: Box<[CacheEntry; 128]>,
 }
 
 impl Cache {
@@ -107,34 +107,34 @@ impl Cache {
 }
 
 pub struct V810 {
-    reg_pc: u32,
+    pub reg_pc: u32,
 
-    _reg_gpr: Box<[u32; 32]>,
+    pub reg_gpr: Box<[u32; 32]>,
     reg_gpr_ptr: *mut u32,
 
-    reg_eipc: u32,
-    reg_eipsw: u32,
-    reg_ecr: u16,
-    reg_fepc: u32,
-    reg_fepsw: u32,
+    pub reg_eipc: u32,
+    pub reg_eipsw: u32,
+    pub reg_ecr: u16,
+    pub reg_fepc: u32,
+    pub reg_fepsw: u32,
 
-    psw_zero: bool,
-    psw_sign: bool,
-    psw_overflow: bool,
-    psw_carry: bool,
-    psw_fp_precision_degredation: bool,
-    psw_fp_underflow: bool,
-    psw_fp_overflow: bool,
-    psw_fp_zero_division: bool,
-    psw_fp_invalid_operation: bool,
-    psw_fp_reserved_operand: bool,
-    psw_interrupt_disable: bool,
-    psw_address_trap_enable: bool,
-    psw_exception_pending: bool,
-    psw_nmi_pending: bool,
-    psw_interrupt_mask_level: u32,
+    pub psw_zero: bool,
+    pub psw_sign: bool,
+    pub psw_overflow: bool,
+    pub psw_carry: bool,
+    pub psw_fp_precision_degredation: bool,
+    pub psw_fp_underflow: bool,
+    pub psw_fp_overflow: bool,
+    pub psw_fp_zero_division: bool,
+    pub psw_fp_invalid_operation: bool,
+    pub psw_fp_reserved_operand: bool,
+    pub psw_interrupt_disable: bool,
+    pub psw_address_trap_enable: bool,
+    pub psw_exception_pending: bool,
+    pub psw_nmi_pending: bool,
+    pub psw_interrupt_mask_level: u32,
 
-    is_halted: bool,
+    pub is_halted: bool,
 
     pub cache: Cache,
 
@@ -150,7 +150,7 @@ impl V810 {
         V810 {
             reg_pc: 0xfffffff0,
 
-            _reg_gpr: reg_gpr,
+            reg_gpr: reg_gpr,
             reg_gpr_ptr: reg_gpr_ptr,
 
             reg_eipc: 0xdeadbeee, // lowest bit is always 0

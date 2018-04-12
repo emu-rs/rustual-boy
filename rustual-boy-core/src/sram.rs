@@ -29,6 +29,10 @@ impl Sram {
         self.bytes_ptr
     }
 
+    pub fn as_slice(&self) -> &[u8] {
+        &self.bytes
+    }
+
     pub fn load<P: AsRef<Path>>(file_name: P) -> io::Result<Sram> {
         let mut file = File::open(file_name)?;
         let mut vec = Vec::new();

@@ -42,6 +42,10 @@ impl Rom {
         })
     }
 
+    pub fn as_slice(&self) -> &[u8] {
+        &self.bytes
+    }
+
     pub fn size(&self) -> usize {
         self.bytes.len()
     }

@@ -4,21 +4,21 @@ const LARGE_INTERVAL_PERIOD: u32 = 2000;
 // 20mhz / (1s / 20us) = 400
 const SMALL_INTERVAL_PERIOD: u32 = 400;
 
-enum Interval {
+pub enum Interval {
     Large,
     Small,
 }
 
 pub struct Timer {
-    t_clk_sel: Interval,
-    tim_z_int: bool,
-    z_stat: bool,
-    t_enb: bool,
-    reload: u16,
-    counter: u16,
+    pub t_clk_sel: Interval,
+    pub tim_z_int: bool,
+    pub z_stat: bool,
+    pub t_enb: bool,
+    pub reload: u16,
+    pub counter: u16,
 
-    tick_counter: u32,
-    zero_interrupt: bool,
+    pub tick_counter: u32,
+    pub zero_interrupt: bool,
 }
 
 impl Timer {

@@ -14,8 +14,8 @@ pub struct Interconnect {
     pub wram: Wram,
     pub sram: Sram,
     pub vip: Vip,
-    vsu: Vsu,
-    timer: Timer,
+    pub vsu: Vsu,
+    pub timer: Timer,
     pub game_pad: GamePad,
     pub com_port: ComPort,
 }

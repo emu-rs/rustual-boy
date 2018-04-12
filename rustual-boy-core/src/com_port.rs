@@ -1,10 +1,10 @@
 pub struct ComPort {
-    cdtr: u8,
-    cdrr: u8,
+    pub cdtr: u8,
+    pub cdrr: u8,
 
-    c_stat: bool,
+    pub c_stat: bool,
 
-    transfer_bit_index: u32,
+    pub transfer_bit_index: u32,
 }
 
 impl ComPort {

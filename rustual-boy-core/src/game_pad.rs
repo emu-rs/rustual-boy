@@ -16,20 +16,20 @@ pub enum Button {
 }
 
 pub struct GamePad {
-    a_pressed: bool,
-    b_pressed: bool,
-    start_pressed: bool,
-    select_pressed: bool,
-    l_pressed: bool,
-    r_pressed: bool,
-    left_d_pad_up_pressed: bool,
-    left_d_pad_down_pressed: bool,
-    left_d_pad_left_pressed: bool,
-    left_d_pad_right_pressed: bool,
-    right_d_pad_up_pressed: bool,
-    right_d_pad_down_pressed: bool,
-    right_d_pad_left_pressed: bool,
-    right_d_pad_right_pressed: bool,
+    pub a_pressed: bool,
+    pub b_pressed: bool,
+    pub start_pressed: bool,
+    pub select_pressed: bool,
+    pub l_pressed: bool,
+    pub r_pressed: bool,
+    pub left_d_pad_up_pressed: bool,
+    pub left_d_pad_down_pressed: bool,
+    pub left_d_pad_left_pressed: bool,
+    pub left_d_pad_right_pressed: bool,
+    pub right_d_pad_up_pressed: bool,
+    pub right_d_pad_down_pressed: bool,
+    pub right_d_pad_left_pressed: bool,
+    pub right_d_pad_right_pressed: bool,
 }
 
 impl GamePad {

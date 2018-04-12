@@ -37,12 +37,12 @@ const TOTAL_WAVEFORM_DATA_SIZE: u32 = NUM_WAVEFORM_DATA_WORDS * NUM_WAVEFORM_DAT
 const NUM_MOD_DATA_WORDS: u32 = 32;
 
 #[derive(Default)]
-struct IntReg {
-    output_enable: bool,
-    interval_data: bool,
-    interval_counter_setting_values: u32,
+pub struct IntReg {
+    pub output_enable: bool,
+    pub interval_data: bool,
+    pub interval_counter_setting_values: u32,
 
-    interval_counter: u32,
+    pub interval_counter: u32,
 }
 
 impl IntReg {
@@ -67,9 +67,9 @@ impl IntReg {
 }
 
 #[derive(Default)]
-struct LrvReg {
-    left: u32,
-    right: u32,
+pub struct LrvReg {
+    pub left: u32,
+    pub right: u32,
 }
 
 impl LrvReg {
@@ -80,17 +80,17 @@ impl LrvReg {
 }
 
 #[derive(Default)]
-struct Envelope {
-    reg_data_reload: u32,
-    reg_data_direction: bool,
-    reg_data_step_interval: u32,
+pub struct Envelope {
+    pub reg_data_reload: u32,
+    pub reg_data_direction: bool,
+    pub reg_data_step_interval: u32,
 
-    reg_control_repeat: bool,
-    reg_control_enable: bool,
+    pub reg_control_repeat: bool,
+    pub reg_control_enable: bool,
 
-    level: u32,
+    pub level: u32,
 
-    envelope_counter: u32,
+    pub envelope_counter: u32,
 }
 
 impl Envelope {
@@ -136,20 +136,20 @@ trait Sound {
 }
 
 #[derive(Default)]
-struct StandardSound {
-    reg_int: IntReg,
+pub struct StandardSound {
+    pub reg_int: IntReg,
 
-    reg_lrv: LrvReg,
+    pub reg_lrv: LrvReg,
 
-    fql: u32,
-    fqh: u32,
+    pub fql: u32,
+    pub fqh: u32,
 
-    envelope: Envelope,
+    pub envelope: Envelope,
 
-    ram: u32,
+    pub ram: u32,
 
-    frequency_counter: u32,
-    phase: u32,
+    pub frequency_counter: u32,
+    pub phase: u32,
 }
 
 impl StandardSound {
@@ -221,36 +221,36 @@ impl Sound for StandardSound {
 }
 
 #[derive(Default)]
-struct SweepModSound {
-    reg_int: IntReg,
+pub struct SweepModSound {
+    pub reg_int: IntReg,
 
-    reg_lrv: LrvReg,
+    pub reg_lrv: LrvReg,
 
-    fql: u32,
-    fqh: u32,
-    frequency_low: u32,
-    frequency_high: u32,
-    next_frequency_low: u32,
-    next_frequency_high: u32,
+    pub fql: u32,
+    pub fqh: u32,
+    pub frequency_low: u32,
+    pub frequency_high: u32,
+    pub next_frequency_low: u32,
+    pub next_frequency_high: u32,
 
-    envelope: Envelope,
+    pub envelope: Envelope,
 
-    reg_sweep_mod_enable: bool,
-    reg_mod_repeat: bool,
-    reg_function: bool,
+    pub reg_sweep_mod_enable: bool,
+    pub reg_mod_repeat: bool,
+    pub reg_function: bool,
 
-    reg_sweep_mod_base_interval: bool,
-    reg_sweep_mod_interval: u32,
-    reg_sweep_direction: bool,
-    reg_sweep_shift_amount: u32,
+    pub reg_sweep_mod_base_interval: bool,
+    pub reg_sweep_mod_interval: u32,
+    pub reg_sweep_direction: bool,
+    pub reg_sweep_shift_amount: u32,
 
-    ram: u32,
+    pub ram: u32,
 
-    frequency_counter: u32,
-    phase: u32,
+    pub frequency_counter: u32,
+    pub phase: u32,
 
-    sweep_mod_counter: u32,
-    mod_phase: u32,
+    pub sweep_mod_counter: u32,
+    pub mod_phase: u32,
 }
 
 impl SweepModSound {
@@ -381,21 +381,21 @@ impl Sound for SweepModSound {
 }
 
 #[derive(Default)]
-struct NoiseSound {
-    reg_int: IntReg,
+pub struct NoiseSound {
+    pub reg_int: IntReg,
 
-    reg_lrv: LrvReg,
+    pub reg_lrv: LrvReg,
 
-    fql: u32,
-    fqh: u32,
+    pub fql: u32,
+    pub fqh: u32,
 
-    envelope: Envelope,
+    pub envelope: Envelope,
 
-    reg_noise_control: u32,
+    pub reg_noise_control: u32,
 
-    frequency_counter: u32,
-    shift: u32,
-    output: u32,
+    pub frequency_counter: u32,
+    pub shift: u32,
+    pub output: u32,
 }
 
 impl NoiseSound {
@@ -482,22 +482,22 @@ impl Sound for NoiseSound {
 }
 
 pub struct Vsu {
-    waveform_data: Box<[u8]>,
-    mod_data: Box<[i8]>,
+    pub waveform_data: Box<[u8]>,
+    pub mod_data: Box<[i8]>,
 
-    sound1: StandardSound,
-    sound2: StandardSound,
-    sound3: StandardSound,
-    sound4: StandardSound,
-    sound5: SweepModSound,
-    sound6: NoiseSound,
+    pub sound1: StandardSound,
+    pub sound2: StandardSound,
+    pub sound3: StandardSound,
+    pub sound4: StandardSound,
+    pub sound5: SweepModSound,
+    pub sound6: NoiseSound,
 
-    duration_clock_counter: u32,
-    envelope_clock_counter: u32,
-    frequency_clock_counter: u32,
-    sweep_mod_clock_counter: u32,
-    noise_clock_counter: u32,
-    sample_clock_counter: u32,
+    pub duration_clock_counter: u32,
+    pub envelope_clock_counter: u32,
+    pub frequency_clock_counter: u32,
+    pub sweep_mod_clock_counter: u32,
+    pub noise_clock_counter: u32,
+    pub sample_clock_counter: u32,
 }
 
 impl Vsu {
