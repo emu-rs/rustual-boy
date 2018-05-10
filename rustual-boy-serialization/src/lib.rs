@@ -4,7 +4,9 @@ extern crate rustual_boy_core;
 extern crate serde_derive;
 
 extern crate serde;
-extern crate serde_json;
+extern crate bincode;
+
+extern crate lz4_compress;
 
 pub mod version1;
 
@@ -13,20 +15,22 @@ use rustual_boy_core::virtual_boy::*;
 use rustual_boy_core::vsu::*;
 use rustual_boy_core::timer::*;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum VersionedState {
     Version1(version1::State),
 }
 
 pub type State = version1::State;
 
-pub fn serialize(state: State) -> Result<String, String> {
+pub fn serialize(state: State) -> Result<Vec<u8>, String> {
     let versioned_state = VersionedState::Version1(state);
-    serde_json::to_string(&versioned_state).map_err(|e| format!("Couldn't serialize JSON: {}", e))
+    let bincode = bincode::serialize(&versioned_state).map_err(|e| format!("Couldn't serialize bincode: {}", e))?;
+    Ok(lz4_compress::compress(&bincode))
 }
 
-pub fn deserialize(s: &str) -> Result<State, String> {
-    let versioned_state = serde_json::from_str(s).map_err(|e| format!("Couldn't deserialize JSON: {}", e))?;
+pub fn deserialize(input: &[u8]) -> Result<State, String> {
+    let bincode = lz4_compress::decompress(input).map_err(|e| format!("Couldn't deserialize lz4: {:?}", e))?;
+    let versioned_state = bincode::deserialize(&bincode).map_err(|e| format!("Couldn't deserialize bincode: {}", e))?;
     Ok(match versioned_state {
         VersionedState::Version1(state) => state,
     })

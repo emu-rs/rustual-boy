@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct State {
     pub interconnect: InterconnectState,
     pub cpu: V810State,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct InterconnectState {
     pub rom: Box<[u8]>,
     pub wram: Box<[u8]>,
@@ -18,7 +18,7 @@ pub struct InterconnectState {
     pub com_port: ComPortState,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ComPortState {
     pub cdtr: u8,
     pub cdrr: u8,
@@ -28,7 +28,7 @@ pub struct ComPortState {
     pub transfer_bit_index: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct GamePadState {
     pub a_pressed: bool,
     pub b_pressed: bool,
@@ -46,20 +46,20 @@ pub struct GamePadState {
     pub right_d_pad_right_pressed: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SramState {
     pub bytes: Box<[u8]>,
 
     pub size: usize,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum IntervalState {
     Large,
     Small,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct TimerState {
     pub t_clk_sel: IntervalState,
     pub tim_z_int: bool,
@@ -72,7 +72,7 @@ pub struct TimerState {
     pub zero_interrupt: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum DisplayStateState {
     Idle,
     LeftFramebuffer,
@@ -80,13 +80,13 @@ pub enum DisplayStateState {
     Finished,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum DrawingStateState {
     Idle,
     Drawing,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct VipState {
     pub vram: Box<[u8]>,
 
@@ -151,7 +151,7 @@ pub struct VipState {
     pub last_bkcol: u8,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct IntRegState {
     pub output_enable: bool,
     pub interval_data: bool,
@@ -160,13 +160,13 @@ pub struct IntRegState {
     pub interval_counter: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LrvRegState {
     pub left: u32,
     pub right: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct EnvelopeState {
     pub reg_data_reload: u32,
     pub reg_data_direction: bool,
@@ -180,7 +180,7 @@ pub struct EnvelopeState {
     pub envelope_counter: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct StandardSoundState {
     pub reg_int: IntRegState,
 
@@ -197,7 +197,7 @@ pub struct StandardSoundState {
     pub phase: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SweepModSoundState {
     pub reg_int: IntRegState,
 
@@ -230,7 +230,7 @@ pub struct SweepModSoundState {
     pub mod_phase: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct NoiseSoundState {
     pub reg_int: IntRegState,
 
@@ -248,7 +248,7 @@ pub struct NoiseSoundState {
     pub output: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct VsuState {
     pub waveform_data: Box<[u8]>,
     pub mod_data: Box<[i8]>,
@@ -268,7 +268,7 @@ pub struct VsuState {
     pub sample_clock_counter: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct V810State {
     pub reg_pc: u32,
 
@@ -303,7 +303,7 @@ pub struct V810State {
     pub watchpoints: HashSet<u32>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct CacheState {
     pub hits: u64,
     pub misses: u64,
@@ -311,7 +311,7 @@ pub struct CacheState {
     pub entries: Box<[CacheEntryState]>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct CacheEntryState {
     pub tag: u32,
     pub base_addr: u32,
