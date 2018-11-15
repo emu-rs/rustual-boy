@@ -9,4 +9,5 @@ crate-type = ["dylib"]
 
 [dependencies]
 libc = "0.2.*"
-rustual-boy-core = { path="../rustual-boy-core" }
+rustual-boy-core = { path = "../rustual-boy-core" }
+rustual-boy-serialization = { path = "../rustual-boy-serialization" }

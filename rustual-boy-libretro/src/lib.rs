@@ -1,6 +1,7 @@
 extern crate libc;
 
 extern crate rustual_boy_core;
+extern crate rustual_boy_serialization;
 
 mod callbacks;
 mod game_info;
@@ -20,6 +21,8 @@ use rustual_boy_core::vip::mem_map::*;
 use rustual_boy_core::virtual_boy::*;
 use rustual_boy_core::vsu::*;
 use rustual_boy_core::wram::*;
+
+use rustual_boy_serialization::*;
 
 use callbacks::*;
 use game_info::*;
@@ -88,6 +91,12 @@ impl Context {
                 PixelFormat::Rgb565 => OutputBuffer::Rgb565(vec![0; DISPLAY_PIXELS as usize]),
                 PixelFormat::Xrgb8888 => OutputBuffer::Xrgb8888(vec![0; DISPLAY_PIXELS as usize]),
             };
+
+            // TODO: Verify that we're using this callback correctly, and possibly disable save state caps if not
+            //  supported by the frontend
+            let mut serialization_quirks_flags = SERIALIZATION_QUIRK_CORE_VARIABLE_SIZE | SERIALIZATION_QUIRK_FRONT_VARIABLE_SIZE;
+            CALLBACKS.environment(EnvironmentCommand::SetSerializationQuirks as u32, &mut serialization_quirks_flags as *mut _ as *mut _);
+            println!("*********** serialization_quirks_flags: 0x{:016x}", serialization_quirks_flags);
 
             match Rom::from_bytes(game_info.data_ref()) {
                 Ok(rom) => {
@@ -206,6 +215,75 @@ impl Context {
 
                 (CALLBACKS.video_refresh.unwrap())(pixel_buffer_ptr, DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y, video_output_sink.buffer.pitch());
                 (CALLBACKS.audio_sample_batch.unwrap())(self.audio_frame_buffer.as_mut_ptr() as *mut _, rendered_audio_frames as _);
+            }
+        }
+    }
+
+    fn get_serialized_size(&self) -> size_t {
+        if let Some(ref system) = self.system {
+            let state = get_state(&system.virtual_boy);
+            match serialize(state) {
+                Ok(serialized_bytes) => serialized_bytes.len() as _,
+                Err(err) => {
+                    // TODO: Remove this..?
+                    println!("****** RUH ROH: Serialization failed for some reason :((( {}", err);
+
+                    0
+                }
+            }
+        } else {
+            0
+        }
+    }
+
+    fn serialize(&self, data: *mut c_void, size: size_t) -> bool {
+        if let Some(ref system) = self.system {
+            let state = get_state(&system.virtual_boy);
+            match serialize(state) {
+                Ok(serialized_bytes) => {
+                    if serialized_bytes.len() == size {
+                        unsafe { ptr::copy_nonoverlapping(serialized_bytes.as_ptr(), data as *mut u8, size) };
+
+                        true
+                    } else {
+                        false
+                    }
+                }
+                Err(err) => {
+                    // TODO: Remove this..?
+                    println!("****** RUH ROH: Serialization failed for some reason :((( {}", err);
+
+                    false
+                }
+            }
+        } else {
+            false
+        }
+    }
+
+    fn unserialize(&mut self, data: *const c_void, size: size_t) -> bool {
+        let data_slice = unsafe { slice::from_raw_parts(data as *const u8, size) };
+        match deserialize(data_slice) {
+            Ok(deserialized_state) => {
+                if let Some(ref mut system) = self.system {
+                    match apply(&mut system.virtual_boy, &deserialized_state) {
+                        Ok(()) => true,
+                        Err(err) => {
+                            // TODO: Remove this..?
+                            println!("****** RUH ROH: Applying deserialized state failed for some reason :((( {:?}", err);
+
+                            false
+                        }
+                    }
+                } else {
+                    false
+                }
+            }
+            Err(err) => {
+                // TODO: Remove this..?
+                println!("****** RUH ROH: Deserialization failed for some reason :((( {}", err);
+
+                false
             }
         }
     }
@@ -339,17 +417,17 @@ pub unsafe extern "C" fn retro_get_memory_size(id: u32) -> size_t {
 
 #[no_mangle]
 pub unsafe extern "C" fn retro_serialize_size() -> size_t {
-    0
+    (*CONTEXT).get_serialized_size()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn retro_serialize(_data: *mut c_void, _size: size_t) -> bool {
-    unimplemented!("retro_serialize");
+pub unsafe extern "C" fn retro_serialize(data: *mut c_void, size: size_t) -> bool {
+    (*CONTEXT).serialize(data, size)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn retro_unserialize(_data: *const c_void, _size: size_t) -> bool {
-    unimplemented!("retro_unserialize");
+pub unsafe extern "C" fn retro_unserialize(data: *const c_void, size: size_t) -> bool {
+    (*CONTEXT).unserialize(data, size)
 }
 
 #[no_mangle]

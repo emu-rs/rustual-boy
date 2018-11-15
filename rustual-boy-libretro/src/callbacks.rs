@@ -66,6 +66,9 @@ pub const MEMORY_ACCESS_READ: c_uint = 1 << 1;
 
 pub const MEMORY_TYPE_CACHED: c_uint = 1 << 0;
 
+pub const SERIALIZATION_QUIRK_CORE_VARIABLE_SIZE: c_uint = 1 << 2;
+pub const SERIALIZATION_QUIRK_FRONT_VARIABLE_SIZE: c_uint = 1 << 3;
+
 #[repr(C)]
 pub struct Framebuffer {
     pub data: *mut c_void,

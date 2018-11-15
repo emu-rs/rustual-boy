@@ -16,6 +16,16 @@ impl Wram {
         }
     }
 
+    pub fn from_bytes(bytes: &[u8]) -> Wram {
+        let mut bytes = bytes.to_vec().into_boxed_slice();
+        let bytes_ptr = bytes.as_mut_ptr();
+
+        Wram {
+            bytes: bytes,
+            bytes_ptr: bytes_ptr,
+        }
+    }
+
     pub fn bytes_ptr(&mut self) -> *mut u8 {
         self.bytes_ptr
     }

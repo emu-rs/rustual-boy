@@ -6,14 +6,20 @@ extern crate serde_derive;
 extern crate serde;
 extern crate bincode;
 
-extern crate lz4_compress;
+extern crate lz4;
 
 pub mod version1;
 
+use lz4::{EncoderBuilder, Decoder};
+
+use std::io::{copy, Cursor};
+
+use rustual_boy_core::rom::*;
+use rustual_boy_core::timer::*;
 use rustual_boy_core::vip::*;
 use rustual_boy_core::virtual_boy::*;
 use rustual_boy_core::vsu::*;
-use rustual_boy_core::timer::*;
+use rustual_boy_core::wram::*;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum VersionedState {
@@ -22,14 +28,30 @@ pub enum VersionedState {
 
 pub type State = version1::State;
 
+// TODO: Proper display impl
+#[derive(Debug)]
+pub enum ApplyError {
+    RomError(RomError),
+}
+
 pub fn serialize(state: State) -> Result<Vec<u8>, String> {
     let versioned_state = VersionedState::Version1(state);
     let bincode = bincode::serialize(&versioned_state).map_err(|e| format!("Couldn't serialize bincode: {}", e))?;
-    Ok(lz4_compress::compress(&bincode))
+    let mut cursor = Cursor::new(bincode);
+    let encoded = Vec::new();
+    let mut encoder = EncoderBuilder::new().build(encoded).map_err(|e| format!("Couldn't build lz4 encoder: {}", e))?;
+    copy(&mut cursor, &mut encoder).map_err(|e| format!("Couldn't encode lz4: {}", e))?;
+    let (encoded, result) = encoder.finish();
+    if let Err(e) = result {
+        return Err(format!("Couldn't finish lz4 encoding: {}", e));
+    }
+    Ok(encoded)
 }
 
-pub fn deserialize(input: &[u8]) -> Result<State, String> {
-    let bincode = lz4_compress::decompress(input).map_err(|e| format!("Couldn't deserialize lz4: {:?}", e))?;
+pub fn deserialize(encoded: &[u8]) -> Result<State, String> {
+    let mut decoder = Decoder::new(encoded).map_err(|e| format!("Couldn't build lz4 decoder: {}", e))?;
+    let mut bincode = Vec::new();
+    copy(&mut decoder, &mut bincode).map_err(|e| format!("Couldn't decode lz4: {}", e))?;
     let versioned_state = bincode::deserialize(&bincode).map_err(|e| format!("Couldn't deserialize bincode: {}", e))?;
     Ok(match versioned_state {
         VersionedState::Version1(state) => state,
@@ -316,4 +338,10 @@ fn get_envelope_state(envelope: &Envelope) -> version1::EnvelopeState {
     }
 }
 
-//pub fn apply(vb: &mut VirtualBoy, state: &State) { ... }
+pub fn apply(vb: &mut VirtualBoy, state: &State) -> Result<(), ApplyError> {
+    // TODO: Full state!!!!!!!
+    vb.interconnect.rom = Rom::from_bytes(&state.interconnect.rom).map_err(|e| ApplyError::RomError(e))?;
+    vb.interconnect.wram = Wram::from_bytes(&state.interconnect.wram);
+
+    Ok(())
+}

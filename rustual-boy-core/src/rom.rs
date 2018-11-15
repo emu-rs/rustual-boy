@@ -2,7 +2,7 @@ use encoding::DecoderTrap;
 use encoding::all::WINDOWS_31J;
 use encoding::types::EncodingRef;
 
-use std::io::{self, Read, Error, ErrorKind};
+use std::io::{self, Read};
 use std::fs::File;
 use std::path::Path;
 use std::borrow::Cow;
@@ -11,26 +11,33 @@ use std::string::FromUtf8Error;
 pub const MIN_ROM_SIZE: usize = 1024;
 pub const MAX_ROM_SIZE: usize = 16 * 1024 * 1024;
 
+// TODO: Proper display impl
+#[derive(Debug)]
+pub enum RomError {
+    InvalidSize,
+    Io(io::Error),
+}
+
 pub struct Rom {
     bytes: Box<[u8]>,
     bytes_ptr: *mut u8,
 }
 
 impl Rom {
-    pub fn load<P: AsRef<Path>>(file_name: P) -> io::Result<Rom> {
-        let mut file = File::open(file_name)?;
+    pub fn load<P: AsRef<Path>>(file_name: P) -> Result<Rom, RomError> {
+        let mut file = File::open(file_name).map_err(|e| RomError::Io(e))?;
         let mut vec = Vec::new();
-        file.read_to_end(&mut vec)?;
+        file.read_to_end(&mut vec).map_err(|e| RomError::Io(e))?;
 
         Rom::from_bytes(&vec)
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> io::Result<Rom> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Rom, RomError> {
         let bytes_copy = bytes.to_vec();
 
         let size = bytes_copy.len();
         if size < MIN_ROM_SIZE || size > MAX_ROM_SIZE || !size.is_power_of_two() {
-            return Err(Error::new(ErrorKind::InvalidData, "Invalid ROM size"));
+            return Err(RomError::InvalidSize);
         }
 
         let mut bytes_box = bytes_copy.into_boxed_slice();
