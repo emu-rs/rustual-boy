@@ -4,6 +4,7 @@ extern crate rustual_boy_core;
 extern crate serde_derive;
 
 extern crate serde;
+extern crate serde_bytes;
 extern crate bincode;
 
 extern crate lz4;
@@ -13,6 +14,7 @@ pub mod version1;
 use lz4::{EncoderBuilder, Decoder};
 
 use std::io::{copy, Cursor};
+use std::time::Instant;
 
 use rustual_boy_core::rom::*;
 use rustual_boy_core::timer::*;
@@ -35,8 +37,10 @@ pub enum ApplyError {
 }
 
 pub fn serialize(state: State) -> Result<Vec<u8>, String> {
+    let start_time = Instant::now();
     let versioned_state = VersionedState::Version1(state);
     let bincode = bincode::serialize(&versioned_state).map_err(|e| format!("Couldn't serialize bincode: {}", e))?;
+    let bin_time = Instant::now();
     let mut cursor = Cursor::new(bincode);
     let encoded = Vec::new();
     let mut encoder = EncoderBuilder::new().build(encoded).map_err(|e| format!("Couldn't build lz4 encoder: {}", e))?;
@@ -45,6 +49,10 @@ pub fn serialize(state: State) -> Result<Vec<u8>, String> {
     if let Err(e) = result {
         return Err(format!("Couldn't finish lz4 encoding: {}", e));
     }
+    let lz4_time = Instant::now();
+    eprintln!("bincode: {:?}", bin_time - start_time);
+    eprintln!("lz4    : {:?}", lz4_time - bin_time);
+    eprintln!("total  : {:?}", lz4_time - start_time);
     Ok(encoded)
 }
 
