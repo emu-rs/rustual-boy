@@ -13,9 +13,6 @@ pub mod version1;
 
 use lz4::{EncoderBuilder, Decoder};
 
-use std::io::{copy, Cursor};
-use std::time::Instant;
-
 use rustual_boy_core::rom::*;
 use rustual_boy_core::timer::*;
 use rustual_boy_core::vip::*;
@@ -37,30 +34,24 @@ pub enum ApplyError {
 }
 
 pub fn serialize(state: State) -> Result<Vec<u8>, String> {
-    let start_time = Instant::now();
     let versioned_state = VersionedState::Version1(state);
-    let bincode = bincode::serialize(&versioned_state).map_err(|e| format!("Couldn't serialize bincode: {}", e))?;
-    let bin_time = Instant::now();
-    let mut cursor = Cursor::new(bincode);
-    let encoded = Vec::new();
-    let mut encoder = EncoderBuilder::new().build(encoded).map_err(|e| format!("Couldn't build lz4 encoder: {}", e))?;
-    copy(&mut cursor, &mut encoder).map_err(|e| format!("Couldn't encode lz4: {}", e))?;
+    let encoded = Vec::with_capacity(512 * 1024);
+    let mut encoder = EncoderBuilder::new()
+        .level(2)
+        .block_size(lz4::BlockSize::Max1MB)
+        .build(encoded)
+        .map_err(|e| format!("Couldn't build lz4 encoder: {}", e))?;
+    bincode::serialize_into(&mut encoder, &versioned_state).map_err(|e| format!("Couldn't save state: {}", e))?;
     let (encoded, result) = encoder.finish();
     if let Err(e) = result {
         return Err(format!("Couldn't finish lz4 encoding: {}", e));
     }
-    let lz4_time = Instant::now();
-    eprintln!("bincode: {:?}", bin_time - start_time);
-    eprintln!("lz4    : {:?}", lz4_time - bin_time);
-    eprintln!("total  : {:?}", lz4_time - start_time);
     Ok(encoded)
 }
 
 pub fn deserialize(encoded: &[u8]) -> Result<State, String> {
-    let mut decoder = Decoder::new(encoded).map_err(|e| format!("Couldn't build lz4 decoder: {}", e))?;
-    let mut bincode = Vec::new();
-    copy(&mut decoder, &mut bincode).map_err(|e| format!("Couldn't decode lz4: {}", e))?;
-    let versioned_state = bincode::deserialize(&bincode).map_err(|e| format!("Couldn't deserialize bincode: {}", e))?;
+    let decoder = Decoder::new(encoded).map_err(|e| format!("Couldn't build lz4 decoder: {}", e))?;
+    let versioned_state = bincode::deserialize_from(decoder).map_err(|e| format!("Couldn't deserialize state: {}", e))?;
     Ok(match versioned_state {
         VersionedState::Version1(state) => state,
     })
