@@ -10,6 +10,7 @@ extern crate bincode;
 extern crate lz4;
 
 pub mod version1;
+mod serde_ibytes;
 
 use lz4::{EncoderBuilder, Decoder};
 
