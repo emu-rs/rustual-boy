@@ -1,4 +1,6 @@
 use std::collections::HashSet;
+use serde_bytes;
+use serde_ibytes;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct State {
@@ -8,7 +10,9 @@ pub struct State {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct InterconnectState {
+    #[serde(with = "serde_bytes")]
     pub rom: Box<[u8]>,
+    #[serde(with = "serde_bytes")]
     pub wram: Box<[u8]>,
     pub sram: SramState,
     pub vip: VipState,
@@ -48,6 +52,7 @@ pub struct GamePadState {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SramState {
+    #[serde(with = "serde_bytes")]
     pub bytes: Box<[u8]>,
 
     pub size: usize,
@@ -88,6 +93,7 @@ pub enum DrawingStateState {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct VipState {
+    #[serde(with = "serde_bytes")]
     pub vram: Box<[u8]>,
 
     pub display_state: DisplayStateState,
@@ -250,7 +256,9 @@ pub struct NoiseSoundState {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct VsuState {
+    #[serde(with = "serde_bytes")]
     pub waveform_data: Box<[u8]>,
+    #[serde(with = "serde_ibytes")]
     pub mod_data: Box<[i8]>,
 
     pub sound1: StandardSoundState,

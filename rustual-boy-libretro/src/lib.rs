@@ -60,6 +60,7 @@ pub struct Context {
     system: Option<System>,
     video_output_frame_buffer: OutputBuffer,
     audio_frame_buffer: Vec<AudioFrame>,
+    last_serialized_state: Option<Vec<u8>>,
 }
 
 impl Context {
@@ -68,10 +69,12 @@ impl Context {
             system: None,
             video_output_frame_buffer: OutputBuffer::Xrgb1555(vec![0; DISPLAY_PIXELS as usize]),
             audio_frame_buffer: vec![(0, 0); (SAMPLE_RATE as usize) / 50 * 2], // double space needed for 1 frame for lots of skid room
+            last_serialized_state: None,
         }
     }
 
     fn load_game(&mut self, game_info: &GameInfo) -> bool {
+        self.last_serialized_state = None;
         unsafe {
             // It seems retroarch (and possibly other frontends) is a bit finicky with accepting the set pixel format
             //  callback, so we should call it a few times before giving up. We don't want to loop forever here though,
@@ -110,6 +113,7 @@ impl Context {
     }
 
     fn unload_game(&mut self) {
+        self.last_serialized_state = None;
         self.system = None;
     }
 
@@ -132,12 +136,14 @@ impl Context {
     }
 
     fn reset(&mut self) {
+        self.last_serialized_state = None;
         // Pull out rom/sram from existing system, and build new system around them
         let (rom, sram) = self.system.as_ref().map(|system| (system.virtual_boy.interconnect.rom.clone(), system.virtual_boy.interconnect.sram.clone())).unwrap();
         self.system = Some(System::new(rom, sram));
     }
 
     fn run_frame(&mut self) {
+        self.last_serialized_state = None;
         unsafe {
             CALLBACKS.input_poll();
 
@@ -219,11 +225,19 @@ impl Context {
         }
     }
 
-    fn get_serialized_size(&self) -> size_t {
+    fn get_serialized_size(&mut self) -> size_t {
+        if let Some(ref serialized_bytes) = self.last_serialized_state {
+            return serialized_bytes.len();
+        }
+        
         if let Some(ref system) = self.system {
             let state = get_state(&system.virtual_boy);
             match serialize(state) {
-                Ok(serialized_bytes) => serialized_bytes.len() as _,
+                Ok(serialized_bytes) => {
+                    let len = serialized_bytes.len();
+                    self.last_serialized_state = Some(serialized_bytes);
+                    len
+                }
                 Err(err) => {
                     // TODO: Remove this..?
                     println!("****** RUH ROH: Serialization failed for some reason :((( {}", err);
@@ -236,13 +250,21 @@ impl Context {
         }
     }
 
-    fn serialize(&self, data: *mut c_void, size: size_t) -> bool {
+    fn serialize(&mut self, data: *mut c_void, size: size_t) -> bool {
+        if let Some(ref serialized_bytes) = self.last_serialized_state {
+            let result = serialized_bytes.len() <= size;
+            if result {
+                unsafe { ptr::copy_nonoverlapping(serialized_bytes.as_ptr(), data as *mut u8, serialized_bytes.len()) };
+            }
+            return result;
+        }
         if let Some(ref system) = self.system {
             let state = get_state(&system.virtual_boy);
             match serialize(state) {
                 Ok(serialized_bytes) => {
-                    if serialized_bytes.len() == size {
-                        unsafe { ptr::copy_nonoverlapping(serialized_bytes.as_ptr(), data as *mut u8, size) };
+                    if serialized_bytes.len() <= size {
+                        unsafe { ptr::copy_nonoverlapping(serialized_bytes.as_ptr(), data as *mut u8, serialized_bytes.len()) };
+                        self.last_serialized_state = Some(serialized_bytes);
 
                         true
                     } else {
@@ -262,6 +284,7 @@ impl Context {
     }
 
     fn unserialize(&mut self, data: *const c_void, size: size_t) -> bool {
+        self.last_serialized_state = None;
         let data_slice = unsafe { slice::from_raw_parts(data as *const u8, size) };
         match deserialize(data_slice) {
             Ok(deserialized_state) => {
