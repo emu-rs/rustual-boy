@@ -14,12 +14,10 @@ mod serde_ibytes;
 
 use lz4::{EncoderBuilder, Decoder};
 
-use rustual_boy_core::rom::*;
 use rustual_boy_core::timer::*;
 use rustual_boy_core::vip::*;
 use rustual_boy_core::virtual_boy::*;
 use rustual_boy_core::vsu::*;
-use rustual_boy_core::wram::*;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum VersionedState {
@@ -27,12 +25,6 @@ pub enum VersionedState {
 }
 
 pub type State = version1::State;
-
-// TODO: Proper display impl
-#[derive(Debug)]
-pub enum ApplyError {
-    RomError(RomError),
-}
 
 pub fn serialize(state: State) -> Result<Vec<u8>, String> {
     let versioned_state = VersionedState::Version1(state);
@@ -61,15 +53,11 @@ pub fn deserialize(encoded: &[u8]) -> Result<State, String> {
 pub fn get_state(vb: &VirtualBoy) -> State {
     State {
         interconnect: version1::InterconnectState {
-            rom: vb.interconnect.rom.as_slice().to_vec().into_boxed_slice(),
-            wram: vb.interconnect.wram.as_slice().to_vec().into_boxed_slice(),
-            sram: version1::SramState {
-                bytes: vb.interconnect.sram.as_slice().to_vec().into_boxed_slice(),
-
-                size: vb.interconnect.sram.size(),
-            },
+            rom: vb.interconnect.rom.bytes.clone(),
+            wram: vb.interconnect.wram.bytes.clone(),
+            sram: vb.interconnect.sram.bytes[..vb.interconnect.sram.size].to_vec().into_boxed_slice(),
             vip: version1::VipState {
-                vram: vb.interconnect.vip.vram_slice().to_vec().into_boxed_slice(),
+                vram: vb.interconnect.vip.vram.clone(),
 
                 display_state: match vb.interconnect.vip.display_state {
                     DisplayState::Idle => version1::DisplayStateState::Idle,
@@ -338,10 +326,11 @@ fn get_envelope_state(envelope: &Envelope) -> version1::EnvelopeState {
     }
 }
 
-pub fn apply(vb: &mut VirtualBoy, state: &State) -> Result<(), ApplyError> {
+pub fn apply(vb: &mut VirtualBoy, state: &State) {
     // TODO: Full state!!!!!!!
-    vb.interconnect.rom = Rom::from_bytes(&state.interconnect.rom).map_err(|e| ApplyError::RomError(e))?;
-    vb.interconnect.wram = Wram::from_bytes(&state.interconnect.wram);
-
-    Ok(())
+    vb.interconnect.rom.bytes[..state.interconnect.rom.len()].copy_from_slice(&state.interconnect.rom);
+    vb.interconnect.rom.size = state.interconnect.rom.len();
+    vb.interconnect.wram.bytes.copy_from_slice(&state.interconnect.wram);
+    vb.interconnect.sram.bytes[..state.interconnect.sram.len()].copy_from_slice(&state.interconnect.sram);
+    vb.interconnect.sram.size = state.interconnect.sram.len();
 }

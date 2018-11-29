@@ -101,7 +101,7 @@ impl Context {
             CALLBACKS.environment(EnvironmentCommand::SetSerializationQuirks as u32, &mut serialization_quirks_flags as *mut _ as *mut _);
             println!("*********** serialization_quirks_flags: 0x{:016x}", serialization_quirks_flags);
 
-            match Rom::from_bytes(game_info.data_ref()) {
+            match Rom::from_slice(game_info.data_ref()) {
                 Ok(rom) => {
                     self.system = Some(System::new(rom, Sram::new()));
 
@@ -289,15 +289,8 @@ impl Context {
         match deserialize(data_slice) {
             Ok(deserialized_state) => {
                 if let Some(ref mut system) = self.system {
-                    match apply(&mut system.virtual_boy, &deserialized_state) {
-                        Ok(()) => true,
-                        Err(err) => {
-                            // TODO: Remove this..?
-                            println!("****** RUH ROH: Applying deserialized state failed for some reason :((( {:?}", err);
-
-                            false
-                        }
-                    }
+                    apply(&mut system.virtual_boy, &deserialized_state);
+                    true
                 } else {
                     false
                 }
@@ -421,9 +414,9 @@ pub unsafe extern "C" fn retro_get_region() -> u32 {
 #[no_mangle]
 pub unsafe extern "C" fn retro_get_memory_data(id: u32) -> *mut c_void {
     match id & MEMORY_MASK {
-        MEMORY_SAVE_RAM => (*CONTEXT).system.as_mut().unwrap().virtual_boy.interconnect.sram.bytes_ptr() as *mut _,
-        MEMORY_SYSTEM_RAM => (*CONTEXT).system.as_mut().unwrap().virtual_boy.interconnect.wram.bytes_ptr() as *mut _,
-        MEMORY_VIDEO_RAM => (*CONTEXT).system.as_mut().unwrap().virtual_boy.interconnect.vip.vram_ptr() as *mut _,
+        MEMORY_SAVE_RAM => (*CONTEXT).system.as_mut().unwrap().virtual_boy.interconnect.sram.bytes.as_mut_ptr() as *mut _,
+        MEMORY_SYSTEM_RAM => (*CONTEXT).system.as_mut().unwrap().virtual_boy.interconnect.wram.bytes.as_mut_ptr() as *mut _,
+        MEMORY_VIDEO_RAM => (*CONTEXT).system.as_mut().unwrap().virtual_boy.interconnect.vip.vram.as_mut_ptr() as *mut _,
         _ => ptr::null_mut(),
     }
 }

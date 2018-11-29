@@ -1,69 +1,44 @@
 pub const WRAM_SIZE: usize = 65536;
 
 pub struct Wram {
-    bytes: Box<[u8]>,
-    bytes_ptr: *mut u8,
+    pub bytes: Box<[u8]>,
 }
 
 impl Wram {
     pub fn new() -> Wram {
-        let mut bytes = vec![0xff; WRAM_SIZE].into_boxed_slice();
-        let bytes_ptr = bytes.as_mut_ptr();
-
         Wram {
-            bytes: bytes,
-            bytes_ptr: bytes_ptr,
+            bytes: vec![0xff; WRAM_SIZE].into_boxed_slice(),
         }
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Wram {
-        let mut bytes = bytes.to_vec().into_boxed_slice();
-        let bytes_ptr = bytes.as_mut_ptr();
-
         Wram {
-            bytes: bytes,
-            bytes_ptr: bytes_ptr,
+            bytes: bytes.to_vec().into_boxed_slice(),
         }
-    }
-
-    pub fn bytes_ptr(&mut self) -> *mut u8 {
-        self.bytes_ptr
-    }
-
-    pub fn as_slice(&self) -> &[u8] {
-        &self.bytes
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {
         let addr = self.mask_addr(addr);
-        unsafe {
-            *self.bytes_ptr.offset(addr as _)
-        }
+        self.bytes[addr as usize]
     }
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         let addr = self.mask_addr(addr);
-        unsafe {
-            *self.bytes_ptr.offset(addr as _) = value;
-        }
+        self.bytes[addr as usize] = value;
     }
 
     pub fn read_halfword(&self, addr: u32) -> u16 {
         let addr = addr & 0xfffffffe;
         let addr = self.mask_addr(addr);
-        unsafe {
-            (*self.bytes_ptr.offset(addr as _) as u16) |
-            ((*self.bytes_ptr.offset((addr + 1) as _) as u16) << 8)
-        }
+        (self.bytes[addr as usize] as u16) |
+        ((self.bytes[(addr + 1) as usize] as u16) << 8)
     }
 
     pub fn write_halfword(&mut self, addr: u32, value: u16) {
         let addr = addr & 0xfffffffe;
         let addr = self.mask_addr(addr);
-        unsafe {
-            *self.bytes_ptr.offset(addr as _) = value as _;
-            *self.bytes_ptr.offset((addr + 1) as _) = (value >> 8) as _;
-        }
+        self.bytes[addr as usize] = value as _;
+        self.bytes[(addr + 1) as usize] = (value >> 8) as _;
     }
 
     fn mask_addr(&self, addr: u32) -> u32 {

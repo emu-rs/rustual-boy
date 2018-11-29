@@ -2,8 +2,8 @@ use encoding::DecoderTrap;
 use encoding::all::WINDOWS_31J;
 use encoding::types::EncodingRef;
 
-use std::io::{self, Read};
-use std::fs::File;
+use std::io;
+use std::fs::read;
 use std::path::Path;
 use std::borrow::Cow;
 use std::string::FromUtf8Error;
@@ -18,63 +18,48 @@ pub enum RomError {
     Io(io::Error),
 }
 
+#[derive(Clone)]
 pub struct Rom {
-    bytes: Box<[u8]>,
-    bytes_ptr: *mut u8,
+    pub bytes: Box<[u8]>,
+    pub size: usize,
 }
 
 impl Rom {
     pub fn load<P: AsRef<Path>>(file_name: P) -> Result<Rom, RomError> {
-        let mut file = File::open(file_name).map_err(|e| RomError::Io(e))?;
-        let mut vec = Vec::new();
-        file.read_to_end(&mut vec).map_err(|e| RomError::Io(e))?;
+        let file = read(file_name).map_err(|e| RomError::Io(e))?;
 
-        Rom::from_bytes(&vec)
+        Rom::from_slice(&file)
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Result<Rom, RomError> {
-        let bytes_copy = bytes.to_vec();
-
-        let size = bytes_copy.len();
+    pub fn from_slice(slice: &[u8]) -> Result<Rom, RomError> {
+        let size = slice.len();
         if size < MIN_ROM_SIZE || size > MAX_ROM_SIZE || !size.is_power_of_two() {
             return Err(RomError::InvalidSize);
         }
 
-        let mut bytes_box = bytes_copy.into_boxed_slice();
-        let bytes_ptr = bytes_box.as_mut_ptr();
+        let mut bytes = vec![0xff; MAX_ROM_SIZE].into_boxed_slice();
+        bytes[..size].copy_from_slice(&slice);
 
         Ok(Rom {
-            bytes: bytes_box,
-            bytes_ptr: bytes_ptr,
+            bytes,
+            size,
         })
-    }
-
-    pub fn as_slice(&self) -> &[u8] {
-        &self.bytes
-    }
-
-    pub fn size(&self) -> usize {
-        self.bytes.len()
     }
 
     pub fn read_byte(&self, addr: u32) -> u8 {
         let addr = self.mask_addr(addr);
-        unsafe {
-            *self.bytes_ptr.offset(addr as _)
-        }
+        self.bytes[addr as usize]
     }
 
     pub fn read_halfword(&self, addr: u32) -> u16 {
         let addr = addr & 0xfffffffe;
         let addr = self.mask_addr(addr);
-        unsafe {
-            (*self.bytes_ptr.offset(addr as _) as u16) |
-            ((*self.bytes_ptr.offset((addr + 1) as _) as u16) << 8)
-        }
+        (self.bytes[addr as usize] as u16) |
+        ((self.bytes[(addr + 1) as usize] as u16) << 8)
     }
 
     fn mask_addr(&self, addr: u32) -> u32 {
-        let mask = (self.bytes.len() - 1) as u32;
+        let mask = (self.size - 1) as u32;
         addr & mask
     }
 
@@ -117,18 +102,6 @@ impl Rom {
     }
 
     fn header_offset(&self) -> usize {
-        self.size() - 544
-    }
-}
-
-impl Clone for Rom {
-    fn clone(&self) -> Rom {
-        let mut bytes_box = self.bytes.clone();
-        let bytes_ptr = bytes_box.as_mut_ptr();
-
-        Rom {
-            bytes: bytes_box,
-            bytes_ptr: bytes_ptr,
-        }
+        self.bytes.len() - 544
     }
 }

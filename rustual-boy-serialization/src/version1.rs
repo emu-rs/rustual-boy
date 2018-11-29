@@ -14,7 +14,8 @@ pub struct InterconnectState {
     pub rom: Box<[u8]>,
     #[serde(with = "serde_bytes")]
     pub wram: Box<[u8]>,
-    pub sram: SramState,
+    #[serde(with = "serde_bytes")]
+    pub sram: Box<[u8]>,
     pub vip: VipState,
     pub vsu: VsuState,
     pub timer: TimerState,
@@ -48,14 +49,6 @@ pub struct GamePadState {
     pub right_d_pad_down_pressed: bool,
     pub right_d_pad_left_pressed: bool,
     pub right_d_pad_right_pressed: bool,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct SramState {
-    #[serde(with = "serde_bytes")]
-    pub bytes: Box<[u8]>,
-
-    pub size: usize,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

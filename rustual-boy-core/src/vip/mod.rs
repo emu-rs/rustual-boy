@@ -61,8 +61,7 @@ enum ObjGroup {
 }
 
 pub struct Vip {
-    vram: Box<[u8]>,
-    vram_ptr: *mut u8,
+    pub vram: Box<[u8]>,
 
     pub display_state: DisplayState,
 
@@ -129,9 +128,6 @@ pub struct Vip {
 
 impl Vip {
     pub fn new() -> Vip {
-        let mut vram = vec![0; VRAM_LENGTH as usize].into_boxed_slice();
-        let vram_ptr = vram.as_mut_ptr();
-
         let gamma = 1.0 / 2.2;
         let mut gamma_table = Box::new([0; 256]);
         for (i, entry) in gamma_table.iter_mut().enumerate() {
@@ -139,8 +135,7 @@ impl Vip {
         }
 
         Vip {
-            vram: vram,
-            vram_ptr: vram_ptr,
+            vram: vec![0; VRAM_LENGTH as usize].into_boxed_slice(),
 
             display_state: DisplayState::Idle,
 
@@ -204,14 +199,6 @@ impl Vip {
 
             gamma_table: gamma_table,
         }
-    }
-
-    pub fn vram_ptr(&mut self) -> *mut u8 {
-        self.vram_ptr
-    }
-
-    pub fn vram_slice(&self) -> &[u8] {
-        &self.vram
     }
 
     fn reg_intpnd(&self) -> u16 {
@@ -502,29 +489,21 @@ impl Vip {
     }
 
     fn read_vram_byte(&self, addr: u32) -> u8 {
-        unsafe {
-            *self.vram_ptr.offset(addr as _)
-        }
+        self.vram[addr as usize]
     }
 
     fn write_vram_byte(&mut self, addr: u32, value: u8) {
-        unsafe {
-            *self.vram_ptr.offset(addr as _) = value;
-        }
+        self.vram[addr as usize] = value;
     }
 
     fn read_vram_halfword(&self, addr: u32) -> u16 {
-        unsafe {
-            (*self.vram_ptr.offset(addr as _) as u16) |
-            ((*self.vram_ptr.offset((addr + 1) as _) as u16) << 8)
-        }
+        (self.vram[addr as usize] as u16) |
+        ((self.vram[(addr + 1) as usize] as u16) << 8)
     }
 
     fn write_vram_halfword(&mut self, addr: u32, value: u16) {
-        unsafe {
-            *self.vram_ptr.offset(addr as _) = value as _;
-            *self.vram_ptr.offset((addr + 1) as _) = (value >> 8) as _;
-        }
+        self.vram[addr as usize] = value as _;
+        self.vram[(addr + 1) as usize] = (value >> 8) as _;
     }
 
     pub fn cycles(&mut self, cycles: u32, video_frame_sink: &mut VideoSink) -> bool {
