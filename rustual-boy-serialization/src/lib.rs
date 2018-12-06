@@ -327,10 +327,266 @@ fn get_envelope_state(envelope: &Envelope) -> version1::EnvelopeState {
 }
 
 pub fn apply(vb: &mut VirtualBoy, state: &State) {
-    // TODO: Full state!!!!!!!
+    // Rom
     vb.interconnect.rom.bytes[..state.interconnect.rom.len()].copy_from_slice(&state.interconnect.rom);
     vb.interconnect.rom.size = state.interconnect.rom.len();
+
+    // Wram
     vb.interconnect.wram.bytes.copy_from_slice(&state.interconnect.wram);
+
+    // Sram
     vb.interconnect.sram.bytes[..state.interconnect.sram.len()].copy_from_slice(&state.interconnect.sram);
     vb.interconnect.sram.size = state.interconnect.sram.len();
+
+    // Vip
+    vb.interconnect.vip.vram.copy_from_slice(&state.interconnect.vip.vram);
+
+    vb.interconnect.vip.display_state = match state.interconnect.vip.display_state {
+        version1::DisplayStateState::Idle => DisplayState::Idle,
+        version1::DisplayStateState::LeftFramebuffer => DisplayState::LeftFramebuffer,
+        version1::DisplayStateState::RightFramebuffer => DisplayState::RightFramebuffer,
+        version1::DisplayStateState::Finished => DisplayState::Finished,
+    };
+
+    vb.interconnect.vip.drawing_state = match state.interconnect.vip.drawing_state {
+        version1::DrawingStateState::Idle => DrawingState::Idle,
+        version1::DrawingStateState::Drawing => DrawingState::Drawing,
+    };
+
+    vb.interconnect.vip.reg_intpnd_lfbend = state.interconnect.vip.reg_intpnd_lfbend;
+    vb.interconnect.vip.reg_intpnd_rfbend = state.interconnect.vip.reg_intpnd_rfbend;
+    vb.interconnect.vip.reg_intpnd_gamestart = state.interconnect.vip.reg_intpnd_gamestart;
+    vb.interconnect.vip.reg_intpnd_framestart = state.interconnect.vip.reg_intpnd_framestart;
+    vb.interconnect.vip.reg_intpnd_sbhit = state.interconnect.vip.reg_intpnd_sbhit;
+    vb.interconnect.vip.reg_intpnd_xpend = state.interconnect.vip.reg_intpnd_xpend;
+
+    vb.interconnect.vip.reg_intenb_lfbend = state.interconnect.vip.reg_intenb_lfbend;
+    vb.interconnect.vip.reg_intenb_rfbend = state.interconnect.vip.reg_intenb_rfbend;
+    vb.interconnect.vip.reg_intenb_gamestart = state.interconnect.vip.reg_intenb_gamestart;
+    vb.interconnect.vip.reg_intenb_framestart = state.interconnect.vip.reg_intenb_framestart;
+    vb.interconnect.vip.reg_intenb_sbhit = state.interconnect.vip.reg_intenb_sbhit;
+    vb.interconnect.vip.reg_intenb_xpend = state.interconnect.vip.reg_intenb_xpend;
+
+    vb.interconnect.vip.reg_dpctrl_disp = state.interconnect.vip.reg_dpctrl_disp;
+    vb.interconnect.vip.reg_dpctrl_synce = state.interconnect.vip.reg_dpctrl_synce;
+
+    vb.interconnect.vip.reg_xpctrl_xpen = state.interconnect.vip.reg_xpctrl_xpen;
+    vb.interconnect.vip.reg_xpctrl_sbcount = state.interconnect.vip.reg_xpctrl_sbcount;
+    vb.interconnect.vip.reg_xpctrl_sbcmp = state.interconnect.vip.reg_xpctrl_sbcmp;
+    vb.interconnect.vip.reg_xpctrl_sbout = state.interconnect.vip.reg_xpctrl_sbout;
+
+    vb.interconnect.vip.reg_frmcyc = state.interconnect.vip.reg_frmcyc;
+
+    vb.interconnect.vip.reg_brta = state.interconnect.vip.reg_brta;
+    vb.interconnect.vip.reg_brtb = state.interconnect.vip.reg_brtb;
+    vb.interconnect.vip.reg_brtc = state.interconnect.vip.reg_brtc;
+
+    vb.interconnect.vip.reg_spt0 = state.interconnect.vip.reg_spt0;
+    vb.interconnect.vip.reg_spt1 = state.interconnect.vip.reg_spt1;
+    vb.interconnect.vip.reg_spt2 = state.interconnect.vip.reg_spt2;
+    vb.interconnect.vip.reg_spt3 = state.interconnect.vip.reg_spt3;
+
+    vb.interconnect.vip.reg_gplt0 = state.interconnect.vip.reg_gplt0;
+    vb.interconnect.vip.reg_gplt1 = state.interconnect.vip.reg_gplt1;
+    vb.interconnect.vip.reg_gplt2 = state.interconnect.vip.reg_gplt2;
+    vb.interconnect.vip.reg_gplt3 = state.interconnect.vip.reg_gplt3;
+
+    vb.interconnect.vip.reg_jplt0 = state.interconnect.vip.reg_jplt0;
+    vb.interconnect.vip.reg_jplt1 = state.interconnect.vip.reg_jplt1;
+    vb.interconnect.vip.reg_jplt2 = state.interconnect.vip.reg_jplt2;
+    vb.interconnect.vip.reg_jplt3 = state.interconnect.vip.reg_jplt3;
+
+    vb.interconnect.vip.reg_bkcol = state.interconnect.vip.reg_bkcol;
+
+    vb.interconnect.vip.display_frame_eighth_clock_counter = state.interconnect.vip.display_frame_eighth_clock_counter;
+    vb.interconnect.vip.display_frame_eighth_counter = state.interconnect.vip.display_frame_eighth_counter;
+
+    vb.interconnect.vip.drawing_block_counter = state.interconnect.vip.drawing_block_counter;
+    vb.interconnect.vip.drawing_sbout_counter = state.interconnect.vip.drawing_sbout_counter;
+
+    vb.interconnect.vip.fclk = state.interconnect.vip.fclk;
+
+    vb.interconnect.vip.display_first_framebuffers = state.interconnect.vip.display_first_framebuffers;
+    vb.interconnect.vip.last_bkcol = state.interconnect.vip.last_bkcol;
+
+    // Vsu
+    vb.interconnect.vsu.waveform_data.copy_from_slice(&state.interconnect.vsu.waveform_data);
+    vb.interconnect.vsu.mod_data.copy_from_slice(&state.interconnect.vsu.mod_data);
+
+    apply_standard_sound_state(&mut vb.interconnect.vsu.sound1, &state.interconnect.vsu.sound1);
+    apply_standard_sound_state(&mut vb.interconnect.vsu.sound2, &state.interconnect.vsu.sound2);
+    apply_standard_sound_state(&mut vb.interconnect.vsu.sound3, &state.interconnect.vsu.sound3);
+    apply_standard_sound_state(&mut vb.interconnect.vsu.sound4, &state.interconnect.vsu.sound4);
+
+    apply_int_reg_state(&mut vb.interconnect.vsu.sound5.reg_int, &state.interconnect.vsu.sound5.reg_int);
+
+    apply_lrv_reg_state(&mut vb.interconnect.vsu.sound5.reg_lrv, &state.interconnect.vsu.sound5.reg_lrv);
+
+    vb.interconnect.vsu.sound5.fql = state.interconnect.vsu.sound5.fql;
+    vb.interconnect.vsu.sound5.fqh = state.interconnect.vsu.sound5.fqh;
+    vb.interconnect.vsu.sound5.frequency_low = state.interconnect.vsu.sound5.frequency_low;
+    vb.interconnect.vsu.sound5.frequency_high = state.interconnect.vsu.sound5.frequency_high;
+    vb.interconnect.vsu.sound5.next_frequency_low = state.interconnect.vsu.sound5.next_frequency_low;
+    vb.interconnect.vsu.sound5.next_frequency_high = state.interconnect.vsu.sound5.next_frequency_high;
+
+    apply_envelope_state(&mut vb.interconnect.vsu.sound5.envelope, &state.interconnect.vsu.sound5.envelope);
+
+    vb.interconnect.vsu.sound5.reg_sweep_mod_enable = state.interconnect.vsu.sound5.reg_sweep_mod_enable;
+    vb.interconnect.vsu.sound5.reg_mod_repeat = state.interconnect.vsu.sound5.reg_mod_repeat;
+    vb.interconnect.vsu.sound5.reg_function = state.interconnect.vsu.sound5.reg_function;
+
+    vb.interconnect.vsu.sound5.reg_sweep_mod_base_interval = state.interconnect.vsu.sound5.reg_sweep_mod_base_interval;
+    vb.interconnect.vsu.sound5.reg_sweep_mod_interval = state.interconnect.vsu.sound5.reg_sweep_mod_interval;
+    vb.interconnect.vsu.sound5.reg_sweep_direction = state.interconnect.vsu.sound5.reg_sweep_direction;
+    vb.interconnect.vsu.sound5.reg_sweep_shift_amount = state.interconnect.vsu.sound5.reg_sweep_shift_amount;
+
+    vb.interconnect.vsu.sound5.ram = state.interconnect.vsu.sound5.ram;
+
+    vb.interconnect.vsu.sound5.frequency_counter = state.interconnect.vsu.sound5.frequency_counter;
+    vb.interconnect.vsu.sound5.phase = state.interconnect.vsu.sound5.phase;
+
+    vb.interconnect.vsu.sound5.sweep_mod_counter = state.interconnect.vsu.sound5.sweep_mod_counter;
+    vb.interconnect.vsu.sound5.mod_phase = state.interconnect.vsu.sound5.mod_phase;
+
+    apply_int_reg_state(&mut vb.interconnect.vsu.sound6.reg_int, &state.interconnect.vsu.sound6.reg_int);
+
+    apply_lrv_reg_state(&mut vb.interconnect.vsu.sound6.reg_lrv, &state.interconnect.vsu.sound6.reg_lrv);
+
+    vb.interconnect.vsu.sound6.fql = state.interconnect.vsu.sound6.fql;
+    vb.interconnect.vsu.sound6.fqh = state.interconnect.vsu.sound6.fqh;
+
+    apply_envelope_state(&mut vb.interconnect.vsu.sound6.envelope, &state.interconnect.vsu.sound6.envelope);
+
+    vb.interconnect.vsu.sound6.reg_noise_control = state.interconnect.vsu.sound6.reg_noise_control;
+
+    vb.interconnect.vsu.sound6.frequency_counter = state.interconnect.vsu.sound6.frequency_counter;
+    vb.interconnect.vsu.sound6.shift = state.interconnect.vsu.sound6.shift;
+    vb.interconnect.vsu.sound6.output = state.interconnect.vsu.sound6.output;
+
+    vb.interconnect.vsu.duration_clock_counter = state.interconnect.vsu.duration_clock_counter;
+    vb.interconnect.vsu.envelope_clock_counter = state.interconnect.vsu.envelope_clock_counter;
+    vb.interconnect.vsu.frequency_clock_counter = state.interconnect.vsu.frequency_clock_counter;
+    vb.interconnect.vsu.sweep_mod_clock_counter = state.interconnect.vsu.sweep_mod_clock_counter;
+    vb.interconnect.vsu.noise_clock_counter = state.interconnect.vsu.noise_clock_counter;
+    vb.interconnect.vsu.sample_clock_counter = state.interconnect.vsu.sample_clock_counter;
+
+    // Timer
+    vb.interconnect.timer.t_clk_sel = match state.interconnect.timer.t_clk_sel {
+        version1::IntervalState::Large => Interval::Large,
+        version1::IntervalState::Small => Interval::Small,
+    };
+    vb.interconnect.timer.tim_z_int = state.interconnect.timer.tim_z_int;
+    vb.interconnect.timer.z_stat = state.interconnect.timer.z_stat;
+    vb.interconnect.timer.t_enb = state.interconnect.timer.t_enb;
+    vb.interconnect.timer.reload = state.interconnect.timer.reload;
+    vb.interconnect.timer.counter = state.interconnect.timer.counter;
+
+    vb.interconnect.timer.tick_counter = state.interconnect.timer.tick_counter;
+    vb.interconnect.timer.zero_interrupt = state.interconnect.timer.zero_interrupt;
+
+    // Game pad
+    vb.interconnect.game_pad.a_pressed = state.interconnect.game_pad.a_pressed;
+    vb.interconnect.game_pad.b_pressed = state.interconnect.game_pad.b_pressed;
+    vb.interconnect.game_pad.start_pressed = state.interconnect.game_pad.start_pressed;
+    vb.interconnect.game_pad.select_pressed = state.interconnect.game_pad.select_pressed;
+    vb.interconnect.game_pad.l_pressed = state.interconnect.game_pad.l_pressed;
+    vb.interconnect.game_pad.r_pressed = state.interconnect.game_pad.r_pressed;
+    vb.interconnect.game_pad.left_d_pad_up_pressed = state.interconnect.game_pad.left_d_pad_up_pressed;
+    vb.interconnect.game_pad.left_d_pad_down_pressed = state.interconnect.game_pad.left_d_pad_down_pressed;
+    vb.interconnect.game_pad.left_d_pad_left_pressed = state.interconnect.game_pad.left_d_pad_left_pressed;
+    vb.interconnect.game_pad.left_d_pad_right_pressed = state.interconnect.game_pad.left_d_pad_right_pressed;
+    vb.interconnect.game_pad.right_d_pad_up_pressed = state.interconnect.game_pad.right_d_pad_up_pressed;
+    vb.interconnect.game_pad.right_d_pad_down_pressed = state.interconnect.game_pad.right_d_pad_down_pressed;
+    vb.interconnect.game_pad.right_d_pad_left_pressed = state.interconnect.game_pad.right_d_pad_left_pressed;
+    vb.interconnect.game_pad.right_d_pad_right_pressed = state.interconnect.game_pad.right_d_pad_right_pressed;
+
+    // Com port
+    vb.interconnect.com_port.cdtr = state.interconnect.com_port.cdtr;
+    vb.interconnect.com_port.cdrr = state.interconnect.com_port.cdrr;
+
+    vb.interconnect.com_port.c_stat = state.interconnect.com_port.c_stat;
+
+    vb.interconnect.com_port.transfer_bit_index = state.interconnect.com_port.transfer_bit_index;
+
+    // Cpu
+    vb.cpu.reg_pc = state.cpu.reg_pc;
+
+    vb.cpu.reg_gpr.copy_from_slice(&state.cpu.reg_gpr[..]);
+
+    vb.cpu.reg_eipc = state.cpu.reg_eipc;
+    vb.cpu.reg_eipsw = state.cpu.reg_eipsw;
+    vb.cpu.reg_ecr = state.cpu.reg_ecr;
+    vb.cpu.reg_fepc = state.cpu.reg_fepc;
+    vb.cpu.reg_fepsw = state.cpu.reg_fepsw;
+
+    vb.cpu.psw_zero = state.cpu.psw_zero;
+    vb.cpu.psw_sign = state.cpu.psw_sign;
+    vb.cpu.psw_overflow = state.cpu.psw_overflow;
+    vb.cpu.psw_carry = state.cpu.psw_carry;
+    vb.cpu.psw_fp_precision_degredation = state.cpu.psw_fp_precision_degredation;
+    vb.cpu.psw_fp_underflow = state.cpu.psw_fp_underflow;
+    vb.cpu.psw_fp_overflow = state.cpu.psw_fp_overflow;
+    vb.cpu.psw_fp_zero_division = state.cpu.psw_fp_zero_division;
+    vb.cpu.psw_fp_invalid_operation = state.cpu.psw_fp_invalid_operation;
+    vb.cpu.psw_fp_reserved_operand = state.cpu.psw_fp_reserved_operand;
+    vb.cpu.psw_interrupt_disable = state.cpu.psw_interrupt_disable;
+    vb.cpu.psw_address_trap_enable = state.cpu.psw_address_trap_enable;
+    vb.cpu.psw_exception_pending = state.cpu.psw_exception_pending;
+    vb.cpu.psw_nmi_pending = state.cpu.psw_nmi_pending;
+    vb.cpu.psw_interrupt_mask_level = state.cpu.psw_interrupt_mask_level;
+
+    vb.cpu.is_halted = state.cpu.is_halted;
+
+    vb.cpu.cache.hits = state.cpu.cache.hits;
+    vb.cpu.cache.misses = state.cpu.cache.misses;
+    vb.cpu.cache.is_enabled = state.cpu.cache.is_enabled;
+    for (entry, state) in vb.cpu.cache.entries.iter_mut().zip(state.cpu.cache.entries.iter()) {
+        entry.tag = state.tag;
+        entry.base_addr = state.base_addr;
+        entry.subblock_valid.copy_from_slice(&state.subblock_valid);
+    }
+
+    vb.cpu.watchpoints = state.cpu.watchpoints.clone();
+}
+
+fn apply_standard_sound_state(sound: &mut StandardSound, state: &version1::StandardSoundState) {
+    apply_int_reg_state(&mut sound.reg_int, &state.reg_int);
+
+    apply_lrv_reg_state(&mut sound.reg_lrv, &state.reg_lrv);
+
+    sound.fql = state.fql;
+    sound.fqh = state.fqh;
+
+    apply_envelope_state(&mut sound.envelope, &state.envelope);
+
+    sound.ram = state.ram;
+
+    sound.frequency_counter = state.frequency_counter;
+    sound.phase = state.phase;
+}
+
+fn apply_int_reg_state(int_reg: &mut IntReg, state: &version1::IntRegState) {
+    int_reg.output_enable = state.output_enable;
+    int_reg.interval_data = state.interval_data;
+    int_reg.interval_counter_setting_values = state.interval_counter_setting_values;
+
+    int_reg.interval_counter = state.interval_counter;
+}
+
+fn apply_lrv_reg_state(lrv_reg: &mut LrvReg, state: &version1::LrvRegState) {
+    lrv_reg.left = state.left;
+    lrv_reg.right = state.right;
+}
+
+fn apply_envelope_state(envelope: &mut Envelope, state: &version1::EnvelopeState) {
+    envelope.reg_data_reload = state.reg_data_reload;
+    envelope.reg_data_direction = state.reg_data_direction;
+    envelope.reg_data_step_interval = state.reg_data_step_interval;
+
+    envelope.reg_control_repeat = state.reg_control_repeat;
+    envelope.reg_control_enable = state.reg_control_enable;
+
+    envelope.level = state.level;
+
+    envelope.envelope_counter = state.envelope_counter;
 }
