@@ -733,8 +733,10 @@ impl Vsu {
         let output_right = ((acc_right & 0xfff8) << 2) as i16;
         let output_frame = (output_left, output_right);
 
-        audio_frame_sink.buffer[audio_frame_sink.buffer_pos] = output_frame;
-        audio_frame_sink.buffer_pos += 1;
+        if audio_frame_sink.buffer_pos < audio_frame_sink.buffer.len() {
+            audio_frame_sink.buffer[audio_frame_sink.buffer_pos] = output_frame;
+            audio_frame_sink.buffer_pos += 1;
+        }
     }
 
     fn are_channels_active(&self) -> bool {
