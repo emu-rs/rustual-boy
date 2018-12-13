@@ -1,34 +1,26 @@
 use minifb::{WindowOptions, Window, Key, KeyRepeat, Scale};
 
+use audio_dest::*;
 use command::*;
 
-use rustual_boy_core::sinks::{AudioFrame, Sink, SinkRef, VideoFrame};
-use rustual_boy_core::time_source::TimeSource;
-use rustual_boy_core::rom::Rom;
-use rustual_boy_core::sram::Sram;
-use rustual_boy_core::instruction::*;
 use rustual_boy_core::game_pad::Button;
+use rustual_boy_core::instruction::*;
+use rustual_boy_core::rom::Rom;
+use rustual_boy_core::sinks::*;
+use rustual_boy_core::sram::Sram;
+use rustual_boy_core::time_source::TimeSource;
+use rustual_boy_core::vip::*;
 use rustual_boy_core::virtual_boy::VirtualBoy;
+use rustual_boy_core::vsu::*;
 
-use rustual_boy_middleware::{Anaglyphizer, GammaAdjustSink, MostRecentSink};
-
-use std::time;
-use std::thread::{self, JoinHandle};
+use std::collections::{HashSet, HashMap};
 use std::io::{stdin, stdout, Write};
-use std::collections::{HashSet, HashMap, VecDeque};
+use std::mem;
+use std::thread::{self, JoinHandle};
+use std::time;
 use std::sync::mpsc::{channel, Receiver};
 
 const CPU_CYCLE_TIME_NS: u64 = 50;
-
-struct SimpleAudioFrameSink {
-    inner: VecDeque<AudioFrame>,
-}
-
-impl Sink<AudioFrame> for SimpleAudioFrameSink {
-    fn append(&mut self, frame: AudioFrame) {
-        self.inner.push_back(frame);
-    }
-}
 
 #[derive(PartialEq, Eq)]
 enum Mode {
@@ -51,8 +43,6 @@ pub struct Emulator {
     stdin_receiver: Receiver<String>,
     _stdin_thread: JoinHandle<()>,
 
-    audio_buffer_sink: Box<SinkRef<[AudioFrame]>>,
-
     time_source: Box<TimeSource>,
     time_source_start_time_ns: u64,
 
@@ -60,7 +50,7 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    pub fn new(rom: Rom, sram: Sram, audio_buffer_sink: Box<SinkRef<[AudioFrame]>>, time_source: Box<TimeSource>) -> Emulator {
+    pub fn new(rom: Rom, sram: Sram, time_source: Box<TimeSource>) -> Emulator {
         let (stdin_sender, stdin_receiver) = channel();
         let stdin_thread = thread::spawn(move || {
             loop {
@@ -88,8 +78,6 @@ impl Emulator {
             stdin_receiver: stdin_receiver,
             _stdin_thread: stdin_thread,
 
-            audio_buffer_sink: audio_buffer_sink,
-
             time_source: time_source,
             time_source_start_time_ns: 0,
 
@@ -97,52 +85,59 @@ impl Emulator {
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self, audio_dest: &mut AudioDest) {
+        let mut video_output_frame_buffer = vec![0; DISPLAY_PIXELS as usize];
+        let mut audio_frame_buffer = vec![(0, 0); (SAMPLE_RATE as usize) / 50 * 2]; // double space needed for 1 frame for lots of skid room
+
         self.time_source_start_time_ns = self.time_source.time_ns();
 
         while self.window.is_open() && !self.window.is_key_down(Key::Escape) {
-            let most_recent_sink = MostRecentSink::new();
-            let gamma_adjust_sink = GammaAdjustSink::new(most_recent_sink, 2.2);
-            let mut video_frame_sink = Anaglyphizer::new(
-                gamma_adjust_sink,
-                (1.0, 0.0, 0.0).into(),
-                (0.0, 1.0, 1.0).into(),
-            );
-
-            let mut audio_frame_sink = SimpleAudioFrameSink {
-                inner: VecDeque::new(),
+            let mut audio_sink = AudioSink {
+                buffer: &mut audio_frame_buffer,
+                buffer_pos: 0,
             };
 
-            let target_emulated_time_ns = self.time_source.time_ns() - self.time_source_start_time_ns;
-            let target_emulated_cycles = target_emulated_time_ns / CPU_CYCLE_TIME_NS;
+            let is_video_output_frame_buffer_populated = {
+                let pixel_buffer = PixelBuffer::Xrgb8888(&mut video_output_frame_buffer, (DISPLAY_RESOLUTION_X as usize) * mem::size_of::<u32>());
+                let mut video_output_sink = VideoSink {
+                    buffer: pixel_buffer,
+                    format: StereoVideoFormat::AnaglyphRedElectricCyan,
+                    gamma_correction: GammaCorrection::TwoPointTwo,
+                    is_populated: false,
+                };
 
-            match self.mode {
-                Mode::Running => {
-                    let mut start_debugger = false;
+                let target_emulated_time_ns = self.time_source.time_ns() - self.time_source_start_time_ns;
+                let target_emulated_cycles = target_emulated_time_ns / CPU_CYCLE_TIME_NS;
 
-                    while self.emulated_cycles < target_emulated_cycles && !start_debugger {
-                        let (_, trigger_watchpoint) = self.step(&mut video_frame_sink, &mut audio_frame_sink);
-                        if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
-                            start_debugger = true;
+                match self.mode {
+                    Mode::Running => {
+                        let mut start_debugger = false;
+
+                        while self.emulated_cycles < target_emulated_cycles && !start_debugger {
+                            let (_, trigger_watchpoint) = self.step(&mut video_output_sink, &mut audio_sink);
+                            if trigger_watchpoint || (self.breakpoints.len() != 0 && self.breakpoints.contains(&self.virtual_boy.cpu.reg_pc())) {
+                                start_debugger = true;
+                            }
+                        }
+
+                        if start_debugger {
+                            self.start_debugger();
                         }
                     }
+                    Mode::Debugging => {
+                        if self.run_debugger_commands(&mut video_output_sink, &mut audio_sink) {
+                            break;
+                        }
 
-                    if start_debugger {
-                        self.start_debugger();
+                        self.window.update();
                     }
                 }
-                Mode::Debugging => {
-                    if self.run_debugger_commands(&mut video_frame_sink, &mut audio_frame_sink) {
-                        break;
-                    }
 
-                    self.window.update();
-                }
-            }
+                video_output_sink.is_populated
+            };
 
-            if let Some(frame) = video_frame_sink.into_inner().into_inner().into_inner() {
-                let frame: Vec<u32> = frame.into_iter().map(|x| x.into()).collect();
-                self.window.update_with_buffer(&frame);
+            if is_video_output_frame_buffer_populated {
+                self.window.update_with_buffer(&mut video_output_frame_buffer);
 
                 if self.mode == Mode::Running {
                     // We only want to update the key state when a frame is actually pushed
@@ -154,14 +149,14 @@ impl Emulator {
                 }
             }
 
-            self.audio_buffer_sink.append(audio_frame_sink.inner.as_slices().0);
+            audio_dest.append(&audio_sink.buffer[..audio_sink.buffer_pos]);
 
             thread::sleep(time::Duration::from_millis(3));
         }
     }
 
-    fn step(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> (u32, bool) {
-        let ret = self.virtual_boy.step(video_frame_sink, audio_frame_sink);
+    fn step(&mut self, video_sink: &mut VideoSink, audio_sink: &mut AudioSink) -> (u32, bool) {
+        let ret = self.virtual_boy.step(video_sink, audio_sink);
 
         self.emulated_cycles += ret.0 as u64;
 
@@ -194,7 +189,7 @@ impl Emulator {
         self.print_cursor();
     }
 
-    fn run_debugger_commands(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> bool {
+    fn run_debugger_commands(&mut self, video_sink: &mut VideoSink, audio_sink: &mut AudioSink) -> bool {
         while let Ok(command_string) = self.stdin_receiver.try_recv() {
             let command = match (command_string.parse(), self.last_command.clone()) {
                 (Ok(Command::Repeat), Some(c)) => Ok(c),
@@ -226,7 +221,7 @@ impl Emulator {
                 },
                 Ok(Command::Step(count)) => {
                     for _ in 0..count {
-                        self.step(video_frame_sink, audio_frame_sink);
+                        self.step(video_sink, audio_sink);
                         self.cursor = self.virtual_boy.cpu.reg_pc();
                         self.disassemble_instruction();
                     }

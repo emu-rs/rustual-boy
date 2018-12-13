@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
-use rustual_boy_core::sinks::{AudioFrame, SinkRef};
+use rustual_boy_core::sinks::AudioFrame;
+
+use audio_dest::AudioDest;
 
 use std::io::{self, Write, Seek, SeekFrom, BufWriter};
 use std::fs::File;
@@ -9,17 +11,17 @@ use std::path::Path;
 const NUM_CHANNELS: u32 = 2;
 const BITS_PER_SAMPLE: u32 = 16;
 
-pub struct WaveFileBufferSink {
+pub struct WaveFileAudioDest {
     writer: BufWriter<File>,
     num_frames: u32,
 }
 
-impl WaveFileBufferSink {
-    pub fn new<P: AsRef<Path>>(file_name: P, sample_rate: u32) -> io::Result<WaveFileBufferSink> {
+impl WaveFileAudioDest {
+    pub fn new<P: AsRef<Path>>(file_name: P, sample_rate: u32) -> io::Result<WaveFileAudioDest> {
         let file = File::create(file_name)?;
         let writer = BufWriter::new(file);
 
-        let mut ret = WaveFileBufferSink {
+        let mut ret = WaveFileAudioDest {
             writer: writer,
             num_frames: 0,
         };
@@ -69,7 +71,7 @@ impl WaveFileBufferSink {
     }
 }
 
-impl Drop for WaveFileBufferSink {
+impl Drop for WaveFileAudioDest {
     fn drop(&mut self) {
         let data_chunk_size = self.num_frames * NUM_CHANNELS * BITS_PER_SAMPLE / 8;
 
@@ -80,8 +82,8 @@ impl Drop for WaveFileBufferSink {
     }
 }
 
-impl SinkRef<[AudioFrame]> for WaveFileBufferSink {
-    fn append(&mut self, buffer: &[(i16, i16)]) {
+impl AudioDest for WaveFileAudioDest {
+    fn append(&mut self, buffer: &[AudioFrame]) {
         for &(left, right) in buffer {
             self.write_u16(left as _).unwrap();
             self.write_u16(right as _).unwrap();

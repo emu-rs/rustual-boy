@@ -11,9 +11,8 @@ extern crate combine;
 
 extern crate rustual_boy_core;
 
-extern crate rustual_boy_middleware;
-
 mod argparse;
+mod audio_dest;
 #[macro_use]
 mod logging;
 mod command;
@@ -36,10 +35,10 @@ fn main() {
     let rom = Rom::load(&config.rom_path).unwrap();
 
     log!("ROM size: ");
-    if rom.size() >= 1024 * 1024 {
-        logln!("{}MB", rom.size() / 1024 / 1024);
+    if rom.size >= 1024 * 1024 {
+        logln!("{}MB", rom.size / 1024 / 1024);
     } else {
-        logln!("{}KB", rom.size() / 1024);
+        logln!("{}KB", rom.size / 1024);
     }
 
     logln!("Header info:");
@@ -64,13 +63,13 @@ fn main() {
 
     let audio_driver = CpalDriver::new(SAMPLE_RATE, 100).unwrap();
 
-    let audio_buffer_sink = audio_driver.sink();
+    let mut audio_dest = audio_driver.audio_dest();
     let time_source = audio_driver.time_source();
 
-    let mut emulator = Emulator::new(rom, sram, audio_buffer_sink, time_source);
-    emulator.run();
+    let mut emulator = Emulator::new(rom, sram, time_source);
+    emulator.run(&mut *audio_dest);
 
-    if emulator.virtual_boy.interconnect.sram.size() > 0 {
+    if emulator.virtual_boy.interconnect.sram.size > 0 {
         logln!("SRAM used, saving to {}", config.sram_path);
         emulator.virtual_boy.interconnect.sram.save(config.sram_path).unwrap();
     }
