@@ -102,6 +102,6 @@ impl Rom {
     }
 
     fn header_offset(&self) -> usize {
-        self.bytes.len() - 544
+        self.size - 544
     }
 }
