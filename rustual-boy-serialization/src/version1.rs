@@ -11,11 +11,10 @@ pub struct State {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct InterconnectState {
     #[serde(with = "serde_bytes")]
-    pub rom: Box<[u8]>,
-    #[serde(with = "serde_bytes")]
     pub wram: Box<[u8]>,
     #[serde(with = "serde_bytes")]
     pub sram: Box<[u8]>,
+    pub sram_size: u32,
     pub vip: VipState,
     pub vsu: VsuState,
     pub timer: TimerState,

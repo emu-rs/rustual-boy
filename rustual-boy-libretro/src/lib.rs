@@ -95,12 +95,6 @@ impl Context {
                 PixelFormat::Xrgb8888 => OutputBuffer::Xrgb8888(vec![0; DISPLAY_PIXELS as usize]),
             };
 
-            // TODO: Verify that we're using this callback correctly, and possibly disable save state caps if not
-            //  supported by the frontend
-            let mut serialization_quirks_flags = SERIALIZATION_QUIRK_CORE_VARIABLE_SIZE | SERIALIZATION_QUIRK_FRONT_VARIABLE_SIZE;
-            CALLBACKS.environment(EnvironmentCommand::SetSerializationQuirks as u32, &mut serialization_quirks_flags as *mut _ as *mut _);
-            println!("*********** serialization_quirks_flags: 0x{:016x}", serialization_quirks_flags);
-
             match Rom::from_slice(game_info.data_ref()) {
                 Ok(rom) => {
                     self.system = Some(System::new(rom, Sram::new()));

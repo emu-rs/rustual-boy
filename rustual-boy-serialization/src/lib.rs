@@ -7,12 +7,8 @@ extern crate serde;
 extern crate serde_bytes;
 extern crate bincode;
 
-extern crate lz4;
-
 pub mod version1;
 mod serde_ibytes;
-
-use lz4::{EncoderBuilder, Decoder};
 
 use rustual_boy_core::timer::*;
 use rustual_boy_core::vip::*;
@@ -28,23 +24,13 @@ pub type State = version1::State;
 
 pub fn serialize(state: State) -> Result<Vec<u8>, String> {
     let versioned_state = VersionedState::Version1(state);
-    let encoded = Vec::with_capacity(512 * 1024);
-    let mut encoder = EncoderBuilder::new()
-        .level(2)
-        .block_size(lz4::BlockSize::Max1MB)
-        .build(encoded)
-        .map_err(|e| format!("Couldn't build lz4 encoder: {}", e))?;
-    bincode::serialize_into(&mut encoder, &versioned_state).map_err(|e| format!("Couldn't save state: {}", e))?;
-    let (encoded, result) = encoder.finish();
-    if let Err(e) = result {
-        return Err(format!("Couldn't finish lz4 encoding: {}", e));
-    }
-    Ok(encoded)
+    let mut serialized = Vec::with_capacity(512 * 1024);
+    bincode::serialize_into(&mut serialized, &versioned_state).map_err(|e| format!("Couldn't save state: {}", e))?;
+    Ok(serialized)
 }
 
-pub fn deserialize(encoded: &[u8]) -> Result<State, String> {
-    let decoder = Decoder::new(encoded).map_err(|e| format!("Couldn't build lz4 decoder: {}", e))?;
-    let versioned_state = bincode::deserialize_from(decoder).map_err(|e| format!("Couldn't deserialize state: {}", e))?;
+pub fn deserialize(serialized: &[u8]) -> Result<State, String> {
+    let versioned_state = bincode::deserialize_from(serialized).map_err(|e| format!("Couldn't deserialize state: {}", e))?;
     Ok(match versioned_state {
         VersionedState::Version1(state) => state,
     })
@@ -53,9 +39,9 @@ pub fn deserialize(encoded: &[u8]) -> Result<State, String> {
 pub fn get_state(vb: &VirtualBoy) -> State {
     State {
         interconnect: version1::InterconnectState {
-            rom: vb.interconnect.rom.bytes[..vb.interconnect.rom.size].to_vec().into_boxed_slice(),
             wram: vb.interconnect.wram.bytes.clone(),
-            sram: vb.interconnect.sram.bytes[..vb.interconnect.sram.size].to_vec().into_boxed_slice(),
+            sram: vb.interconnect.sram.bytes.clone(),
+            sram_size: vb.interconnect.sram.size as _,
             vip: version1::VipState {
                 vram: vb.interconnect.vip.vram.clone(),
 
@@ -327,16 +313,12 @@ fn get_envelope_state(envelope: &Envelope) -> version1::EnvelopeState {
 }
 
 pub fn apply(vb: &mut VirtualBoy, state: &State) {
-    // Rom
-    vb.interconnect.rom.bytes[..state.interconnect.rom.len()].copy_from_slice(&state.interconnect.rom);
-    vb.interconnect.rom.size = state.interconnect.rom.len();
-
     // Wram
     vb.interconnect.wram.bytes.copy_from_slice(&state.interconnect.wram);
 
     // Sram
-    vb.interconnect.sram.bytes[..state.interconnect.sram.len()].copy_from_slice(&state.interconnect.sram);
-    vb.interconnect.sram.size = state.interconnect.sram.len();
+    vb.interconnect.sram.bytes[..].copy_from_slice(&state.interconnect.sram);
+    vb.interconnect.sram.size = state.interconnect.sram_size as _;
 
     // Vip
     vb.interconnect.vip.vram.copy_from_slice(&state.interconnect.vip.vram);
