@@ -53,7 +53,7 @@ pub fn deserialize(encoded: &[u8]) -> Result<State, String> {
 pub fn get_state(vb: &VirtualBoy) -> State {
     State {
         interconnect: version1::InterconnectState {
-            rom: vb.interconnect.rom.bytes.clone(),
+            rom: vb.interconnect.rom.bytes[..vb.interconnect.rom.size].to_vec().into_boxed_slice(),
             wram: vb.interconnect.wram.bytes.clone(),
             sram: vb.interconnect.sram.bytes[..vb.interconnect.sram.size].to_vec().into_boxed_slice(),
             vip: version1::VipState {
