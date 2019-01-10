@@ -3,6 +3,8 @@ extern crate wisegui;
 use self::wisegui::*;
 
 use rustual_boy_core::mem_map::*;
+use rustual_boy_core::vip::*;
+use rustual_boy_core::vip::mem_map::*;
 use rustual_boy_core::virtual_boy::*;
 
 use minifb::{MouseButton, MouseMode, WindowOptions, Window, Scale};
@@ -52,15 +54,15 @@ pub struct Inspector {
 
 impl Inspector {
     pub fn new() -> Inspector {
-        let width = 780;
-        let height = 540;
+        let width = 1200;
+        let height = 1000;
 
         Inspector {
             window: Window::new("Rustual Boy", width as _, height as _, WindowOptions {
                 borderless: false,
                 title: true,
                 resize: true,
-                scale: Scale::X2,
+                scale: Scale::X1,
             }).unwrap(),
             width: width,
             height: height,
@@ -101,6 +103,85 @@ impl Inspector {
             let mut painter = Painter::new(&self.context, &mut self.buffer, self.width as _, self.height as _);
 
             painter.clear(Color::Dark);
+
+            // VIP Windows
+            const WINDOW_ENTRY_LENGTH: u32 = 32;
+            let mut window_offset = WINDOW_ATTRIBS_END + 1 - WINDOW_ENTRY_LENGTH;
+            let mut window_index = 31;
+            let mut window_is_enabled = true;
+            let window_render_width = 256;
+            let window_render_height = 26;
+            let window_render_margin = 4;
+            let window_render_x = 256 + 4 + 512 + 4 + window_render_margin;
+            let mut window_render_y = window_render_margin;
+            let window_render_padding_x = 1;
+            let window_render_padding_y = 1;
+            for _ in 0..32 {
+                let header = virtual_boy.interconnect.vip.read_vram_halfword(window_offset);
+
+                let is_dummy = header == 0;
+
+                //let base = (header & 0x000f) as u32;
+                let stop = (header & 0x0040) != 0;
+                /*let overplane = (header & 0x0080) != 0;
+                let bg_height = ((header >> 8) & 0x03) as u32;
+                let bg_width = ((header >> 10) & 0x03) as u32;*/
+                let mode = ((header >> 12) & 0x03) as u32;
+                /*let right_on = (header & 0x4000) != 0;
+                let left_on = (header & 0x8000) != 0;*/
+
+                let x = virtual_boy.interconnect.vip.read_vram_halfword(window_offset + 2) as i16;
+                let parallax = virtual_boy.interconnect.vip.read_vram_halfword(window_offset + 4) as i16;
+                let y = virtual_boy.interconnect.vip.read_vram_halfword(window_offset + 6) as i16;
+                /*let bg_x = virtual_boy.interconnect.vip.read_vram_halfword(window_offset + 8) as i16;
+                let bg_parallax = virtual_boy.interconnect.vip.read_vram_halfword(window_offset + 10) as i16;
+                let bg_y = virtual_boy.interconnect.vip.read_vram_halfword(window_offset + 12) as i16;*/
+                let width = virtual_boy.interconnect.vip.read_vram_halfword(window_offset + 14);
+                let height = virtual_boy.interconnect.vip.read_vram_halfword(window_offset + 16);
+                /*let param_base = virtual_boy.interconnect.vip.read_vram_halfword(window_offset + 18) as u32;
+                let overplane_char = virtual_boy.interconnect.vip.read_vram_halfword(window_offset + 20);*/
+
+                let mode = match mode {
+                    0 => WindowMode::Normal,
+                    1 => WindowMode::LineShift,
+                    2 => WindowMode::Affine,
+                    _ => WindowMode::Obj
+                };
+
+                if stop {
+                    window_is_enabled = false;
+                }
+
+                let mut color = if window_is_enabled {
+                    Color::Lightest
+                } else {
+                    Color::Light
+                };
+
+                let mode_text = if is_dummy {
+                    "(DUMMY)"
+                } else if stop {
+                    "(STOP)"
+                } else {
+                    match mode {
+                        WindowMode::Normal => "normal",
+                        WindowMode::LineShift => "line shift",
+                        WindowMode::Affine => "affine",
+                        WindowMode::Obj => "obj",
+                    }
+                };
+
+                painter.rect(window_render_x, window_render_y, window_render_width, window_render_height, Some(Color::Darkest), Some(color));
+                painter.text(window_render_x + window_render_padding_x, window_render_y + window_render_padding_y, color, &format!("window {:02}", window_index));
+                painter.text(window_render_x + window_render_padding_x + 80, window_render_y + window_render_padding_y, color, &format!("0x{:04x} {}", header, mode_text));
+                painter.text(window_render_x + window_render_padding_x, window_render_y + window_render_padding_y + 8, color, &format!("x: 0x{:04x} y: 0x{:04x} p: 0x{:04x}", x, y, parallax));
+                painter.text(window_render_x + window_render_padding_x, window_render_y + window_render_padding_y + 16, color, &format!("w: 0x{:04x} h: 0x{:04x}", width, height));
+
+                window_offset -= WINDOW_ENTRY_LENGTH;
+                window_index -= 1;
+
+                window_render_y += window_render_height + window_render_margin;
+            }
         }
 
         self.wram_view(virtual_boy);

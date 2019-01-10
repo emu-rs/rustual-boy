@@ -13,7 +13,7 @@ pub struct Interconnect {
     rom: Rom,
     wram: Wram,
     pub sram: Sram,
-    vip: Vip,
+    pub vip: Vip,
     vsu: Vsu,
     timer: Timer,
     pub game_pad: GamePad,

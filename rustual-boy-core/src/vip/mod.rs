@@ -1,4 +1,4 @@
-mod mem_map;
+pub mod mem_map;
 
 use sinks::*;
 
@@ -42,7 +42,7 @@ enum Eye {
 }
 
 #[derive(Eq, PartialEq)]
-enum WindowMode {
+pub enum WindowMode {
     Normal,
     LineShift,
     Affine,
@@ -492,7 +492,7 @@ impl Vip {
         }
     }
 
-    fn read_vram_halfword(&self, addr: u32) -> u16 {
+    pub fn read_vram_halfword(&self, addr: u32) -> u16 {
         unsafe {
             (*self.vram_ptr.offset(addr as _) as u16) |
             ((*self.vram_ptr.offset((addr + 1) as _) as u16) << 8)
