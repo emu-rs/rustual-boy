@@ -317,7 +317,7 @@ dependencies = [
 
 [[package]]
 name = "rustual-boy-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clap 2.27.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "combine 2.5.2 (registry+https://github.com/rust-lang/crates.io-index)",

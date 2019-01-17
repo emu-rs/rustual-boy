@@ -1,6 +1,6 @@
 [package]
 name = "rustual-boy-cli"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["ferris <yupferris@gmail.com>", "The Rustual Boy contributors"]
 description = "A CLI frontend for rustual-boy-core"
 readme = "README.md"
