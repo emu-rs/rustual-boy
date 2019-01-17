@@ -725,8 +725,8 @@ impl Vip {
                 logln!(Log::Vip, "  mode: {}", mode);
                 logln!(Log::Vip, "  l, r: {}, {}", left_on, right_on);*/
 
-                let x = self.read_vram_halfword(window_offset + 2) as i16;
-                let parallax = self.read_vram_halfword(window_offset + 4) as i16;
+                let x = ((self.read_vram_halfword(window_offset + 2) as i16) << 6) >> 6;
+                let parallax = ((self.read_vram_halfword(window_offset + 4) as i16) << 6) >> 6;
                 let y = self.read_vram_halfword(window_offset + 6) as i16;
                 let bg_x = self.read_vram_halfword(window_offset + 8) as i16;
                 let bg_parallax = self.read_vram_halfword(window_offset + 10) as i16;
