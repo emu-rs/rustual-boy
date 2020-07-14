@@ -506,7 +506,7 @@ impl Vip {
         }
     }
 
-    pub fn cycles(&mut self, cycles: u32, video_frame_sink: &mut Sink<VideoFrame>) -> bool {
+    pub fn cycles(&mut self, cycles: u32, video_frame_sink: &mut dyn Sink<VideoFrame>) -> bool {
         for _ in 0..cycles {
             self.display_frame_eighth_clock_counter += 1;
             if self.display_frame_eighth_clock_counter >= DISPLAY_FRAME_EIGHTH_PERIOD {
@@ -1083,7 +1083,7 @@ impl Vip {
         self.write_vram_byte(framebuffer_offset + framebuffer_byte_index, framebuffer_byte);
     }
 
-    fn display(&mut self, video_frame_sink: &mut Sink<VideoFrame>) {
+    fn display(&mut self, video_frame_sink: &mut dyn Sink<VideoFrame>) {
         let left_framebuffer_offset = if self.display_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 

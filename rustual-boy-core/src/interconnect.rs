@@ -170,7 +170,7 @@ impl Interconnect {
         }
     }
 
-    pub fn cycles(&mut self, cycles: u32, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> Option<u16> {
+    pub fn cycles(&mut self, cycles: u32, video_frame_sink: &mut dyn Sink<VideoFrame>, audio_frame_sink: &mut dyn Sink<AudioFrame>) -> Option<u16> {
         let mut interrupt = None;
 
         if self.timer.cycles(cycles) {

@@ -627,7 +627,7 @@ impl Vsu {
         self.write_byte(addr, value as _);
     }
 
-    pub fn cycles(&mut self, num_cycles: u32, audio_frame_sink: &mut Sink<AudioFrame>) {
+    pub fn cycles(&mut self, num_cycles: u32, audio_frame_sink: &mut dyn Sink<AudioFrame>) {
         for _ in 0..num_cycles {
             self.duration_clock_counter += 1;
             if self.duration_clock_counter >= DURATION_CLOCK_PERIOD {
@@ -691,7 +691,7 @@ impl Vsu {
         }
     }
 
-    fn sample_clock(&mut self, audio_frame_sink: &mut Sink<AudioFrame>) {
+    fn sample_clock(&mut self, audio_frame_sink: &mut dyn Sink<AudioFrame>) {
         let mut acc_left = 0;
         let mut acc_right = 0;
 

@@ -184,13 +184,13 @@ impl CpalDriver {
         })
     }
 
-    pub fn sink(&self) -> Box<SinkRef<[AudioFrame]>> {
+    pub fn sink(&self) -> Box<dyn SinkRef<[AudioFrame]>> {
         Box::new(CpalDriverBufferSink {
             ring_buffer: self.ring_buffer.clone(),
         })
     }
 
-    pub fn time_source(&self) -> Box<TimeSource> {
+    pub fn time_source(&self) -> Box<dyn TimeSource> {
         Box::new(CpalDriverTimeSource {
             ring_buffer: self.ring_buffer.clone(),
             sample_rate: self.sample_rate,
@@ -235,7 +235,7 @@ impl LinearResampler {
         }
     }
 
-    fn next(&mut self, input: &mut Iterator<Item = i16>) -> i16 {
+    fn next(&mut self, input: &mut dyn Iterator<Item = i16>) -> i16 {
         fn interpolate(a: i16, b: i16, num: u32, denom: u32) -> i16 {
             (((a as i32) * ((denom - num) as i32) + (b as i32) * (num as i32)) / (denom as i32)) as _
         }

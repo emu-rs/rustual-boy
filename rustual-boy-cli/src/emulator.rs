@@ -51,16 +51,16 @@ pub struct Emulator {
     stdin_receiver: Receiver<String>,
     _stdin_thread: JoinHandle<()>,
 
-    audio_buffer_sink: Box<SinkRef<[AudioFrame]>>,
+    audio_buffer_sink: Box<dyn SinkRef<[AudioFrame]>>,
 
-    time_source: Box<TimeSource>,
+    time_source: Box<dyn TimeSource>,
     time_source_start_time_ns: u64,
 
     emulated_cycles: u64,
 }
 
 impl Emulator {
-    pub fn new(rom: Rom, sram: Sram, audio_buffer_sink: Box<SinkRef<[AudioFrame]>>, time_source: Box<TimeSource>) -> Emulator {
+    pub fn new(rom: Rom, sram: Sram, audio_buffer_sink: Box<dyn SinkRef<[AudioFrame]>>, time_source: Box<dyn TimeSource>) -> Emulator {
         let (stdin_sender, stdin_receiver) = channel();
         let stdin_thread = thread::spawn(move || {
             loop {
@@ -145,7 +145,7 @@ impl Emulator {
 
             if let Some(frame) = video_frame_sink.into_inner().into_inner().into_inner() {
                 let frame: Vec<u32> = frame.into_iter().map(|x| x.into()).collect();
-                self.window.update_with_buffer(&frame, 384, 224);
+                self.window.update_with_buffer(&frame, 384, 224).unwrap();
 
                 if self.mode == Mode::Running {
                     // We only want to update the key state when a frame is actually pushed
@@ -163,7 +163,7 @@ impl Emulator {
         }
     }
 
-    fn step(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> (u32, bool) {
+    fn step(&mut self, video_frame_sink: &mut dyn Sink<VideoFrame>, audio_frame_sink: &mut dyn Sink<AudioFrame>) -> (u32, bool) {
         let ret = self.virtual_boy.step(video_frame_sink, audio_frame_sink);
 
         self.emulated_cycles += ret.0 as u64;
@@ -197,7 +197,7 @@ impl Emulator {
         self.print_cursor();
     }
 
-    fn run_debugger_commands(&mut self, video_frame_sink: &mut Sink<VideoFrame>, audio_frame_sink: &mut Sink<AudioFrame>) -> bool {
+    fn run_debugger_commands(&mut self, video_frame_sink: &mut dyn Sink<VideoFrame>, audio_frame_sink: &mut dyn Sink<AudioFrame>) -> bool {
         while let Ok(command_string) = self.stdin_receiver.try_recv() {
             let command = match (command_string.parse(), self.last_command.clone()) {
                 (Ok(Command::Repeat), Some(c)) => Ok(c),
