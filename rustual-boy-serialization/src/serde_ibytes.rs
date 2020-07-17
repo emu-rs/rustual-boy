@@ -7,7 +7,7 @@ pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
           D: Deserializer<'de>
 {
     ByteBuf::deserialize(deserializer).map(|buf| {
-        let mut u8_v: Vec<u8> = buf.into();
+        let mut u8_v: Vec<u8> = buf.into_vec();
 
         let i8_v = unsafe {
             Vec::from_raw_parts(
