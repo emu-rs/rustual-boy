@@ -1,3 +1,4 @@
+use color::Color;
 use color_frame::ColorFrame;
 use rustual_boy_core::sinks::Sink;
 use rustual_boy_core::vip::DISPLAY_PIXELS;
@@ -47,7 +48,7 @@ impl<T: Sink<ColorFrame>> Sink<ColorFrame> for GammaAdjustSink<T> {
         unsafe {
             let input_buffer_ptr = frame.as_ptr();
             {
-                let output_buffer_ptr = output.as_mut_ptr();
+                let output_buffer_ptr: *mut Color = output.as_mut_ptr();
                 for i in 0..(DISPLAY_PIXELS as isize) {
                     let ref input = *(input_buffer_ptr.offset(i));
                     let (input_r, input_g, input_b) = input.into();

@@ -40,7 +40,7 @@ impl<T: Sink<ColorFrame>> Sink<VideoFrame> for Anaglyphizer<T> {
             let l_buffer = l_buffer.as_ptr();
             let r_buffer = r_buffer.as_ptr();
             {
-                let o_ptr = output.as_mut_ptr();
+                let o_ptr: *mut Color = output.as_mut_ptr();
                 for i in 0..(DISPLAY_PIXELS as isize) {
                     let l = *(l_buffer.offset(i));
                     let r = *(r_buffer.offset(i));
