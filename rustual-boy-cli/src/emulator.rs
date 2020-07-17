@@ -1,4 +1,4 @@
-use minifb::{WindowOptions, Window, Key, KeyRepeat, Scale};
+use minifb::{WindowOptions, Window, Key, KeyRepeat, Scale, ScaleMode};
 
 use command::*;
 
@@ -74,6 +74,9 @@ impl Emulator {
                 title: true,
                 resize: false,
                 scale: Scale::X2,
+                scale_mode: ScaleMode::AspectRatioStretch,
+                topmost: false,
+                transparency: false
             }).unwrap(),
 
             virtual_boy: VirtualBoy::new(rom, sram),
@@ -142,7 +145,7 @@ impl Emulator {
 
             if let Some(frame) = video_frame_sink.into_inner().into_inner().into_inner() {
                 let frame: Vec<u32> = frame.into_iter().map(|x| x.into()).collect();
-                self.window.update_with_buffer(&frame);
+                self.window.update_with_buffer(&frame, 384, 224);
 
                 if self.mode == Mode::Running {
                     // We only want to update the key state when a frame is actually pushed

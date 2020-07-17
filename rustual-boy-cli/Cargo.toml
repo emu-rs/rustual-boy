@@ -20,7 +20,7 @@ log-core-all = ["rustual-boy-core/log-all"]
 
 [dependencies]
 encoding = "0.2"
-minifb = "0.9.0"
+minifb = "0.17.0"
 cpal = "0.4.4"
 futures = "0.1.1"
 rustual-boy-middleware = { path = "../rustual-boy-middleware" }
