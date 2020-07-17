@@ -22,7 +22,6 @@ log-core-all = ["rustual-boy-core/log-all"]
 encoding = "0.2"
 minifb = "0.17.0"
 cpal = "0.12.0"
-futures = "0.1.1"
 rustual-boy-middleware = { path = "../rustual-boy-middleware" }
 rustual-boy-core = { path = "../rustual-boy-core" }
 clap = "2.0.0"
