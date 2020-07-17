@@ -1,0 +1,8 @@
+[workspace]
+
+members = [
+    "rustual-boy-cli",
+    "rustual-boy-core",
+    "rustual-boy-libretro",
+    "rustual-boy-serialization",
+]

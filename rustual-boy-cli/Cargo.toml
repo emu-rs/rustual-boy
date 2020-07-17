@@ -1,6 +1,6 @@
 [package]
 name = "rustual-boy-cli"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["ferris <yupferris@gmail.com>", "The Rustual Boy contributors"]
 description = "A CLI frontend for rustual-boy-core"
 readme = "README.md"
@@ -20,9 +20,8 @@ log-core-all = ["rustual-boy-core/log-all"]
 
 [dependencies]
 encoding = "0.2"
-minifb = "0.9.0"
-cpal = "0.4.4"
-futures = "0.1.1"
+minifb = "0.17.0"
+cpal = "0.12.0"
 rustual-boy-core = { path = "../rustual-boy-core" }
 clap = "2.0.0"
 combine = "2.2.0"

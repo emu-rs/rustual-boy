@@ -1,6 +1,6 @@
 # Rustual Boy
 
-[![Build Status](https://travis-ci.org/emu-rs/rustual-boy.svg?branch=master)](https://travis-ci.org/emu-rs/rustual-boy) [![Build status](https://ci.appveyor.com/api/projects/status/ec29vne6uuh7tjtu/branch/master?svg=true)](https://ci.appveyor.com/project/yupferris/rustual-boy/branch/master) [![rustualboy.com](https://img.shields.io/badge/www-rustualboy.com-red.svg)](https://rustualboy.com/) [![Compabitility](https://img.shields.io/badge/compatibility-97%25-yellowgreen.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility) [![Chat on discord](https://img.shields.io/badge/chat-on%20discord-7289DA.svg)](https://discord.gg/65j9YMA) [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#license)
+[![Build Status](https://travis-ci.org/emu-rs/rustual-boy.svg?branch=master)](https://travis-ci.org/emu-rs/rustual-boy) [![Build status](https://ci.appveyor.com/api/projects/status/ec29vne6uuh7tjtu/branch/master?svg=true)](https://ci.appveyor.com/project/yupferris/rustual-boy/branch/master) [![rustualboy.com](https://img.shields.io/badge/www-rustualboy.com-red.svg)](https://rustualboy.com/) [![Compabitility](https://img.shields.io/badge/compatibility-100%25-green.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility) [![Chat on discord](https://img.shields.io/badge/chat-on%20discord-7289DA.svg)](https://discord.gg/65j9YMA) [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/emu-rs/rustual-boy/blob/master/README.md#license)
 
 ![Rustual Boy](media/logo.png)
 
@@ -12,9 +12,9 @@ The name "Rustual Boy" is a [portmanteau](https://en.wikipedia.org/wiki/Portmant
 
 ## Status
 
-Rustual Boy is currently able to emulate [the majority of commercial Virtual Boy titles](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility), as well as many homebrew ones. It supports basic video/audio output and keyboard input, and also a simple CLI debugger. It runs on Windows, MacOS, Linux, and likely some other platforms Rust supports.
+Rustual Boy is currently able to emulate [all commercial Virtual Boy titles](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility), as well as many homebrew ones. It supports basic video/audio output and keyboard input, and also a simple CLI debugger. It runs on Windows, MacOS, Linux, and likely some other platforms Rust supports.
 
-While Rustual Boy's core emulation is nearly complete [compatibility-wise](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility), and in some respects is already one of the more accurate VB emulators available, the project is still young, and needs some time to mature. Particularly, its user interface is lacking (read: virtually non-existent), and there are some known (and probably unknown) stability/compatibility issues. Also, performance isn't fantastic yet, but the emulator should be playable at least.
+While Rustual Boy's core emulation is complete [compatibility-wise](https://github.com/emu-rs/rustual-boy/blob/master/README.md#known-game-compatibility), and in some respects is already one of the more accurate VB emulators available, the project is still young, and needs some time to mature. Particularly, its user interface is lacking (read: virtually non-existent), and there are some known (and probably unknown) stability/compatibility issues. Also, performance isn't fantastic yet, but the emulator should be playable at least.
 
 That said, these things are bound to improve with time, and everyone is encouraged to [grab a build](https://github.com/emu-rs/rustual-boy/releases) or [build the emulator](https://github.com/emu-rs/rustual-boy/blob/master/README.md#building-and-running), give it a shot, and [report any bugs/feature requests](CONTRIBUTING.md)!
 
@@ -49,7 +49,7 @@ Games marked 💖 and 💔 are all included in the compatibility metric.
 | Panic Bomber | 💖 | 💖 | |
 | Red Alarm | 💖 | 💖 | |
 | SD Gundam Dimension War | N/A | 💖 | |
-| Space Invaders Virtual Collection | N/A | 🚫 | Lazers aren't visible on most of the screen in "Virtual 3D" mode |
+| Space Invaders Virtual Collection | N/A | 💖 | |
 | Space Squash | N/A | 💖 | |
 | Teleroboxer | 💔 | 💔 | Small audio glitches during screen transitions after demo mode wins games |
 | V-Tetris | N/A | 💖 | |

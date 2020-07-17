@@ -1,4 +1,4 @@
-use minifb::{WindowOptions, Window, Key, KeyRepeat, Scale};
+use minifb::{WindowOptions, Window, Key, KeyRepeat, Scale, ScaleMode};
 
 use audio_dest::*;
 use command::*;
@@ -43,14 +43,14 @@ pub struct Emulator {
     stdin_receiver: Receiver<String>,
     _stdin_thread: JoinHandle<()>,
 
-    time_source: Box<TimeSource>,
+    time_source: Box<dyn TimeSource>,
     time_source_start_time_ns: u64,
 
     emulated_cycles: u64,
 }
 
 impl Emulator {
-    pub fn new(rom: Rom, sram: Sram, time_source: Box<TimeSource>) -> Emulator {
+    pub fn new(rom: Rom, sram: Sram, time_source: Box<dyn TimeSource>) -> Emulator {
         let (stdin_sender, stdin_receiver) = channel();
         let stdin_thread = thread::spawn(move || {
             loop {
@@ -64,6 +64,9 @@ impl Emulator {
                 title: true,
                 resize: false,
                 scale: Scale::X2,
+                scale_mode: ScaleMode::AspectRatioStretch,
+                topmost: false,
+                transparency: false
             }).unwrap(),
 
             virtual_boy: VirtualBoy::new(rom, sram),
@@ -85,7 +88,7 @@ impl Emulator {
         }
     }
 
-    pub fn run(&mut self, audio_dest: &mut AudioDest) {
+    pub fn run(&mut self, audio_dest: &mut dyn AudioDest) {
         let mut video_output_frame_buffer = vec![0; DISPLAY_PIXELS as usize];
         let mut audio_frame_buffer = vec![(0, 0); (SAMPLE_RATE as usize) / 50 * 2]; // double space needed for 1 frame for lots of skid room
 
@@ -137,7 +140,7 @@ impl Emulator {
             };
 
             if is_video_output_frame_buffer_populated {
-                self.window.update_with_buffer(&mut video_output_frame_buffer);
+                self.window.update_with_buffer(&mut video_output_frame_buffer, 384, 224).unwrap();
 
                 if self.mode == Mode::Running {
                     // We only want to update the key state when a frame is actually pushed
