@@ -2,8 +2,6 @@ extern crate minifb;
 
 extern crate cpal;
 
-extern crate futures;
-
 #[macro_use]
 extern crate clap;
 

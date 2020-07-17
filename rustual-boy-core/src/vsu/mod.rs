@@ -530,32 +530,32 @@ impl Vsu {
 
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         match addr {
-            WAVEFORM_DATA_0_START ... WAVEFORM_DATA_0_END => {
+            WAVEFORM_DATA_0_START ..= WAVEFORM_DATA_0_END => {
                 if !self.are_channels_active() {
                     self.waveform_data[((addr - WAVEFORM_DATA_0_START) / 4 + 0x00) as usize] = value & 0x3f;
                 }
             }
-            WAVEFORM_DATA_1_START ... WAVEFORM_DATA_1_END => {
+            WAVEFORM_DATA_1_START ..= WAVEFORM_DATA_1_END => {
                 if !self.are_channels_active() {
                     self.waveform_data[((addr - WAVEFORM_DATA_1_START) / 4 + 0x20) as usize] = value & 0x3f;
                 }
             }
-            WAVEFORM_DATA_2_START ... WAVEFORM_DATA_2_END => {
+            WAVEFORM_DATA_2_START ..= WAVEFORM_DATA_2_END => {
                 if !self.are_channels_active() {
                     self.waveform_data[((addr - WAVEFORM_DATA_2_START) / 4 + 0x40) as usize] = value & 0x3f;
                 }
             }
-            WAVEFORM_DATA_3_START ... WAVEFORM_DATA_3_END => {
+            WAVEFORM_DATA_3_START ..= WAVEFORM_DATA_3_END => {
                 if !self.are_channels_active() {
                     self.waveform_data[((addr - WAVEFORM_DATA_3_START) / 4 + 0x60) as usize] = value & 0x3f;
                 }
             }
-            WAVEFORM_DATA_4_START ... WAVEFORM_DATA_4_END => {
+            WAVEFORM_DATA_4_START ..= WAVEFORM_DATA_4_END => {
                 if !self.are_channels_active() {
                     self.waveform_data[((addr - WAVEFORM_DATA_4_START) / 4 + 0x80) as usize] = value & 0x3f;
                 }
             }
-            MOD_DATA_START ... MOD_DATA_END => {
+            MOD_DATA_START ..= MOD_DATA_END => {
                 if !self.are_channels_active() {
                     self.mod_data[((addr - MOD_DATA_START) / 4) as usize] = value as _;
                 }

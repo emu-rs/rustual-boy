@@ -37,8 +37,8 @@ impl Interconnect {
     pub fn read_byte(&mut self, addr: u32) -> u8 {
         let addr = addr & 0x07ffffff;
         match addr {
-            VIP_START ... VIP_END => self.vip.read_byte(addr - VIP_START),
-            VSU_START ... VSU_END => self.vsu.read_byte(addr - VSU_START),
+            VIP_START ..= VIP_END => self.vip.read_byte(addr - VIP_START),
+            VSU_START ..= VSU_END => self.vsu.read_byte(addr - VSU_START),
             CCR => self.com_port.read_ccr(),
             CCSR => self.com_port.read_ccsr(),
             CDTR => self.com_port.read_cdtr(),
@@ -53,13 +53,13 @@ impl Interconnect {
                 0
             }
             SCR => self.game_pad.read_scr(),
-            GAME_PAK_EXPANSION_START ... GAME_PAK_EXPANSION_END => {
+            GAME_PAK_EXPANSION_START ..= GAME_PAK_EXPANSION_END => {
                 logln!(Log::Ic, "WARNING: Read byte from Game Pak Expansion not yet implemented (addr: 0x{:08x})", addr - GAME_PAK_EXPANSION_START);
                 0
             }
-            WRAM_START ... WRAM_END => self.wram.read_byte(addr - WRAM_START),
-            GAME_PAK_RAM_START ... GAME_PAK_RAM_END => self.sram.read_byte(addr - GAME_PAK_RAM_START),
-            GAME_PAK_ROM_START ... GAME_PAK_ROM_END => self.rom.read_byte(addr - GAME_PAK_ROM_START),
+            WRAM_START ..= WRAM_END => self.wram.read_byte(addr - WRAM_START),
+            GAME_PAK_RAM_START ..= GAME_PAK_RAM_END => self.sram.read_byte(addr - GAME_PAK_RAM_START),
+            GAME_PAK_ROM_START ..= GAME_PAK_ROM_END => self.rom.read_byte(addr - GAME_PAK_ROM_START),
             _ => panic!("Unrecognized addr: 0x{:08x}", addr)
         }
     }
@@ -68,8 +68,8 @@ impl Interconnect {
         let addr = addr & 0x07ffffff;
         let addr = addr & 0xfffffffe;
         match addr {
-            VIP_START ... VIP_END => self.vip.read_halfword(addr - VIP_START),
-            VSU_START ... VSU_END => self.vsu.read_halfword(addr - VSU_START),
+            VIP_START ..= VIP_END => self.vip.read_halfword(addr - VIP_START),
+            VSU_START ..= VSU_END => self.vsu.read_halfword(addr - VSU_START),
             CCR => self.com_port.read_ccr() as _,
             CCSR => self.com_port.read_ccsr() as _,
             CDTR => self.com_port.read_cdtr() as _,
@@ -84,13 +84,13 @@ impl Interconnect {
                 0
             }
             SCR => self.game_pad.read_scr() as _,
-            GAME_PAK_EXPANSION_START ... GAME_PAK_EXPANSION_END => {
+            GAME_PAK_EXPANSION_START ..= GAME_PAK_EXPANSION_END => {
                 logln!(Log::Ic, "WARNING: Read halfword from Game Pak Expansion not yet implemented (addr: 0x{:08x})", addr - GAME_PAK_EXPANSION_START);
                 0
             }
-            WRAM_START ... WRAM_END => self.wram.read_halfword(addr - WRAM_START),
-            GAME_PAK_RAM_START ... GAME_PAK_RAM_END => self.sram.read_halfword(addr - GAME_PAK_RAM_START),
-            GAME_PAK_ROM_START ... GAME_PAK_ROM_END => self.rom.read_halfword(addr - GAME_PAK_ROM_START),
+            WRAM_START ..= WRAM_END => self.wram.read_halfword(addr - WRAM_START),
+            GAME_PAK_RAM_START ..= GAME_PAK_RAM_END => self.sram.read_halfword(addr - GAME_PAK_RAM_START),
+            GAME_PAK_ROM_START ..= GAME_PAK_ROM_END => self.rom.read_halfword(addr - GAME_PAK_ROM_START),
             _ => panic!("Unrecognized addr: 0x{:08x}", addr)
         }
     }
@@ -98,8 +98,8 @@ impl Interconnect {
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         let addr = addr & 0x07ffffff;
         match addr {
-            VIP_START ... VIP_END => self.vip.write_byte(addr - VIP_START, value),
-            VSU_START ... VSU_END => self.vsu.write_byte(addr - VSU_START, value),
+            VIP_START ..= VIP_END => self.vip.write_byte(addr - VIP_START, value),
+            VSU_START ..= VSU_END => self.vsu.write_byte(addr - VSU_START, value),
             CCR => self.com_port.write_ccr(value),
             CCSR => self.com_port.write_ccsr(value),
             CDTR => self.com_port.write_cdtr(value),
@@ -121,12 +121,12 @@ impl Interconnect {
                 logln!(Log::Ic, " Game Pak Expansion Waits: {}", if value & 0x02 == 0 { 2 } else { 1 });
             }
             SCR => self.game_pad.write_scr(value),
-            GAME_PAK_EXPANSION_START ... GAME_PAK_EXPANSION_END => {
+            GAME_PAK_EXPANSION_START ..= GAME_PAK_EXPANSION_END => {
                 logln!(Log::Ic, "WARNING: Write byte to Game Pak Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:02x})", addr - GAME_PAK_EXPANSION_START, value);
             }
-            WRAM_START ... WRAM_END => self.wram.write_byte(addr - WRAM_START, value),
-            GAME_PAK_RAM_START ... GAME_PAK_RAM_END => self.sram.write_byte(addr - GAME_PAK_RAM_START, value),
-            GAME_PAK_ROM_START ... GAME_PAK_ROM_END => {
+            WRAM_START ..= WRAM_END => self.wram.write_byte(addr - WRAM_START, value),
+            GAME_PAK_RAM_START ..= GAME_PAK_RAM_END => self.sram.write_byte(addr - GAME_PAK_RAM_START, value),
+            GAME_PAK_ROM_START ..= GAME_PAK_ROM_END => {
                 logln!(Log::Ic, "WARNING: Attempted write to Game Pak ROM at 0x{:08x}", addr - GAME_PAK_ROM_START);
             }
             _ => panic!("Unrecognized addr: 0x{:08x}", addr)
@@ -137,8 +137,8 @@ impl Interconnect {
         let addr = addr & 0x07ffffff;
         let addr = addr & 0xfffffffe;
         match addr {
-            VIP_START ... VIP_END => self.vip.write_halfword(addr - VIP_START, value),
-            VSU_START ... VSU_END => self.vsu.write_halfword(addr - VSU_START, value),
+            VIP_START ..= VIP_END => self.vip.write_halfword(addr - VIP_START, value),
+            VSU_START ..= VSU_END => self.vsu.write_halfword(addr - VSU_START, value),
             CCR => self.com_port.write_ccr(value as _),
             CCSR => self.com_port.write_ccsr(value as _),
             CDTR => self.com_port.write_cdtr(value as _),
@@ -158,12 +158,12 @@ impl Interconnect {
                 logln!(Log::Ic, "WARNING: Write halfword to WCR not yet implemented (value: 0x{:04x})", value);
             }
             SCR => self.game_pad.write_scr(value as _),
-            GAME_PAK_EXPANSION_START ... GAME_PAK_EXPANSION_END => {
+            GAME_PAK_EXPANSION_START ..= GAME_PAK_EXPANSION_END => {
                 logln!(Log::Ic, "WARNING: Write halfword to Game Pak Expansion not yet implemented (addr: 0x{:08x}, value: 0x{:04x})", addr - GAME_PAK_EXPANSION_START, value);
             }
-            WRAM_START ... WRAM_END => self.wram.write_halfword(addr - WRAM_START, value),
-            GAME_PAK_RAM_START ... GAME_PAK_RAM_END => self.sram.write_halfword(addr - GAME_PAK_RAM_START, value),
-            GAME_PAK_ROM_START ... GAME_PAK_ROM_END => {
+            WRAM_START ..= WRAM_END => self.wram.write_halfword(addr - WRAM_START, value),
+            GAME_PAK_RAM_START ..= GAME_PAK_RAM_END => self.sram.write_halfword(addr - GAME_PAK_RAM_START, value),
+            GAME_PAK_ROM_START ..= GAME_PAK_ROM_END => {
                 logln!(Log::Ic, "WARNING: Attempted write to Game Pak ROM at 0x{:08x}", addr - GAME_PAK_ROM_START);
             }
             _ => panic!("Unrecognized addr: 0x{:08x}", addr)
