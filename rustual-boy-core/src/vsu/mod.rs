@@ -9,23 +9,23 @@ use self::mem_map::*;
 //  Note that the documentation rounds values in a lot of places, so that's probably what happened here.
 pub const SAMPLE_RATE: u32 = 41667;
 
-// 20mhz / 41.7khz = ~480 clocks
+// 20mhz / 41.7khz
 const SAMPLE_CLOCK_PERIOD: u32 = 480;
 
-// 20mhz / 260.4hz = ~76805 clocks
-const DURATION_CLOCK_PERIOD: u32 = 76805;
+// 20mhz / 260.4hz
+const DURATION_CLOCK_PERIOD: u32 = SAMPLE_CLOCK_PERIOD * 160;
 
-// 20mhz / 65.1hz = ~307218 clocks
-const ENVELOPE_CLOCK_PERIOD: u32 = 307218;
+// 20mhz / 65.1hz
+const ENVELOPE_CLOCK_PERIOD: u32 = SAMPLE_CLOCK_PERIOD * 640;
 
-// 20mhz / 5mhz = 4 clocks
+// 20mhz / 5mhz
 const FREQUENCY_CLOCK_PERIOD: u32 = 4;
 
-// 20mhz / 1041.6hz = ~19200 clocks
-const SWEEP_MOD_SMALL_PERIOD: u32 = 19200;
+// 20mhz / 1041.6hz
+const SWEEP_MOD_SMALL_PERIOD: u32 = SAMPLE_CLOCK_PERIOD * 40;
 
-// 20mhz / 130.2hz = ~153600 clocks
-const SWEEP_MOD_LARGE_PERIOD: u32 = 153600;
+// 20mhz / 130.2hz
+const SWEEP_MOD_LARGE_PERIOD: u32 = SAMPLE_CLOCK_PERIOD * 320;
 
 // 20mhz / 500khz = 40 clocks
 const NOISE_CLOCK_PERIOD: u32 = 40;
