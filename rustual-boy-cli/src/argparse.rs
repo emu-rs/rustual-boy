@@ -6,9 +6,12 @@ pub struct CommandLineConfig {
 }
 
 pub fn parse_args() -> CommandLineConfig {
+    // This should be doable with `crate_authors!(", ")`, but clap is using a deprecated API in that call,
+    // so we do it ourselves.
+    let crate_authors = crate_authors!().replace(":", ", ");
     let app = App::new("Rustual Boy")
         .version("0.2.0")
-        .author(crate_authors!(", "))
+        .author(&crate_authors[..])
         .about("A CLI frontend to the Rustual Boy emulator")
         .arg(Arg::with_name("ROM")
              .help("The name of the ROM to load")

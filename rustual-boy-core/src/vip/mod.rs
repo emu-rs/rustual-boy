@@ -214,14 +214,14 @@ impl Vip {
     pub fn read_byte(&self, addr: u32) -> u8 {
         let addr = addr & 0x0007ffff;
         match addr {
-            VRAM_START ... VRAM_END => self.read_vram_byte(addr - VRAM_START),
-            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
+            VRAM_START ..= VRAM_END => self.read_vram_byte(addr - VRAM_START),
+            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
                 self.read_vram_byte(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START),
-            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ... CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
                 self.read_vram_byte(addr - CHR_RAM_PATTERN_TABLE_1_MIRROR_START + CHR_RAM_PATTERN_TABLE_1_START),
-            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ... CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
                 self.read_vram_byte(addr - CHR_RAM_PATTERN_TABLE_2_MIRROR_START + CHR_RAM_PATTERN_TABLE_2_START),
-            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
                 self.read_vram_byte(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START),
             _ => {
                 let halfword = self.read_halfword(addr & 0xfffffffe);
@@ -237,14 +237,14 @@ impl Vip {
     pub fn write_byte(&mut self, addr: u32, value: u8) {
         let addr = addr & 0x0007ffff;
         match addr {
-            VRAM_START ... VRAM_END => self.write_vram_byte(addr - VRAM_START, value),
-            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
+            VRAM_START ..= VRAM_END => self.write_vram_byte(addr - VRAM_START, value),
+            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
                 self.write_vram_byte(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START, value),
-            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ... CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
                 self.write_vram_byte(addr - CHR_RAM_PATTERN_TABLE_1_MIRROR_START + CHR_RAM_PATTERN_TABLE_1_START, value),
-            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ... CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
                 self.write_vram_byte(addr - CHR_RAM_PATTERN_TABLE_2_MIRROR_START + CHR_RAM_PATTERN_TABLE_2_START, value),
-            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
                 self.write_vram_byte(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START, value),
             _ => {
                 let halfword = if (addr & 0x01) == 0 {
@@ -261,7 +261,7 @@ impl Vip {
         let addr = addr & 0x0007ffff;
         let addr = addr & 0xfffffffe;
         match addr {
-            VRAM_START ... VRAM_END => self.read_vram_halfword(addr - VRAM_START),
+            VRAM_START ..= VRAM_END => self.read_vram_halfword(addr - VRAM_START),
             INTPND => {
                 logln!(Log::Vip, "WARNING: Read halfword from INTPND not fully implemented");
                 self.reg_intpnd()
@@ -344,13 +344,13 @@ impl Vip {
             JPLT2 => self.reg_jplt2 as _,
             JPLT3 => self.reg_jplt3 as _,
             BKCOL => self.reg_bkcol as _,
-            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
                 self.read_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START),
-            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ... CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
                 self.read_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_1_MIRROR_START + CHR_RAM_PATTERN_TABLE_1_START),
-            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ... CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
                 self.read_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_2_MIRROR_START + CHR_RAM_PATTERN_TABLE_2_START),
-            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
                 self.read_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START),
             _ => {
                 logln!(Log::Vip, "WARNING: Attempted read halfword from unrecognized VIP address (addr: 0x{:08x})", addr);
@@ -363,7 +363,7 @@ impl Vip {
         let addr = addr & 0x0007ffff;
         let addr = addr & 0xfffffffe;
         match addr {
-            VRAM_START ... VRAM_END => self.write_vram_halfword(addr - VRAM_START, value),
+            VRAM_START ..= VRAM_END => self.write_vram_halfword(addr - VRAM_START, value),
             INTPND => {
                 logln!(Log::Vip, "WARNING: Attempted write halfword to Interrupt Pending Reg");
             }
@@ -466,13 +466,13 @@ impl Vip {
             JPLT2 => self.reg_jplt2 = value as _,
             JPLT3 => self.reg_jplt3 = value as _,
             BKCOL => self.reg_bkcol = (value & 0x03) as _,
-            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ... CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_0_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_0_MIRROR_END =>
                 self.write_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_0_MIRROR_START + CHR_RAM_PATTERN_TABLE_0_START, value),
-            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ... CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_1_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_1_MIRROR_END =>
                 self.write_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_1_MIRROR_START + CHR_RAM_PATTERN_TABLE_1_START, value),
-            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ... CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_2_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_2_MIRROR_END =>
                 self.write_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_2_MIRROR_START + CHR_RAM_PATTERN_TABLE_2_START, value),
-            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ... CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
+            CHR_RAM_PATTERN_TABLE_3_MIRROR_START ..= CHR_RAM_PATTERN_TABLE_3_MIRROR_END =>
                 self.write_vram_halfword(addr - CHR_RAM_PATTERN_TABLE_3_MIRROR_START + CHR_RAM_PATTERN_TABLE_3_START, value),
             _ => {
                 logln!(Log::Vip, "WARNING: Attempted write halfword to unrecognized VIP address (addr: 0x{:08x}, value: 0x{:04x})", addr, value);
@@ -506,7 +506,7 @@ impl Vip {
         }
     }
 
-    pub fn cycles(&mut self, cycles: u32, video_frame_sink: &mut Sink<VideoFrame>) -> bool {
+    pub fn cycles(&mut self, cycles: u32, video_frame_sink: &mut dyn Sink<VideoFrame>) -> bool {
         for _ in 0..cycles {
             self.display_frame_eighth_clock_counter += 1;
             if self.display_frame_eighth_clock_counter >= DISPLAY_FRAME_EIGHTH_PERIOD {
@@ -1083,7 +1083,7 @@ impl Vip {
         self.write_vram_byte(framebuffer_offset + framebuffer_byte_index, framebuffer_byte);
     }
 
-    fn display(&mut self, video_frame_sink: &mut Sink<VideoFrame>) {
+    fn display(&mut self, video_frame_sink: &mut dyn Sink<VideoFrame>) {
         let left_framebuffer_offset = if self.display_first_framebuffers { 0x00000000 } else { 0x00008000 };
         let right_framebuffer_offset = left_framebuffer_offset + 0x00010000;
 

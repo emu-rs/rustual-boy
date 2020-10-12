@@ -171,13 +171,13 @@ fn command<I: Stream<Item=char>>(input: I) -> ParseResult<Command, I> {
     .parse_stream(input)
 }
 
-fn u32_<'a, I: Stream<Item=char> + 'a>() -> Box<Parser<Input=I, Output=u32> + 'a> {
+fn u32_<'a, I: Stream<Item=char> + 'a>() -> Box<dyn Parser<Input=I, Output=u32> + 'a> {
     many1(digit())
         .and_then(|s: String| s.parse::<u32>())
         .boxed()
 }
 
-fn u32_hex<'a, I: Stream<Item=char> + 'a>() -> Box<Parser<Input=I, Output=u32> + 'a> {
+fn u32_hex<'a, I: Stream<Item=char> + 'a>() -> Box<dyn Parser<Input=I, Output=u32> + 'a> {
     let hex_prefix = choice([try(string("0x")), try(string("$"))]);
     (optional(hex_prefix), many1(hex_digit()))
         .map(|x| x.1)
@@ -185,6 +185,6 @@ fn u32_hex<'a, I: Stream<Item=char> + 'a>() -> Box<Parser<Input=I, Output=u32> +
         .boxed()
 }
 
-fn label_name<'a, I: Stream<Item=char> + 'a>() -> Box<Parser<Input=I, Output=String> + 'a> {
+fn label_name<'a, I: Stream<Item=char> + 'a>() -> Box<dyn Parser<Input=I, Output=String> + 'a> {
     many1::<String, _>(alpha_num()).boxed()
 }
