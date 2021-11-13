@@ -70,13 +70,9 @@ impl Emulator {
 
         Emulator {
             window: Window::new("Rustual Boy", 384, 224, WindowOptions {
-                borderless: false,
-                title: true,
-                resize: false,
                 scale: Scale::X2,
                 scale_mode: ScaleMode::AspectRatioStretch,
-                topmost: false,
-                transparency: false
+                ..Default::default()
             }).unwrap(),
 
             virtual_boy: VirtualBoy::new(rom, sram),
