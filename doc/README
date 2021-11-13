@@ -12,6 +12,6 @@ but it depends on a number of libraries which carry their own copyright notices
 and license terms. These libraries are normally all linked static into the binary
 distributions of Rustual Boy. See LICENSE-THIRD-PARTY for more info.
 
-(C) 2016-2019 Jake "ferris" Taylor and the Rustual Boy contributors
+(C) 2016-2020 Jake "ferris" Taylor and the Rustual Boy contributors
 https://rustualboy.com/
 https://github.com/emu-rs/rustual-boy
