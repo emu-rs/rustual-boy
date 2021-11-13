@@ -1,9 +1,6 @@
 #![allow(dead_code)]
 
-use cpal::{EventLoop, Voice, UnknownTypeBuffer, default_endpoint};
-
-use futures::stream::Stream;
-use futures::task::{self, Executor, Run};
+use cpal::traits::{HostTrait, DeviceTrait, StreamTrait};
 
 use rustual_boy_core::sinks::{AudioFrame, SinkRef};
 use rustual_boy_core::time_source::TimeSource;
@@ -11,9 +8,9 @@ use rustual_boy_core::time_source::TimeSource;
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 use std::iter::Iterator;
-use std::thread::{self, JoinHandle};
 
-use std::cmp::Ordering;
+use std::cmp::{self, Ordering};
+use cpal::SampleFormat;
 
 pub type CpalDriverError = Cow<'static, str>;
 
@@ -80,20 +77,11 @@ impl TimeSource for CpalDriverTimeSource {
     }
 }
 
-struct CpalDriverExecutor;
-
-impl Executor for CpalDriverExecutor {
-    fn execute(&self, r: Run) {
-        r.run();
-    }
-}
-
 pub struct CpalDriver {
     ring_buffer: Arc<Mutex<RingBuffer>>,
     sample_rate: u32,
 
-    _voice: Voice,
-    _join_handle: JoinHandle<()>,
+    _stream: cpal::Stream,
 }
 
 impl CpalDriver {
@@ -102,25 +90,37 @@ impl CpalDriver {
             return Err(format!("desired_latency_ms must be greater than 0").into());
         }
 
-        let endpoint = default_endpoint().expect("Failed to get audio endpoint");
+        let host = cpal::default_host();
+        let output_device = host.default_output_device().expect("Failed to get output device");
 
-        let compare_sample_rates = |x: u32, y:u32| -> Ordering {
-            if x < sample_rate && y > sample_rate {
-                return Ordering::Greater;
-            } else if x > sample_rate && y < sample_rate {
-                return Ordering::Less;
-            } else if x < sample_rate && y < sample_rate {
-                return x.cmp(&y).reverse();
+        let rate_sample_rate_range = |x: &cpal::SupportedStreamConfigRange, y: &cpal::SupportedStreamConfigRange| -> Ordering {
+            let sample_rate = cpal::SampleRate(sample_rate);
+            if x.max_sample_rate() < sample_rate && y.max_sample_rate() >= sample_rate {
+                Ordering::Less
+            } else if x.max_sample_rate() >= sample_rate && y.max_sample_rate() < sample_rate {
+                Ordering::Greater
+            } else if x.max_sample_rate() < sample_rate && y.max_sample_rate() < sample_rate {
+                x.max_sample_rate().cmp(&y.max_sample_rate())
             } else {
-                return x.cmp(&y);
+                // Both max >= sample_rate, rank a lower minimum higher than not
+                x.min_sample_rate().cmp(&y.min_sample_rate()).reverse()
             }
         };
 
-        let format = endpoint.supported_formats()
-            .expect("Failed to get supported format list for endpoint")
-            .filter(|format| format.channels.len() == 2)
-            .min_by(|x, y| compare_sample_rates(x.samples_rate.0, y.samples_rate.0))
+        let supported_config = output_device.supported_output_configs()
+            .expect("Failed to get supported config list for output")
+            .filter(|config| config.channels() == 2)
+            .max_by(rate_sample_rate_range)
             .expect("Failed to find format with 2 channels");
+        let supported_config = if supported_config.max_sample_rate().0 >= sample_rate {
+            let min_sample_rate = supported_config.min_sample_rate().0;
+            supported_config.with_sample_rate(cpal::SampleRate(cmp::max(min_sample_rate, sample_rate)))
+        } else {
+            supported_config.with_max_sample_rate()
+        };
+        let config = supported_config.config();
+        let channel_count = supported_config.channels();
+
 
         let buffer_frames = (sample_rate * desired_latency_ms / 1000 * 2) as usize;
         let ring_buffer = Arc::new(Mutex::new(RingBuffer {
@@ -132,64 +132,65 @@ impl CpalDriver {
             samples_read: 0,
         }));
 
-        let event_loop = EventLoop::new();
-
-        let (mut voice, stream) = Voice::new(&endpoint, &format, &event_loop).expect("Failed to create voice");
-        voice.play();
-
-        let mut resampler = LinearResampler::new(sample_rate as _, format.samples_rate.0 as _);
-
+        let mut resampler = LinearResampler::new(sample_rate as _, config.sample_rate.0);
         let read_ring_buffer = ring_buffer.clone();
-        task::spawn(stream.for_each(move |output_buffer| {
-            let mut read_ring_buffer = read_ring_buffer.lock().unwrap();
 
-            match output_buffer {
-                UnknownTypeBuffer::I16(mut buffer) => {
-                    for sample in buffer.chunks_mut(format.channels.len()) {
+        let err_handler = |err| eprintln!("Error occurred in output stream: {}", err);
+        let out_stream = match supported_config.sample_format() {
+            SampleFormat::I16 => output_device.build_output_stream(
+                &config,
+                move |dst: &mut [i16], _cb_info: &cpal::OutputCallbackInfo| {
+                    let mut read_ring_buffer = read_ring_buffer.lock().unwrap();
+                    for sample in dst.chunks_mut(channel_count.into()) {
                         for out in sample.iter_mut() {
                             *out = resampler.next(&mut *read_ring_buffer);
                         }
                     }
                 },
-                UnknownTypeBuffer::U16(mut buffer) => {
-                    for sample in buffer.chunks_mut(format.channels.len()) {
+                err_handler,
+            ),
+            SampleFormat::U16 => output_device.build_output_stream(
+                &config,
+                move |dst: &mut [u16], _cb_info: &cpal::OutputCallbackInfo| {
+                    let mut read_ring_buffer = read_ring_buffer.lock().unwrap();
+                    for sample in dst.chunks_mut(channel_count.into()) {
                         for out in sample.iter_mut() {
                             *out = ((resampler.next(&mut *read_ring_buffer) as i32) + 32768) as u16;
                         }
                     }
                 },
-                UnknownTypeBuffer::F32(mut buffer) => {
-                    for sample in buffer.chunks_mut(format.channels.len()) {
+                err_handler,
+            ),
+            SampleFormat::F32 => output_device.build_output_stream(
+                &config,
+                move |dst: &mut [f32], _cb_info: &cpal::OutputCallbackInfo| {
+                    let mut read_ring_buffer = read_ring_buffer.lock().unwrap();
+                    for sample in dst.chunks_mut(channel_count.into()) {
                         for out in sample.iter_mut() {
                             *out = (resampler.next(&mut *read_ring_buffer) as f32) / 32768.0;
                         }
                     }
                 },
-            }
-
-            Ok(())
-        })).execute(Arc::new(CpalDriverExecutor));
-
-        let join_handle = thread::spawn(move || {
-            event_loop.run();
-        });
+                err_handler,
+            ),
+        }.expect("Failed to create stream");
+        out_stream.play().expect("Failed to play output stream");
 
         Ok(CpalDriver {
             ring_buffer: ring_buffer,
             sample_rate: sample_rate,
 
-            _voice: voice,
-            _join_handle: join_handle,
+            _stream: out_stream,
         })
     }
 
-    pub fn sink(&self) -> Box<SinkRef<[AudioFrame]>> {
+    pub fn sink(&self) -> Box<dyn SinkRef<[AudioFrame]>> {
         Box::new(CpalDriverBufferSink {
             ring_buffer: self.ring_buffer.clone(),
         })
     }
 
-    pub fn time_source(&self) -> Box<TimeSource> {
+    pub fn time_source(&self) -> Box<dyn TimeSource> {
         Box::new(CpalDriverTimeSource {
             ring_buffer: self.ring_buffer.clone(),
             sample_rate: self.sample_rate,
@@ -234,7 +235,7 @@ impl LinearResampler {
         }
     }
 
-    fn next(&mut self, input: &mut Iterator<Item = i16>) -> i16 {
+    fn next(&mut self, input: &mut dyn Iterator<Item = i16>) -> i16 {
         fn interpolate(a: i16, b: i16, num: u32, denom: u32) -> i16 {
             (((a as i32) * ((denom - num) as i32) + (b as i32) * (num as i32)) / (denom as i32)) as _
         }
